@@ -23,7 +23,7 @@ Facilita y controla el tiempo: Andrew (también programa). En la programación e
 | 5 | PB-05 | Registrar una devolución con fecha y observación sobre el estado del equipo | Operador — cerrar el préstamo y liberar el equipo | ¿Una devolución con daño libera el equipo o lo bloquea? |
 | 6 | PB-06 | Diferenciar las acciones del operador de las consultas de otros usuarios | Responsable — que solo el personal registre préstamos | Mecanismo de identificación a acordar con el docente |
 
-**Razón de la prioridad 1 (PB-01):** es la necesidad central del encargo ("evitar que un equipo se preste dos veces"); su regla ("disponible") era incierta y ya fue aclarada con el cliente; PB-04 y PB-05 necesitan préstamos registrados para existir; y se puede demostrar el lunes con una ejecución breve de las pruebas, usando datos ficticios en memoria en lugar de PB-02 y PB-03.
+**Razón de la prioridad 1 (PB-01):** es la necesidad central del encargo ("evitar que un equipo se preste dos veces"); su regla ("disponible") era incierta y ya fue aclarada con el cliente; PB-04 y PB-05 necesitan préstamos registrados para existir; y se puede demostrar el Lunes 28/09/2026 con una ejecución breve de las pruebas, usando datos ficticios en memoria en lugar de PB-02 y PB-03.
 
 ## Objetivo y alcance
 
