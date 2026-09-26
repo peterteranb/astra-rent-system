@@ -52,10 +52,10 @@ def register_loan(
     loans.append(new_loan)
     return new_loan
 
-inventory = {
-    "INV-001": Equipment("INV-001", "SN-12345", "Parlante"),
-    "INV-002": Equipment("INV-002", "SN-67890", "Microfono"),
-}
+# inventory = {
+#     "INV-001": Equipment("INV-001", "SN-12345", "Parlante"),
+#     "INV-002": Equipment("INV-002", "SN-67890", "Microfono"),
+# }
 
 # loans = [
 #     Loan(inventory_id="INV-001", borrower_name="Alice")
