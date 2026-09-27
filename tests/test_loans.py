@@ -1,8 +1,12 @@
+import pytest
+
 from rent_manager import (
+    Equipment,
+    EquipmentNotAvailableError,
+    EquipmentNotFoundError,
+    Loan,
     is_available,
     register_loan,
-    Equipment,
-    Loan
 )
 
 
@@ -109,29 +113,32 @@ def test_successful_loan_is_added_to_loans_list():
 
 
 def test_register_loan_rejected_when_equipment_already_loaned():
-    # Equipment is already loaned out -> second register_loan must fail
+    # Equipment is already loaned out -> second register_loan must raise
     # and must NOT add a second loan to the list
     inventory = {
         "INV-001": Equipment("INV-001", "SN-12345", "Parlante"),
     }
     loans = []
     register_loan(inventory, loans, "INV-001", "Juan Perez")
-    result = register_loan(inventory, loans, "INV-001", "Ana Gomez")
 
-    assert result == "INV-001 is not available"
-    assert len(loans) == 1
+    with pytest.raises(EquipmentNotAvailableError, match="INV-001"):
+        register_loan(inventory, loans, "INV-001", "Ana Gomez")
+
+    assert loans == [Loan("INV-001", "Juan Perez")]
 
 
 def test_register_loan_rejected_when_equipment_not_in_inventory():
-    # Equipment id does not exist in the inventory -> register_loan must fail
+    # Equipment id does not exist in the inventory -> register_loan must raise
     inventory = {
         "INV-001": Equipment("INV-001", "SN-12345", "Parlante"),
     }
     loans = []
-    result = register_loan(inventory, loans, "INV-999", "Juan Perez")
 
-    assert result == "INV-999 is not available"
-    assert len(loans) == 0
+    with pytest.raises(EquipmentNotFoundError, match="INV-999"):
+        register_loan(inventory, loans, "INV-999", "Juan Perez")
+
+    assert loans == []
+
 
 
 def test_two_different_equipment_can_be_loaned_independently():
@@ -158,10 +165,11 @@ def test_same_equipment_cannot_be_loaned_twice_in_a_row():
     }
     loans = []
     register_loan(inventory, loans, "INV-001", "Juan Perez")
-    result = register_loan(inventory, loans, "INV-001", "Juan Perez")
 
-    assert result == "INV-001 is not available"
-    assert len(loans) == 1
+    with pytest.raises(EquipmentNotAvailableError, match="INV-001"):
+        register_loan(inventory, loans, "INV-001", "Juan Perez")
+
+    assert loans == [Loan("INV-001", "Juan Perez")]
 
 
 def test_equipment_available_again_after_loan_is_removed():
