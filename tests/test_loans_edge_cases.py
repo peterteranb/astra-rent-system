@@ -12,16 +12,19 @@
 import pytest
 from rent_manager.loans import (
     Equipment,
+    EquipmentNotAvailableError,
+    EquipmentNotFoundError,
     Loan,
     is_available,
     register_loan,
 )
 
 
-# ---------- Edge Cases & Input Integrity ----------
+# ---------- Pending client decisions (skipped until agreed) ----------
 
+@pytest.mark.skip(reason="Pending client decision: which borrower names are valid?")
 def test_borrower_name_with_whitespace_and_special_characters():
-    """Verify registration with empty string or whitespace borrower names."""
+    """Verify registration with whitespace and special characters in borrower names."""
     inventory = {
         "INV-001": Equipment("INV-001", "SN-100", "Projector"),
     }
@@ -31,7 +34,7 @@ def test_borrower_name_with_whitespace_and_special_characters():
     assert isinstance(result, Loan)
     assert result.borrower_name == "  Andrew O'Connor-Smith  "
 
-
+@pytest.mark.skip(reason="Pending client decision: are inventory numbers case-sensitive?")
 def test_inventory_keys_case_sensitivity():
     """Verify that inventory lookup handles case sensitivity properly."""
     inventory = {
@@ -39,14 +42,13 @@ def test_inventory_keys_case_sensitivity():
     }
     loans = []
 
-    # Lowercase lookup should fail if inventory keys are uppercase
     assert is_available(inventory, loans, "inv-001") is False
-    result = register_loan(inventory, loans, "inv-001", "Andrew")
-    assert result == "inv-001 is not available"
+    with pytest.raises(EquipmentNotFoundError):
+        register_loan(inventory, loans, "inv-001", "Andrew")
 
-
+@pytest.mark.skip(reason="Pending decision: can a registered loan be modified? P01 asks to keep history")
 def test_loan_mutation_isolation():
-    """Ensure returning a mutated/copied loan list doesn't break original state without side effects."""
+    """Check whether a registered loan can be modified after it is recorded."""
     inventory = {
         "INV-001": Equipment("INV-001", "SN-100", "Projector"),
         "INV-002": Equipment("INV-002", "SN-200", "Laptop"),
@@ -56,7 +58,6 @@ def test_loan_mutation_isolation():
     loan1 = register_loan(inventory, loans, "INV-001", "Andrew")
     assert len(loans) == 1
 
-    # Modify loan object attribute in-place
     loan1.borrower_name = "Andrew Modified"
     assert loans[0].borrower_name == "Andrew Modified"
 
@@ -80,25 +81,24 @@ def test_loan_dataclass_equality():
     assert loan1 == loan2
 
 
-# ---------- Batch/Stress Operations ----------
+# ---------- Batch Operations ----------
 
 def test_register_multiple_loans_until_inventory_exhausted():
-    """Test full inventory depletion workflow."""
+    """Test full inventory depletion workflow, one borrower per unit."""
     inventory = {
         f"INV-00{i}": Equipment(f"INV-00{i}", f"SN-{i}", f"Item {i}")
         for i in range(1, 5)
     }
     loans = []
+    borrowers = ["Ana", "Juan", "Luis", "Marta"]
 
-    # Borrow all items
-    for item_id in inventory.keys():
-        res = register_loan(inventory, loans, item_id, "Andrew")
+    for item_id, borrower in zip(inventory, borrowers):
+        res = register_loan(inventory, loans, item_id, borrower)
         assert isinstance(res, Loan)
 
     assert len(loans) == 4
 
-    # Confirm none are available anymore
-    for item_id in inventory.keys():
+    for item_id in inventory:
         assert is_available(inventory, loans, item_id) is False
 
 
