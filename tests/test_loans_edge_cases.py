@@ -100,3 +100,35 @@ def test_register_multiple_loans_until_inventory_exhausted():
     # Confirm none are available anymore
     for item_id in inventory.keys():
         assert is_available(inventory, loans, item_id) is False
+
+
+# ---------- Inventory Immutability ----------
+
+def test_inventory_immutability_on_loan_registration():
+    """Verify that registering a loan does NOT mutate or delete entries from the inventory."""
+    inventory = {
+        "INV-001": Equipment("INV-001", "SN-100", "Projector"),
+        "INV-002": Equipment("INV-002", "SN-200", "Laptop"),
+    }
+    loans = []
+
+    # Store shallow copy / initial state of the inventory for comparison
+    inventory_keys_before = set(inventory.keys())
+    inv_001_before = Equipment("INV-001", "SN-100", "Projector")
+
+    # Register a loan
+    result = register_loan(inventory, loans, "INV-001", "Andrew")
+
+    # Assert loan creation succeeded
+    assert isinstance(result, Loan)
+    assert len(loans) == 1
+
+    # Assert inventory keys and length were not modified or deleted
+    assert set(inventory.keys()) == inventory_keys_before
+    assert len(inventory) == 2
+
+    # Assert specific equipment object inside inventory was not mutated
+    assert inventory["INV-001"] == inv_001_before
+    assert inventory["INV-001"].inventory_id == "INV-001"
+    assert inventory["INV-001"].serial_number == "SN-100"
+    assert inventory["INV-001"].description == "Projector"
