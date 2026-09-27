@@ -171,7 +171,49 @@ def test_same_equipment_cannot_be_loaned_twice_in_a_row():
 
     assert loans == [Loan("INV-001", "Juan Perez")]
 
+def test_example_normal_loan_of_available_unit():
+    inventory = {"INV-001": Equipment("INV-001", "S001", "JBL EON615 speaker")}
+    loans = []
 
+    loan = register_loan(inventory, loans, "INV-001", "Ana")
+
+    assert loan == Loan("INV-001", "Ana")
+    assert loans == [Loan("INV-001", "Ana")]
+    assert is_available(inventory, loans, "INV-001") is False
+
+
+def test_example_boundary_two_units_of_same_model():
+    inventory = {
+        "INV-001": Equipment("INV-001", "S001", "JBL EON615 speaker"),
+        "INV-002": Equipment("INV-002", "S002", "JBL EON615 speaker"),
+    }
+    loans = [Loan("INV-001", "Ana")]
+
+    register_loan(inventory, loans, "INV-002", "Juan")
+
+    assert loans == [Loan("INV-001", "Ana"), Loan("INV-002", "Juan")]
+
+
+def test_example_rejection_unit_already_on_loan():
+    inventory = {"INV-001": Equipment("INV-001", "S001", "JBL EON615 speaker")}
+    loans = [Loan("INV-001", "Ana")]
+
+    with pytest.raises(EquipmentNotAvailableError, match="INV-001"):
+        register_loan(inventory, loans, "INV-001", "Juan")
+
+    assert loans == [Loan("INV-001", "Ana")]
+
+
+def test_example_unregistered_unit():
+    inventory = {"INV-001": Equipment("INV-001", "S001", "JBL EON615 speaker")}
+    loans = []
+
+    with pytest.raises(EquipmentNotFoundError, match="INV-999"):
+        register_loan(inventory, loans, "INV-999", "Juan")
+
+    assert loans == []
+
+@pytest.mark.skip(reason="Returns are out of scope for PB-01 (see PB-05)")
 def test_equipment_available_again_after_loan_is_removed():
     # Simulates the equipment being returned (its loan removed from the list),
     # after which it should be possible to register a new loan for it
