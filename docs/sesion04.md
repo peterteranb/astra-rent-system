@@ -69,8 +69,8 @@ Preguntas surgidas durante el desarrollo (quedan como pruebas marcadas con `skip
 **Definition of Done:**
 - [x] Los ejemplos acordados tienen pruebas ejecutables que pasan.
 - [x] Las pruebas anteriores del proyecto continúan pasando.
-- [ ] El código fue revisado por otro integrante.
-- [ ] La contribución está integrada en `main` y fue comprobada allí.
+- [x] El código fue revisado por otro integrante.
+- [x] La contribución está integrada en `main` y fue comprobada allí.
 - [x] El README permite ejecutar las pruebas.
 - [ ] El equipo puede demostrar el resultado y explicar sus límites.
 
@@ -93,10 +93,10 @@ Cada prueba arma su propio inventario y su propia lista de préstamos. `is_avail
 | Tarea                                                                         | Personas que colaboran                              | Estado      | Evidencia o ubicación                                                                                                                                                                               |
 |-------------------------------------------------------------------------------|-----------------------------------------------------|-------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | T1. Estructura del repositorio, README y primer borrador de este documento    | Sofia; revisaron Uriel y Andrew                     | Terminado   | [PR #1](https://github.com/peterteranb/astra-rent-system/pull/1), [PR #2](https://github.com/peterteranb/astra-rent-system/pull/2), [PR #3](https://github.com/peterteranb/astra-rent-system/pull/3)                                                                  |
-| T2. Interfaz mínima e implementación inicial                                  | Uriel escribe; Sofía y Andrew acompañan             | Terminado   | `rent_manager/loans.py`, [PR #3](https://github.com/peterteranb/astra-rent-system/pull/3) |
-| T3. Pruebas de `is_available` y `register_loan`; datos propios en cada prueba | Sofia escribe; Uriel y Andrew acompañan             | Terminado   | `tests/test_loans.py`, [PR #3](https://github.com/peterteranb/astra-rent-system/pull/3) |
-| T4. Casos borde, errores de dominio y pruebas de los 4 ejemplos acordados     | Andrew y Uriel escriben; se revisan entre los tres  | Terminado   | `tests/test_loans_edge_cases.py`, `tests/test_loans.py`, `rent_manager/loans.py`, [PR #3](https://github.com/peterteranb/astra-rent-system/pull/3) |
-| T5. PR, revisión, integración y verificación en `main`                        | Uriel abre, Sofía revisa, Andrew verifica en `main` | En revisión | [PR #4](https://github.com/peterteranb/astra-rent-system/pull/4)                                                                                                                                    |
+| T2. Interfaz mínima e implementación inicial                                  | Uriel escribe; Sofía y Andrew acompañan             | Terminado   | `rent_manager/loans.py`, [PR #5](https://github.com/peterteranb/astra-rent-system/pull/5) |
+| T3. Pruebas de `is_available` y `register_loan`; datos propios en cada prueba | Sofia escribe; Uriel y Andrew acompañan             | Terminado   | `tests/test_loans.py`, [PR #5](https://github.com/peterteranb/astra-rent-system/pull/5) |
+| T4. Casos borde, errores de dominio y pruebas de los 4 ejemplos acordados     | Andrew y Uriel escriben; se revisan entre los tres  | Terminado   | `tests/test_loans_edge_cases.py`, `tests/test_loans.py`, `rent_manager/loans.py`, [PR #5](https://github.com/peterteranb/astra-rent-system/pull/5) |
+| T5. PR, revisión, integración y verificación en `main`                        | Uriel abre, Sofía revisa, Andrew verifica en `main` | Terminado   | [PR #5](https://github.com/peterteranb/astra-rent-system/pull/5)                                                                                                                                    |
 
 **Sesión de programación en grupo:** sábado 26/09, de 11:00 a 12:00. Andrew facilitó y controló el tiempo. Una persona escribía por turno y las otras acompañaban.
 
@@ -127,9 +127,10 @@ Ajuste del plan: se quitaron los datos fijos de `loans.py` y cada prueba prepara
 
 - Comando: `python -m pytest -v`
 - Resultado en la rama `iteracion01/register-loan`: 21 pasan y 4 se omiten (`skip`), en las computadoras de los tres (Windows y Linux). Las 4 omitidas corresponden a decisiones pendientes del cliente y a devoluciones (PB-05).
-- PR: [PR #3](https://github.com/peterteranb/astra-rent-system/pull/3)
-- Revisión: pendiente.
-- Commit demostrado en `main` y resultado en `main`: pendiente, después de la integración.
+- PR: [PR #5](https://github.com/peterteranb/astra-rent-system/pull/5) (el PR #4 se abrió por error y se cerró sin integrar).
+- Revisión: Sofía, segunda lectura (participó en la solución, no es una revisión independiente).
+- Commit demostrado en `main`: `cb84e69`.
+- Resultado en `main`: 21 pasan y 4 se omiten (`skip`). Windows (Python 3.14.6, pytest 9.1.1) y ```21 passed, 4 skipped in 0.28s```.
 
 ## Retroalimentación
 Pendiente — petición o defecto identificado en la revisión y cambio correspondiente en el backlog.
