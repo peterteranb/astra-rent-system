@@ -12,6 +12,7 @@ Gestión de préstamos de equipos — astra-rent-system
 Cliente simulado: SergioCorp, empresa que renta equipos de amplificación para fiestas. El docente actúa como cliente.
 
 Facilita y controla el tiempo: Andrew (también programa). En la programación en grupo una persona escribe, otra revisa la lógica y otra valida los ejemplos y los riesgos; rotamos cada ~10 minutos.
+
 ## Backlog ordenado
 
 | Orden | ID    | Capacidad                                                                                      | ¿A quién ayuda y para qué?                                                            | Duda pendiente                                          |
@@ -55,6 +56,7 @@ Preguntas surgidas durante el desarrollo (quedan como pruebas marcadas con `skip
 - ¿El número de inventario distingue mayúsculas y minúsculas (`inv-001` frente a `INV-001`)?
 - ¿Hay un límite de equipos por persona?
 - ¿Se puede modificar un préstamo ya registrado? El P01 pide conservar el historial.
+
 ## Ejemplos de aceptación
 
 | Caso                                     | Estado inicial y entrada                                                                                  | Resultado esperado                                                                             | Regla que lo justifica                                                                                 |
@@ -72,7 +74,7 @@ Preguntas surgidas durante el desarrollo (quedan como pruebas marcadas con `skip
 - [x] El código fue revisado por otro integrante.
 - [x] La contribución está integrada en `main` y fue comprobada allí.
 - [x] El README permite ejecutar las pruebas.
-- [ ] El equipo puede demostrar el resultado y explicar sus límites.
+- [x] El equipo puede demostrar el resultado y explicar sus límites (demostrado el lunes 28/09/2026).
 
 **Interfaz mínima** (aceptada por los tres antes de programar):
 
@@ -130,10 +132,19 @@ Ajuste del plan: se quitaron los datos fijos de `loans.py` y cada prueba prepara
 - PR: [PR #5](https://github.com/peterteranb/astra-rent-system/pull/5) (el PR #4 se abrió por error y se cerró sin integrar).
 - Revisión: Sofía, segunda lectura (participó en la solución, no es una revisión independiente).
 - Commit demostrado en `main`: `cb84e69`.
-- Resultado en `main`: 21 pasan y 4 se omiten (`skip`). Windows (Python 3.14.6, pytest 9.1.1) y ```21 passed, 4 skipped in 0.28s```.
+- Resultado en `main`: 21 pasan y 4 se omiten (`skip`).
+  - Windows (Python 3.14.6, pytest 9.1.1): `21 passed, 4 skipped in 0.28s`.
+  - Linux (Andrew): mismo resultado, 21 pasan y 4 se omiten.
+- Demostración: lunes 28/09/2026, ejecutando la suite sobre `main` (commit `cb84e69`).
 
 ## Retroalimentación
-Pendiente — petición o defecto identificado en la revisión y cambio correspondiente en el backlog.
+**Revisión del lunes 28/09/2026.** Sergio revisó las pruebas de PB-01 y pidió que explicáramos su funcionamiento; cada integrante respondió y defendió el comportamiento acordado.
+
+- **Petición nueva:** ninguna. No pidió agregar, cambiar ni quitar funcionalidades.
+- **Defecto:** ninguno. La revisión no mostró que incumpliéramos una regla ya acordada, así que no se registra ningún defecto pendiente.
+- **Cambio en el backlog:** ninguno por ahora. Los seis elementos (PB-01 a PB-06) y su orden se mantienen; PB-01 queda terminado. El orden de la siguiente iteración se decide con el cliente y todavía no está acordado.
+
+Lo que sí quedó claro es que el cliente espera que el proyecto muestre "perspectiva": que las pruebas de hoy se noten como un paso de un desarrollo con dirección. Por eso las preguntas pendientes de las secciones anteriores (estados del equipo, identificación del solicitante, duración del préstamo, devolución con daño, login) siguen registradas como pendientes y no como reglas asumidas.
 
 ## Retrospectiva
 **Mantener:** escribir primero la prueba y corregir después. Cuando notamos que los rechazos devolvían un texto en vez de las excepciones acordadas (`EquipmentNotAvailableError` / `EquipmentNotFoundError`), Uriel corrigió primero las pruebas y luego la implementación; se comprobó porque esas pruebas fallaban antes del cambio y pasaron después, sin romper los demás casos.
@@ -147,7 +158,7 @@ Pendiente — petición o defecto identificado en la revisión y cambio correspo
 
 **¿Qué decisión pudieron mejorar gracias a una prueba o a la revisión del cliente?**   
 *Gracias a una prueba:* al escribir los cuatro ejemplos de aceptación notamos que el rechazo devolvía un texto simple en vez de una excepción, así que lo cambiamos a `EquipmentNotAvailableError` / `EquipmentNotFoundError`, que es más fácil de comprobar y distingue los dos motivos de rechazo.  
-*Gracias a la revisión del cliente:* todavía no aplica, porque la revisión de esta capacidad con el cliente está pendiente (lunes 28/09); lo que sí se obtuvo fue las aclaraciones previas (cómo identificar un equipo, qué tan formal es el rechazo), pero esas se dieron antes de programar, no como resultado de revisar el código ya hecho.  
+*Gracias a la revisión del cliente:* ninguna decisión cambió. En la revisión del lunes el cliente revisó las pruebas y no pidió cambios ni señaló defectos. Las aclaraciones que influyeron en el código (cómo identificar un equipo, qué tan formal es el rechazo) se dieron antes de programar, no como resultado de revisar el código ya hecho.  
 
 **¿En qué contexto de su proyecto sería útil fijar más detalles por anticipado?**  
 En `is_available` y `register_loan`, `inventory_id` se compara como texto exacto (inventory_id not in inventory) y `borrower_name` se guarda tal cual, sin normalizar. Eso ya es una decisión implícita: ahora mismo INV-001 e inv-001 son equipos distintos para el sistema, y un nombre con espacios o caracteres raros se acepta sin validar. Como no confirmamos con el cliente si el número de inventario distingue mayúsculas o qué nombres de solicitante son válidos, dejamos esas pruebas con skip en vez de asumir una regla. Si hubiéramos fijado eso antes de escribir `is_available`, no tendríamos ese código implementado con un comportamiento que quizás haya que cambiar después.
