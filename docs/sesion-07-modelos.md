@@ -11,18 +11,20 @@
 
 Como [rol], quiero [objetivo] para [valor].
 Como cliente, quiero ingresar al sistema con mis credenciales, elegir el equipo que quiero rentar yrecibir la confirmación de la venta para rentar un equipo. //mofidicar
-Como cliente,
 
 - Requisitos relacionados: [IDs]
 
 ## 2. Caso de uso [ID-CU-01 — Nombre]
 
-- Objetivo: [...]
-- Actor principal: [...]
-- Disparador: [...]
-- Precondiciones: [...]
-- Poscondición de éxito: [...]
-- Garantía ante rechazo: [...]
+- Objetivo: Rentar un equipo  
+- Actor principal: Cliente  
+- Disparador: La página web  
+  - Precondiciones: 
+    El cliente ya tiene su usuario en el sistema, 
+    el equipo existe en el inventario. 
+    El estado del equipo es "disponible".
+- Poscondición de éxito: Confirmación de la renta.
+- Garantía ante rechazo: Se muestra como mensaje "no disponible".
 
 ### Flujo principal
 
@@ -47,7 +49,6 @@ Como cliente,
 [Insertar el diagrama con su ruta principal y su ruta de rechazo.]
 
 ## 4. Estados o efectos sobre los datos
--------------#%&ERTT----------que se registre en el sistema, que se registre la venta
 - Entidad que se está modelando: [...]
 
 | Estado actual | Evento y condición | Estado siguiente | Efecto sobre los datos |
@@ -66,11 +67,6 @@ Como cliente,
 Los escenarios se han recorrido sobre el modelo; eso no equivale a ejecutar pruebas del programa.
 
 ## 6. Revisión recibida
-
-- Equipo revisor: [...]
-- Escenarios recorridos: [...]
-- Observación o resultado: [...]
-- Corrección realizada o justificación: [...]
 
 ## 7. Dudas y cambios en los requisitos
 
