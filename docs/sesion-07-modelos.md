@@ -97,6 +97,8 @@ flowchart TD
 
 | Estado actual | Evento y condición | Estado siguiente | Efecto sobre los datos |
 |---|---|---|---|
+| Sin sesión | El cliente envía usuario y contraseña correctos | Sesión abierta | Se abre la sesión del cliente. No cambia ninguna renta ni ningún equipo. |
+| Sin sesión | El cliente envía usuario o contraseña incorrectos (E2) | Sin sesión | No se abre la sesión y no cambia ningún dato. |
 | Sin renta | El cliente acepta y el equipo está disponible en ese periodo | Confirmada | Se guarda la renta con cliente, equipo y fechas. El equipo queda ocupado para ese periodo. |
 | Sin renta | El cliente acepta pero el equipo no está disponible (E1) | Sin renta | No se guarda nada. La renta del otro cliente no cambia. |
 
