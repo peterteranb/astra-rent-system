@@ -9,12 +9,12 @@
 
 ## 1. Historia PRE-HU-01
 
-Como cliente, quiero ingresar al sistema con mis credenciales, elegir el equipo que quiero rentar, indicar las fechas de recojo y devolución y recibir la confirmación, para tener el equipo en el momento en que lo necesito si está disponible.
+Como cliente, quiero ingresar al sistema con mis credenciales, elegir el equipo que quiero rentar, indicar las fechas de retiro y devolución y recibir la confirmación, para tener el equipo en el momento en que lo necesito si está disponible.
 
 - Requisitos relacionados:
   - PRE-RF-01: el primer cliente que confirma se queda el equipo para ese periodo.
   - PRE-RF-04: un equipo devuelto queda en revisión y no se puede rentar hasta que mantenimiento lo libere.
-  - Del encargo: PRE-02 (consultar equipos y su disponibilidad) y PRE-03 (registrar la renta con equipo, persona, entrega y vencimiento). PRE-01 queda en las precondiciones: el cliente y el equipo ya están registrados.
+  - Del MD de la asignación del proyecto: PRE-02 (consultar equipos y su disponibilidad) y PRE-03 (registrar la renta con equipo, persona, entrega y vencimiento). PRE-01 queda en las precondiciones: el cliente y el equipo ya están registrados.
 
 ## 2. Caso de uso PRE-CU-01 — El cliente renta un equipo
 
@@ -63,8 +63,6 @@ Realizar renta
 - Estado final y datos que se conservan: no se abre la sesión y no cambia ningún dato.
 - El caso termina o continúa en: la pantalla de inicio de sesión (paso 1).
 
-E2 es provisional: la Sesión 6 no tiene un requisito de inicio de sesión y el mecanismo de acceso todavía se tiene que acordar con el docente.
-
 ## 3. Modelo PRE-MOD-01
 
 - Tipo elegido: actividad simplificada (diagrama de flujo).
@@ -111,7 +109,7 @@ En este flujo el estado del equipo no cambia. Si el equipo pasara a "rentado" al
 | Requisito de sesión 6 | Historia / caso de uso | Paso o rama del modelo | Escenario de aceptación relacionado |
 |---|---|---|---|
 | PRE-RF-01 | PRE-HU-01; PRE-CU-01, pasos 6 a 9 | Rama "Sí" de disponibilidad | Normal: Sesión 6, sección 4. C-01 renta EQ-01 del 09/10 18:00 al 12/10 09:00 y queda confirmada al instante. |
-| PRE-RF-01 | PRE-CU-01, E1 | Rama "No" de disponibilidad | Rechazo: Sesión 6, sección 4. C-01 confirmó EQ-01 a las 19:51; C-02 pide lo mismo a las 19:52 y se rechaza; solo queda la renta de C-01. |
+| PRE-RF-01 | PRE-CU-01, E1 | Rama "No" de disponibilidad | Rechazo: Sesión 6, sección 4. C-01 confirmó el EQ-01; Se rechaza cualquier intento de renta sobre EQ-01; solo queda la renta de C-01. |
 | PRE-RF-01 (límite) | — | — | Falta: la Sesión 6 no tiene un caso límite para este flujo. El que tiene (devolución a las 09:05) es de otro flujo. |
 | PRE-RF-04 | PRE-CU-01, paso 7 y E1 | Rama "No" de disponibilidad | Sesión 6, criterio de PRE-RF-04: después de la devolución, EQ-03 está en revisión y un intento de renta se rechaza. |
 | Sin requisito (inicio de sesión) | PRE-CU-01, pasos 1 a 3 y E2 | Rama "No" de credenciales | Falta: no hay requisito ni escenario de aceptación para el inicio de sesión. |
@@ -145,7 +143,7 @@ No hubo cambios en los requisitos aprobados de la Sesión 6.
 
 - Tarea de desarrollo derivada del modelo: ampliar el registro de rentas de `rent_manager`, que hoy (PB-01) rechaza una segunda renta activa del mismo equipo, para que compare fechas: aceptar la primera renta de un equipo y rechazar otra cuyo periodo se cruce, sin tocar la renta original. Primero se escriben las pruebas del caso normal y del rechazo de PRE-RF-01.
 - Requisito que la justifica: PRE-RF-01.
-- Responsable inicial: [...]
-- Issue existente o nuevo, si corresponde: [enlace]
-- Aportes de cada integrante: [...]
-- Asistencia de IA, si se utilizó: Claude (Anthropic), para ordenar el borrador del equipo según la plantilla y revisar que las precondiciones no ocultaran el rechazo. Aún falta la verificación del equipo.
+- Responsable inicial: Nuestro querido Jefe de Carrera Sergio Barrientos.
+- Issue existente o nuevo, si corresponde: [no hay]
+- Aportes de cada integrante: Se redactó y se revisó en pares de forma rotativa.
+- Asistencia de IA, si se utilizó: Claude (Anthropic), para ordenar el borrador del equipo según la plantilla y revisar que las precondiciones no ocultaran el rechazo. Ya se verificó.
