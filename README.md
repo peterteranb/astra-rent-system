@@ -52,6 +52,28 @@ python -m pytest -q
 
 Use `python -m pytest -v` to see each test by name.
 
+## Database setup
+
+The project uses PostgreSQL. Each developer runs their own local copy.
+
+1. Install PostgreSQL (keep port 5432) and remember the `postgres` password.
+2. Create the user and the database. On Windows (adjust the version folder if needed):
+```powershell
+   & "C:\Program Files\PostgreSQL\18\bin\psql.exe" -U postgres -h localhost -v db_password=YOUR_PASSWORD -f scripts/create_db.sql
+```
+   On Linux:
+```bash
+   psql -U postgres -h localhost -v db_password=YOUR_PASSWORD -f scripts/create_db.sql
+```
+3. Copy `.env.example` to `.env` and set `DB_PASSWORD` to the password from step 2.
+4. Create the tables:
+```bash
+   python manage.py migrate
+```
+5. Run `python manage.py migrate` again after every `git pull`.
+
+If port 8000 is blocked on Windows, run the server on another port: `python manage.py runserver 8080`.
+
 ## Team
 
 - Uriel ([@peterteranb](https://github.com/peterteranb))
