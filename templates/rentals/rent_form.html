@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+
+{% block title %}Rentar {{ equipment.inventory_id }}{% endblock %}
+
+{% block content %}
+  <section class="card">
+    <h1 class="card__title">Rentar {{ equipment.inventory_id }}</h1>
+    <p class="equipment-summary">{{ equipment.description }}</p>
+    <p class="rental-hint">
+      Recojo desde las {{ earliest_pickup_time|time:"H:i" }}.
+      Devolución hasta las {{ latest_return_time|time:"H:i" }}.
+      Máximo {{ max_days }} días.
+    </p>
+
+    {% if form.non_field_errors %}
+      <div class="form-errors">
+        {% for error in form.non_field_errors %}
+          <p class="form-errors__item">{{ error }}</p>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    <form class="form" method="post" action="{% url 'rent_equipment' equipment.inventory_id %}">
+      {% csrf_token %}
+      {% for field in form %}
+        <div class="form__field">
+          {{ field.label_tag }}
+          {{ field }}
+          {{ field.errors }}
+        </div>
+      {% endfor %}
+      <div class="form__actions">
+        <button class="button" type="submit">Aceptar</button>
+        <a class="button button--secondary" href="{% url 'catalog' %}">Volver al catálogo</a>
+      </div>
+    </form>
+  </section>
+{% endblock %}

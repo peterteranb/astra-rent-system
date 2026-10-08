@@ -8,9 +8,17 @@ from django.utils import timezone
 
 from . import rules
 from .errors import EquipmentNotAvailableError, InvalidPeriodError, OutsideRentalHoursError
-from .models import Equipment, Rental
+from .models import Equipment, EquipmentStatus, Rental
 
 DATETIME_FORMAT = "%d/%m/%Y %H:%M"
+
+
+def list_catalog():
+    """Return the units shown in the catalog (PRE-CU-01, step 4)."""
+    # ASSUMPTION: the catalog shows only "available" units. Whether it
+    # should show all units is pending (Sesión 07 §7, PRE-02). Step 7
+    # checks the unit again anyway, so this is only a convenience.
+    return Equipment.objects.filter(status=EquipmentStatus.AVAILABLE)
 
 
 def create_rental(client, equipment, start_datetime, end_datetime) -> Rental:
