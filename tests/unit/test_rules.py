@@ -93,6 +93,54 @@ def test_new_period_ending_exactly_when_existing_starts_does_not_overlap():
     assert result is False
 
 
+def test_new_period_inside_existing_one_overlaps():
+    # Arrange
+    new_start = datetime(2026, 10, 10, 18, 0)
+    new_end = datetime(2026, 10, 11, 9, 0)
+
+    # Act
+    result = periods_overlap(new_start, new_end, DOC_START, DOC_END)
+
+    # Assert
+    assert result is True
+
+
+def test_new_period_starting_one_minute_before_existing_ends_overlaps():
+    # Arrange: just one minute shared with the existing rental
+    new_start = datetime(2026, 10, 12, 8, 59)
+    new_end = datetime(2026, 10, 13, 9, 0)
+
+    # Act
+    result = periods_overlap(new_start, new_end, DOC_START, DOC_END)
+
+    # Assert
+    assert result is True
+
+
+def test_new_period_ending_one_minute_after_existing_starts_overlaps():
+    # Arrange
+    new_start = datetime(2026, 10, 8, 18, 0)
+    new_end = datetime(2026, 10, 9, 18, 1)
+
+    # Act
+    result = periods_overlap(new_start, new_end, DOC_START, DOC_END)
+
+    # Assert
+    assert result is True
+
+
+def test_new_period_entirely_before_existing_one_does_not_overlap():
+    # Arrange
+    new_start = datetime(2026, 10, 5, 18, 0)
+    new_end = datetime(2026, 10, 7, 9, 0)
+
+    # Act
+    result = periods_overlap(new_start, new_end, DOC_START, DOC_END)
+
+    # Assert
+    assert result is False
+
+
 def test_new_period_entirely_after_existing_one_does_not_overlap():
     # Arrange
     new_start = datetime(2026, 10, 20, 18, 0)
@@ -178,6 +226,16 @@ def test_pickup_later_in_the_evening_is_allowed():
     assert is_pickup_time_allowed(datetime(2026, 10, 9, 21, 30)) is True
 
 
+def test_pickup_at_23_59_is_allowed():
+    # Act / Assert: last minute of the pickup day
+    assert is_pickup_time_allowed(datetime(2026, 10, 9, 23, 59)) is True
+
+
+def test_pickup_after_midnight_is_rejected():
+    # Act / Assert: 00:30 is before 18:00 on its own day
+    assert is_pickup_time_allowed(datetime(2026, 10, 10, 0, 30)) is False
+
+
 def test_pickup_one_minute_before_18_00_is_rejected():
     # Act / Assert
     assert is_pickup_time_allowed(datetime(2026, 10, 9, 17, 59)) is False
@@ -191,6 +249,11 @@ def test_return_at_exactly_09_00_is_allowed():
 def test_return_early_in_the_morning_is_allowed():
     # Act / Assert
     assert is_return_time_allowed(datetime(2026, 10, 12, 7, 15)) is True
+
+
+def test_return_at_midnight_is_allowed():
+    # Act / Assert: 00:00 is before 09:00
+    assert is_return_time_allowed(datetime(2026, 10, 12, 0, 0)) is True
 
 
 def test_return_one_minute_after_09_00_is_rejected():
