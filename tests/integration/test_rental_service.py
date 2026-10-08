@@ -112,6 +112,18 @@ def test_overlapping_rental_keeps_first_rental_unchanged(
     assert not Rental.objects.filter(client=c02).exists()
 
 
+def test_same_client_cannot_rent_same_unit_twice_for_same_period(
+    c01, eq01, doc_start, doc_end
+):
+    # Arrange: C-01 already has EQ-01 for this period
+    create_rental(c01, eq01, doc_start, doc_end)
+
+    # Act / Assert: the overlap rule applies even to the same client
+    with pytest.raises(EquipmentNotAvailableError, match="EQ-01"):
+        create_rental(c01, eq01, doc_start, doc_end)
+    assert Rental.objects.count() == 1
+
+
 def test_partially_overlapping_rental_is_rejected(c01, c02, eq01, doc_start, doc_end):
     # Arrange
     create_rental(c01, eq01, doc_start, doc_end)

@@ -225,3 +225,15 @@ def test_rental_of_unit_not_in_inventory_returns_404_and_saves_nothing(
     # Assert
     assert response.status_code == 404
     assert not Rental.objects.exists()
+
+
+@pytest.mark.skip(reason="Pending client decision: are inventory numbers case-sensitive? (Sesión 04)")
+def test_inventory_number_in_lowercase_finds_the_same_unit(client, c01, eq01):
+    # Arrange
+    client.force_login(c01)
+
+    # Act: today "eq-01" does not match "EQ-01" and answers 404
+    response = client.get("/equipment/eq-01/rent/")
+
+    # Assert
+    assert response.status_code == 200
