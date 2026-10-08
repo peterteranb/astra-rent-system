@@ -1,11 +1,11 @@
-"""Integration tests for rentals.services.create_rental, with the database."""
+"""Integration tests for rentals.services.create_rental, with the database.
+
+Period checks that never reach the database live in
+tests/unit/test_check_period.py.
+"""
 import pytest
 
-from rentals.errors import (
-    EquipmentNotAvailableError,
-    InvalidPeriodError,
-    OutsideRentalHoursError,
-)
+from rentals.errors import EquipmentNotAvailableError
 from rentals.models import Equipment, EquipmentStatus, Rental
 from rentals.services import create_rental
 from tests.helpers import local_datetime
@@ -156,41 +156,3 @@ def test_status_is_read_from_database_not_from_stale_object(c01, eq01, doc_start
         create_rental(c01, eq01, doc_start, doc_end)
     assert not Rental.objects.exists()
 
-
-# ---------- Rejected: invalid period ----------
-
-def test_return_before_pickup_is_rejected(c01, eq01, doc_start, doc_end):
-    # Act / Assert: start and end swapped
-    with pytest.raises(InvalidPeriodError):
-        create_rental(c01, eq01, doc_end, doc_start)
-    assert not Rental.objects.exists()
-
-
-def test_rental_longer_than_five_days_is_rejected(c01, eq01, doc_start):
-    # Arrange: 09/10 18:00 -> 15/10 09:00 is 5 days and 15 hours (ENT-18)
-    too_late_end = local_datetime(2026, 10, 15, 9, 0)
-
-    # Act / Assert
-    with pytest.raises(InvalidPeriodError):
-        create_rental(c01, eq01, doc_start, too_late_end)
-    assert not Rental.objects.exists()
-
-
-def test_pickup_before_18_00_is_rejected(c01, eq01, doc_end):
-    # Arrange
-    early_start = local_datetime(2026, 10, 9, 17, 0)
-
-    # Act / Assert (ENT-19)
-    with pytest.raises(OutsideRentalHoursError):
-        create_rental(c01, eq01, early_start, doc_end)
-    assert not Rental.objects.exists()
-
-
-def test_return_after_09_00_is_rejected(c01, eq01, doc_start):
-    # Arrange
-    late_end = local_datetime(2026, 10, 12, 10, 0)
-
-    # Act / Assert (ENT-19)
-    with pytest.raises(OutsideRentalHoursError):
-        create_rental(c01, eq01, doc_start, late_end)
-    assert not Rental.objects.exists()
