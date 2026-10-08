@@ -1,0 +1,34 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Renta de equipos{% endblock %} · SergioCorp</title>
+  <link rel="stylesheet" href="{% static 'css/style.css' %}">
+</head>
+<body>
+  <header class="site-header">
+    <a class="site-header__brand" href="{% url 'catalog' %}">SergioCorp · Mesas y sillas para eventos</a>
+    {% if user.is_authenticated %}
+      <form class="site-header__logout" method="post" action="{% url 'logout' %}">
+        {% csrf_token %}
+        <span class="site-header__user">{{ user.username }}</span>
+        <button class="button button--secondary" type="submit">Cerrar sesión</button>
+      </form>
+    {% endif %}
+  </header>
+
+  <main class="page">
+    {% if messages %}
+      <ul class="messages">
+        {% for message in messages %}
+          <li class="message message--{{ message.tags }}">{{ message }}</li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

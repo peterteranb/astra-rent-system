@@ -59,7 +59,8 @@ ROOT_URLCONF = 'config.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        # Project-wide templates live in /templates (one place for Sofia's design).
+        'DIRS': [BASE_DIR / 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -124,6 +125,14 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.1/howto/static-files/
 
 STATIC_URL = 'static/'
+STATICFILES_DIRS = [BASE_DIR / 'static']
+
+
+# Login and logout (PRE-CU-01, steps 1 to 3)
+
+LOGIN_URL = 'login'
+LOGIN_REDIRECT_URL = 'catalog'
+LOGOUT_REDIRECT_URL = 'login'
 
 
 # Email
