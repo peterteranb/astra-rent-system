@@ -13,10 +13,12 @@ from tests.conftest import DEMO_PASSWORD
 
 pytestmark = pytest.mark.django_db
 
-# What the browser's datetime-local inputs send for the documents' period.
+# What the browser's date inputs and time lists send for the documents' period.
 DOC_FORM_DATA = {
-    "start_datetime": "2026-10-09T18:00",
-    "end_datetime": "2026-10-12T09:00",
+    "start_date": "2026-10-09",
+    "start_time": "18:00",
+    "end_date": "2026-10-12",
+    "end_time": "09:00",
 }
 
 
@@ -175,15 +177,32 @@ def test_unit_in_review_is_rejected_and_client_returns_to_catalog(
 def test_pickup_outside_allowed_hours_stays_on_form_with_message(client, c01, eq01):
     # Arrange
     client.force_login(c01)
-    early_pickup = {**DOC_FORM_DATA, "start_datetime": "2026-10-09T17:00"}
+    early_pickup = {**DOC_FORM_DATA, "start_time": "17:00"}
 
-    # Act
+    # Act: 17:00 is not in the list, as if someone edited the request
     response = client.post("/equipment/EQ-01/rent/", early_pickup)
 
     # Assert: the form is shown again with the cause; nothing saved
     assert response.status_code == 200
     assertTemplateUsed(response, "rentals/rent_form.html")
-    assertContains(response, "El recojo debe ser desde las 18:00.")
+    assertContains(response, "17:00 no es una de las opciones disponibles.")
+    assert not Rental.objects.exists()
+
+
+def test_rental_longer_than_five_days_stays_on_form_with_service_message(
+    client, c01, eq01
+):
+    # Arrange: 09/10 18:00 -> 15/10 09:00 passes the form but breaks ENT-18
+    client.force_login(c01)
+    too_long = {**DOC_FORM_DATA, "end_date": "2026-10-15"}
+
+    # Act
+    response = client.post("/equipment/EQ-01/rent/", too_long)
+
+    # Assert: the service's message is shown on the form; nothing saved
+    assert response.status_code == 200
+    assertTemplateUsed(response, "rentals/rent_form.html")
+    assertContains(response, "La renta no puede durar más de 5 días.")
     assert not Rental.objects.exists()
 
 
