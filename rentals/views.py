@@ -24,24 +24,27 @@ def rent_equipment(request, inventory_id):
     # A unit that is not in the inventory answers 404 (PRE-CU-01
     # precondition "the unit exists").
     equipment = get_object_or_404(Equipment, inventory_id=inventory_id)
-    form = RentalForm(request.POST or None)
 
-    if request.method == "POST" and form.is_valid():
-        try:
-            rental = create_rental(
-                request.user,
-                equipment,
-                form.cleaned_data["start_datetime"],
-                form.cleaned_data["end_datetime"],
-            )
-            return redirect("rental_confirmation", rental_id=rental.pk)
-        except EquipmentNotAvailableError as error:
-            # E1: show the cause and send the client back to the catalog.
-            messages.error(request, str(error))
-            return redirect("catalog")
-        except RentalRejectedError as error:
-            # Wrong dates or hours: stay on the form so the client can fix them.
-            form.add_error(None, str(error))
+    if request.method == "POST":
+        form = RentalForm(request.POST)
+        if form.is_valid():
+            try:
+                rental = create_rental(
+                    request.user,
+                    equipment,
+                    form.cleaned_data["start_datetime"],
+                    form.cleaned_data["end_datetime"],
+                )
+                return redirect("rental_confirmation", rental_id=rental.pk)
+            except EquipmentNotAvailableError as error:
+                # E1: show the cause and send the client back to the catalog.
+                messages.error(request, str(error))
+                return redirect("catalog")
+            except RentalRejectedError as error:
+                # Wrong dates or hours: stay on the form so the client can fix them.
+                form.add_error(None, str(error))
+    else:
+        form = RentalForm()
 
     return render(request, "rentals/rent_form.html", rental_form_context(equipment, form))
 
