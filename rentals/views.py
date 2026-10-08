@@ -30,10 +30,9 @@ def create_rental_view(request):
             'message': 'Renta confirmada exitosamente.',
             'rental': {
                 'id': rental.id,
-                'equipment': rental.equipment.name,
+                'equipment': rental.equipment.inventory_id,
                 'start_datetime': rental.start_datetime.isoformat(),
-                'end_datetime': rental.end_datetime.isoformat(),
-                'status': rental.status
+                'end_datetime': rental.end_datetime.isoformat()
             }
         }, status=201)
 

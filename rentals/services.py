@@ -1,6 +1,6 @@
 from django.db import transaction
 from django.core.exceptions import ValidationError
-from .models import Equipment, Rental, RentalStatus
+from .models import Equipment, EquipmentStatus, Rental
 
 
 def create_rental(*, client, equipment_id: int, start_datetime, end_datetime) -> Rental:
@@ -13,13 +13,12 @@ def create_rental(*, client, equipment_id: int, start_datetime, end_datetime) ->
         equipment = Equipment.objects.select_for_update().get(pk=equipment_id)
 
         # Regla PRE-RF-04
-        if not equipment.is_available_for_rent():
+        if equipment.status != EquipmentStatus.AVAILABLE:
             raise ValidationError("El equipo está en revisión o mantenimiento y no se puede rentar.")
 
         # Regla PRE-RF-01: Detección de traslapes en el rango de tiempo
         overlapping_rentals = Rental.objects.filter(
             equipment=equipment,
-            status=RentalStatus.CONFIRMED,
             start_datetime__lt=end_datetime,
             end_datetime__gt=start_datetime
         )
@@ -31,8 +30,7 @@ def create_rental(*, client, equipment_id: int, start_datetime, end_datetime) ->
             client=client,
             equipment=equipment,
             start_datetime=start_datetime,
-            end_datetime=end_datetime,
-            status=RentalStatus.CONFIRMED
+            end_datetime=end_datetime
         )
         rental.full_clean()
         rental.save()

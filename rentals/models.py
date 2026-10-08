@@ -1,61 +1,70 @@
-from django.db import models
+"""Database models for equipment and rentals (PRE-CU-01)."""
 from django.conf import settings
-from django.core.exceptions import ValidationError
+from django.db import models
 
 
 class EquipmentStatus(models.TextChoices):
-    AVAILABLE = 'AVAILABLE', 'Disponible'
-    IN_REVISION = 'IN_REVISION', 'En Revisión'
-    MAINTENANCE = 'MAINTENANCE', 'En Mantenimiento'
+    """Equipment states agreed with the client (ENT-33)."""
+
+    AVAILABLE = "available", "Disponible"
+    RENTED = "rented", "Rentado"
+    IN_REVIEW = "in_review", "En revisión"
+    IN_REPAIR = "in_repair", "En reparación"
+    RETIRED = "retired", "Baja"
 
 
 class Equipment(models.Model):
-    name = models.CharField(max_length=150)
-    description = models.TextField(blank=True, null=True)
+    """One physical unit of the inventory (ENT-09), e.g. a single table."""
+
+    # The system identifies a unit by its inventory number (Sesión 04).
+    inventory_id = models.CharField(max_length=20, unique=True)
+    serial_number = models.CharField(max_length=50)
+    description = models.CharField(max_length=200)
     status = models.CharField(
         max_length=20,
         choices=EquipmentStatus.choices,
-        default=EquipmentStatus.AVAILABLE
+        default=EquipmentStatus.AVAILABLE,
     )
 
-    def is_available_for_rent(self) -> bool:
-        """Satisface PRE-RF-04: si está en revisión o mantenimiento no se puede rentar."""
-        return self.status == EquipmentStatus.AVAILABLE
+    class Meta:
+        ordering = ["inventory_id"]
 
     def __str__(self):
-        return f"{self.name} ({self.get_status_display()})"
-
-
-class RentalStatus(models.TextChoices):
-    CONFIRMED = 'CONFIRMED', 'Confirmada'
-    CANCELLED = 'CANCELLED', 'Cancelada'
-    COMPLETED = 'COMPLETED', 'Completada'
+        return f"{self.inventory_id} - {self.description}"
 
 
 class Rental(models.Model):
+    """A confirmed rental of one unit for one period.
+
+    There is no status field: a rental is confirmed the moment it is
+    saved (ENT-16), and a rejected request is never saved.
+    """
+
+    # PROTECT: deleting a user or a unit must not silently erase rental
+    # history (P01 asks to keep history, see Sesión 04).
     client = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name='rentals'
+        on_delete=models.PROTECT,
+        related_name="rentals",
     )
     equipment = models.ForeignKey(
         Equipment,
-        on_delete=models.CASCADE,
-        related_name='rentals'
+        on_delete=models.PROTECT,
+        related_name="rentals",
     )
     start_datetime = models.DateTimeField()
     end_datetime = models.DateTimeField()
-    status = models.CharField(
-        max_length=20,
-        choices=RentalStatus.choices,
-        default=RentalStatus.CONFIRMED
-    )
-    created_at = models.DateTimeField(auto_now_add=True)
 
-    def clean(self):
-        if self.start_datetime and self.end_datetime:
-            if self.start_datetime >= self.end_datetime:
-                raise ValidationError("La fecha de retiro debe ser anterior a la fecha de devolución.")
+    class Meta:
+        ordering = ["start_datetime"]
+        constraints = [
+            # Last line of defence: the database itself refuses a period
+            # that ends before it starts, even if the service is bypassed.
+            models.CheckConstraint(
+                condition=models.Q(end_datetime__gt=models.F("start_datetime")),
+                name="rental_end_after_start",
+            ),
+        ]
 
     def __str__(self):
-        return f"Renta #{self.id} - {self.equipment.name} por {self.client.username}"
+        return f"{self.equipment.inventory_id} -> {self.client.username}"
