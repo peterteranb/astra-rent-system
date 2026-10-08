@@ -1,8 +1,8 @@
 # astra-rent-system
 
-Equipment loan management for SergioCorp, a simulated company that rents party sound equipment. Software Engineering course project P01 (equipment loans).
+Equipment rental management for SergioCorp, a simulated company that rents tables and chairs for events. Software Engineering course project P01 (equipment loans).
 
-Current phase: plain Python and pytest, with in-memory data. There is no database or user interface yet.
+Current phase: Django web app with PostgreSQL. A client logs in, picks a unit from the catalog and rents it for a period (use case PRE-CU-01).
 
 ## Requirements
 
@@ -71,6 +71,20 @@ The project uses PostgreSQL. Each developer runs their own local copy.
    python manage.py migrate
 ```
 5. Run `python manage.py migrate` again after every `git pull`.
+
+## Run the demo
+
+After the database setup above, from the repository root:
+
+```bash
+python manage.py migrate
+python manage.py seed_demo
+python manage.py runserver
+```
+
+`seed_demo` can be run again at any time: it creates the units EQ-01 to EQ-06 (tables and chairs; EQ-06 is "in review") and the clients `c01` and `c02`, both with password `demo1234`. It never deletes rentals.
+
+Open http://127.0.0.1:8000/ and log in as `c01`. To manage units and rentals, create a superuser with `python manage.py createsuperuser` and open http://127.0.0.1:8000/admin/.
 
 If port 8000 is blocked on Windows, run the server on another port: `python manage.py runserver 8080`.
 
