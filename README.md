@@ -75,10 +75,10 @@ Usan una base de pruebas temporal que crea pytest-django; tu base de demo no se 
 
 | Tipo | Carpeta | Cantidad |
 |---|---|---|
-| Unitarias (sin base de datos) | `tests/unit/` | 51 |
-| Integración (base de datos, vistas y plantillas) | `tests/integration/` | 30 (1 omitida) |
+| Unitarias (sin base de datos) | `tests/unit/` | 37 |
+| Integración (base de datos, vistas y plantillas) | `tests/integration/` | 20 (1 omitida) |
 | Línea base de la iteración 1 (`rent_manager`) | `tests/test_loans*.py` | 25 (4 omitidas) |
-| **Total** | | **106: 101 pasan, 5 omitidas** |
+| **Total** | | **82: 77 pasan, 5 omitidas** |
 
 Las omitidas (`skip`) corresponden a decisiones pendientes del cliente.
 
