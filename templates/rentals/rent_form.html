@@ -12,6 +12,7 @@
       Máximo {{ max_days }} días.
     </p>
 
+    {# Rejections from the service (dates, hours, duration) appear here. #}
     {% if form.non_field_errors %}
       <div class="form-errors">
         {% for error in form.non_field_errors %}
@@ -32,6 +33,7 @@
         <div class="form__field">
           {{ form.start_time.label_tag }}
           {{ form.start_time }}
+          <small class="form__help" id="{{ form.start_time.auto_id }}_helptext">{{ form.start_time.help_text }}</small>
           {{ form.start_time.errors }}
         </div>
       </fieldset>
@@ -46,6 +48,7 @@
         <div class="form__field">
           {{ form.end_time.label_tag }}
           {{ form.end_time }}
+          <small class="form__help" id="{{ form.end_time.auto_id }}_helptext">{{ form.end_time.help_text }}</small>
           {{ form.end_time.errors }}
         </div>
       </fieldset>

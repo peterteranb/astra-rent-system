@@ -10,10 +10,11 @@ from pytest_django.asserts import assertContains, assertRedirects, assertTemplat
 from rentals.models import EquipmentStatus, Rental
 from rentals.services import create_rental
 from tests.conftest import DEMO_PASSWORD
+from tests.helpers import local_datetime
 
 pytestmark = pytest.mark.django_db
 
-# What the browser's date inputs and time lists send for the documents' period.
+# What the browser's date and time inputs send for the documents' period.
 DOC_FORM_DATA = {
     "start_date": "2026-10-09",
     "start_time": "18:00",
@@ -175,18 +176,89 @@ def test_unit_in_review_is_rejected_and_client_returns_to_catalog(
 
 
 def test_pickup_outside_allowed_hours_stays_on_form_with_message(client, c01, eq01):
-    # Arrange
+    """Un recojo a las 17:00 se rechaza y el cliente sigue en el formulario.
+
+    Llama a: POST /equipment/EQ-01/rent/
+    Requisito: ENT-19 (recojo desde las 18:00); PRE-RC-01 (mensaje con la causa).
+    Espera: 200 con rent_form.html, el mensaje "El recojo debe ser desde las 18:00." y ninguna renta guardada.
+    """
+    # Preparar
     client.force_login(c01)
     early_pickup = {**DOC_FORM_DATA, "start_time": "17:00"}
 
-    # Act: 17:00 is not in the list, as if someone edited the request
+    # Ejecutar
     response = client.post("/equipment/EQ-01/rent/", early_pickup)
 
-    # Assert: the form is shown again with the cause; nothing saved
+    # Comprobar
     assert response.status_code == 200
     assertTemplateUsed(response, "rentals/rent_form.html")
-    assertContains(response, "17:00 no es una de las opciones disponibles.")
+    assertContains(response, "El recojo debe ser desde las 18:00.")
     assert not Rental.objects.exists()
+
+
+def test_return_outside_allowed_hours_stays_on_form_with_message(client, c01, eq01):
+    """Una devolución a las 09:30 se rechaza y el cliente sigue en el formulario.
+
+    Llama a: POST /equipment/EQ-01/rent/
+    Requisito: ENT-19 (devolución hasta las 09:00); PRE-RC-01 (mensaje con la causa).
+    Espera: 200 con rent_form.html, el mensaje "La devolución debe ser hasta las 09:00." y ninguna renta guardada.
+    """
+    # Preparar
+    client.force_login(c01)
+    late_return = {**DOC_FORM_DATA, "end_time": "09:30"}
+
+    # Ejecutar
+    response = client.post("/equipment/EQ-01/rent/", late_return)
+
+    # Comprobar
+    assert response.status_code == 200
+    assertTemplateUsed(response, "rentals/rent_form.html")
+    assertContains(response, "La devolución debe ser hasta las 09:00.")
+    assert not Rental.objects.exists()
+
+
+def test_rental_with_any_minute_is_saved_and_confirmation_shows_it(client, c01, eq01):
+    """Una renta con recojo 18:15 y devolución 08:45 se guarda y se confirma.
+
+    Llama a: POST /equipment/EQ-01/rent/ y luego GET /rentals/<id>/
+    Requisito: PRE-CU-01 pasos 6 a 9; ENT-19 (ambas horas están dentro de la ventana).
+    Espera: una renta guardada con esas horas y la confirmación muestra 18:15 y 08:45.
+    """
+    # Preparar
+    client.force_login(c01)
+    loose_minutes = {**DOC_FORM_DATA, "start_time": "18:15", "end_time": "08:45"}
+
+    # Ejecutar
+    response = client.post("/equipment/EQ-01/rent/", loose_minutes, follow=True)
+
+    # Comprobar
+    rental = Rental.objects.get()
+    assert rental.start_datetime == local_datetime(2026, 10, 9, 18, 15)
+    assert rental.end_datetime == local_datetime(2026, 10, 12, 8, 45)
+    assertTemplateUsed(response, "rentals/rental_confirmation.html")
+    assertContains(response, "09/10/2026 18:15")
+    assertContains(response, "12/10/2026 08:45")
+
+
+def test_form_keeps_submitted_date_and_time_after_hours_rejection(client, c01, eq01):
+    """Tras un rechazo por horario, el formulario conserva lo que envió el cliente.
+
+    Llama a: POST /equipment/EQ-01/rent/
+    Requisito: ENT-19 (recojo desde las 18:00); PRE-CU-01 paso 6 (el cliente corrige sus datos).
+    Espera: el HTML devuelto trae en los campos la fecha 2026-10-09 y la hora 17:00 enviadas.
+    """
+    # Preparar
+    client.force_login(c01)
+    early_pickup = {**DOC_FORM_DATA, "start_time": "17:00"}
+
+    # Ejecutar
+    response = client.post("/equipment/EQ-01/rent/", early_pickup)
+
+    # Comprobar
+    assertContains(response, 'value="2026-10-09"')
+    assertContains(response, 'value="17:00"')
+    assertContains(response, 'value="2026-10-12"')
+    assertContains(response, 'value="09:00"')
 
 
 def test_rental_longer_than_five_days_stays_on_form_with_service_message(

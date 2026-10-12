@@ -75,10 +75,10 @@ Usan una base de pruebas temporal que crea pytest-django; tu base de demo no se 
 
 | Tipo | Carpeta | Cantidad |
 |---|---|---|
-| Unitarias (sin base de datos) | `tests/unit/` | 49 |
-| Integración (base de datos, vistas y plantillas) | `tests/integration/` | 27 (1 omitida) |
+| Unitarias (sin base de datos) | `tests/unit/` | 51 |
+| Integración (base de datos, vistas y plantillas) | `tests/integration/` | 30 (1 omitida) |
 | Línea base de la iteración 1 (`rent_manager`) | `tests/test_loans*.py` | 25 (4 omitidas) |
-| **Total** | | **101: 96 pasan, 5 omitidas** |
+| **Total** | | **106: 101 pasan, 5 omitidas** |
 
 Las omitidas (`skip`) corresponden a decisiones pendientes del cliente.
 
@@ -92,7 +92,7 @@ Las omitidas (`skip`) corresponden a decisiones pendientes del cliente.
 | `accounts/forms.py` | Formulario de login con el mensaje de E2 |
 | `rentals/urls.py` | Catálogo, formulario de renta y confirmación |
 | `rentals/views.py` | Lee la petición, llama al servicio y elige la plantilla |
-| `rentals/forms.py` | Fecha (`type="date"`) y hora (lista cada 30 min) de recojo y devolución |
+| `rentals/forms.py` | Fecha (`type="date"`) y hora libre (`type="time"`) de recojo y devolución |
 | `rentals/services.py` | `create_rental`: aplica las reglas, bloquea la fila del equipo y guarda la renta |
 | `rentals/errors.py` | Errores de rechazo: `RentalRejectedError` y sus 3 subclases |
 | `rentals/rules.py` | Reglas puras: cruce de periodos, estado, duración máxima y horarios |
@@ -124,7 +124,6 @@ Reglas que tomamos sin confirmación del cliente. Lista generada con `grep -rn "
 
 | Archivo y línea | Supuesto |
 |---|---|
-| `rentals/forms.py:9` | Las horas se eligen en pasos de 30 minutos. |
 | `rentals/rules.py:8` | No se rechazan fechas pasadas (ENT-17: no hay límite de anticipación). |
 | `rentals/rules.py:16` | El cliente elige la hora dentro de la ventana de ENT-19 (recojo desde las 18:00, devolución hasta las 09:00); fuera de ella se rechaza. |
 | `rentals/rules.py:21` | La tolerancia de 5 minutos de ENT-31 vale para registrar la devolución, no para pedir la renta. |
