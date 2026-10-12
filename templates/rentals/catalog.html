@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+
+{% block title %}Catálogo{% endblock %}
+
+{% block content %}
+  <h1 class="page__title">Catálogo de equipos disponibles</h1>
+
+  {% if equipment_list %}
+    <ul class="catalog">
+      {% for equipment in equipment_list %}
+        <li class="catalog__item">
+          <span class="catalog__id">{{ equipment.inventory_id }}</span>
+          <span class="catalog__description">{{ equipment.description }}</span>
+          <a class="button" href="{% url 'rent_equipment' equipment.inventory_id %}">Rentar</a>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p class="catalog__empty">No hay equipos disponibles por ahora.</p>
+  {% endif %}
+{% endblock %}

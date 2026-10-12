@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+
+{% block title %}Renta confirmada{% endblock %}
+
+{% block content %}
+  <section class="card confirmation">
+    <h1 class="card__title">Renta confirmada</h1>
+    <dl class="confirmation__details">
+      <dt>Equipo</dt>
+      <dd>{{ rental.equipment.inventory_id }} · {{ rental.equipment.description }}</dd>
+      <dt>Recojo</dt>
+      <dd>{{ rental.start_datetime|date:"d/m/Y H:i" }}</dd>
+      <dt>Devolución</dt>
+      <dd>{{ rental.end_datetime|date:"d/m/Y H:i" }}</dd>
+    </dl>
+    <p class="rental-hint">Entregamos los equipos desde las {{ earliest_pickup_time|time:"H:i" }}.</p>
+    <a class="button" href="{% url 'catalog' %}">Volver al catálogo</a>
+  </section>
+{% endblock %}
