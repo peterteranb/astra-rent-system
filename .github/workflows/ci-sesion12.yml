@@ -12,6 +12,31 @@ jobs:
   verificar-flujo:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+
+    # Agregado: PostgreSQL temporal para las pruebas (el proyecto usa Django + PostgreSQL).
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: astra
+          POSTGRES_PASSWORD: ci-password
+          POSTGRES_DB: astra_rent
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U astra"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    # Agregado: las variables que lee config/settings.py (en GitHub no hay .env).
+    env:
+      DB_NAME: astra_rent
+      DB_USER: astra
+      DB_PASSWORD: ci-password
+      DB_HOST: localhost
+      DB_PORT: "5432"
+
     steps:
       - name: Obtener la version del repositorio
         uses: actions/checkout@v6
