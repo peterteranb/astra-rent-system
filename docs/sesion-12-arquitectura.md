@@ -10,7 +10,7 @@ No presentar un workflow pendiente como una ejecución aprobada. -->
 - Requisitos: [Sesión 6](sesion-06-requisitos.md).
 - Modelos: [Sesión 7](sesion-07-modelos.md).
 - Plan: [Sesiones 8–9](sesion-08-09-plan.md).
-- Operación seleccionada: [una].
+- Operación seleccionada: Renta de equipo.
 - IDs vigentes y estado de aprobación: [requisitos y caso de uso].
 - Tarea/issue que continúa: [ID y enlace].
 - Retroalimentación que atiende, si existe: [observación y origen].
