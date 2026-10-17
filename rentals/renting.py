@@ -21,10 +21,14 @@ def list_catalog():
     return Equipment.objects.filter(status=EquipmentStatus.AVAILABLE)
 
 
-def create_rental(client, equipment, start_datetime, end_datetime) -> Rental:
+def create_rental(
+    client, equipment, start_datetime, end_datetime, registered_by=None, picked_up_at=None
+) -> Rental:
     """Save a confirmed rental of one unit and return it (ENT-16).
 
-    Raises a RentalRejectedError subclass if a rule is broken; in that
+    registered_by is the staff user who registered it (None when the
+    client rents online); picked_up_at is set when the unit leaves now.
+    Raises a OperationRejectedError subclass if a rule is broken; in that
     case nothing is saved and no rental or unit is changed.
     """
     # The rules compare clock times (18:00, 09:00), so work in local time.
@@ -46,6 +50,8 @@ def create_rental(client, equipment, start_datetime, end_datetime) -> Rental:
             equipment=locked_equipment,
             start_datetime=start,
             end_datetime=end,
+            registered_by=registered_by,
+            picked_up_at=picked_up_at,
         )
 
 

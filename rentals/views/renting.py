@@ -1,15 +1,15 @@
-"""Views of PRE-CU-01. They read the request, call the service and
-choose a template; the business rules live in services.py and rules.py.
+"""Views of PRE-CU-01 (renting). They read the request, call the use case
+and choose a template; the business rules live in renting.py and rules.py.
 """
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, redirect, render
 
-from . import rules
-from .errors import EquipmentNotAvailableError, RentalRejectedError
-from .forms import RentalForm
-from .models import Equipment, Rental
-from .services import create_rental, list_catalog
+from .. import rules
+from ..errors import EquipmentNotAvailableError, OperationRejectedError
+from ..forms import RentalForm
+from ..models import Equipment, Rental
+from ..renting import create_rental, list_catalog
 
 
 @login_required
@@ -40,7 +40,7 @@ def rent_equipment(request, inventory_id):
                 # E1: show the cause and send the client back to the catalog.
                 messages.error(request, str(error))
                 return redirect("catalog")
-            except RentalRejectedError as error:
+            except OperationRejectedError as error:
                 # Wrong dates or hours: stay on the form so the client can fix them.
                 form.add_error(None, str(error))
     else:
