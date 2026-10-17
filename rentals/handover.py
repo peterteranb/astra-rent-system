@@ -9,6 +9,22 @@ from .renting import DATETIME_FORMAT
 from .statuses import RentalStatus
 
 
+def reservations_to_hand_over() -> list[Rental]:
+    """Return the "reserved" rentals the operator can still hand over, soonest first (C2)."""
+    pending = (
+        Rental.objects.filter(
+            picked_up_at__isnull=True, cancelled_at__isnull=True, returned_at__isnull=True
+        )
+        .select_related("equipment", "client")
+        .order_by("start_datetime")
+    )
+    # The database drops what is clearly not reserved; expiry depends on the
+    # clock time in La Paz, so status_at() decides it with the same rule
+    # used everywhere else instead of repeating the deadline in SQL.
+    now = timezone.now()
+    return [rental for rental in pending if rental.status_at(now) == RentalStatus.RESERVED]
+
+
 def register_pickup(rental, staff_user) -> Rental:
     """Record that the client took the unit now and which operator handed it over (C1).
 

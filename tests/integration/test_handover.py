@@ -1,4 +1,4 @@
-"""Pruebas de INTEGRACION de la entrega del equipo al cliente (rentals/handover.py).
+"""Pruebas de INTEGRACION de la entrega del equipo al cliente (rentals/handover.py y su pagina).
 
 Las fechas son relativas a hoy: con las fechas fijas de los documentos
 (09/10/2026) la reserva ya estaria vencida y no se podria entregar.
@@ -7,6 +7,7 @@ from datetime import timedelta
 
 import pytest
 from django.utils import timezone
+from pytest_django.asserts import assertContains, assertRedirects
 
 from rentals.errors import AlreadyPickedUpError, ReservationExpiredError
 from rentals.handover import register_pickup
@@ -89,3 +90,29 @@ def test_una_reserva_vencida_no_se_puede_entregar(op01, c01, eq01):
 
     # Comprobar: lo guardado
     assert foto_de_la_base() == antes
+
+
+def test_op01_registra_un_recojo_desde_la_pagina_de_reservas(client, op01, c01, eq01):
+    """Requisito: C2 (#55), el operador registra el recojo desde /staff/reservations/.
+    Caso:      OP-01 abre la pagina, ve la reserva de EQ-01 de C-01 y presiona "Registrar recojo".
+    Esperado:  vuelve a la lista con el mensaje de exito y la renta queda "Rentada" por OP-01.
+    """
+    # Preparar
+    reserva = reserva_de_c01(c01, eq01, dias_desde_hoy=1)
+    client.force_login(op01)
+
+    # Ejecutar
+    pagina = client.get("/staff/reservations/")
+    respuesta = client.post(f"/staff/reservations/{reserva.pk}/pickup/", follow=True)
+
+    # Comprobar: la respuesta
+    assert list(pagina.context["reservations"]) == [reserva]
+    assertContains(pagina, f'action="/staff/reservations/{reserva.pk}/pickup/"')
+    assertRedirects(respuesta, "/staff/reservations/")
+    assertContains(respuesta, "Recojo registrado: EQ-01 entregado a c01.")
+    assert list(respuesta.context["reservations"]) == []
+
+    # Comprobar: lo guardado
+    reserva.refresh_from_db()
+    assert reserva.status == RentalStatus.RENTED
+    assert reserva.handed_over_by == op01

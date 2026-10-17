@@ -42,7 +42,7 @@ def test_al_iniciar_sesion_cada_rol_llega_a_su_pagina(request, client, usuario, 
 def test_el_operador_abre_su_pagina_y_ve_sus_enlaces(client, op01):
     """Requisito: A3 (#44), cada pagina del personal la usa su rol.
     Caso:      OP-01, del grupo operador, abre /staff/reservations/.
-    Esperado:  200 con la pagina "En construccion" y sus enlaces Reservas y Devoluciones.
+    Esperado:  200 con la pagina "Reservas por entregar" y sus enlaces Reservas y Devoluciones.
     """
     # Preparar
     client.force_login(op01)
@@ -52,7 +52,7 @@ def test_el_operador_abre_su_pagina_y_ve_sus_enlaces(client, op01):
 
     # Comprobar
     assert respuesta.status_code == 200
-    assertTemplateUsed(respuesta, "rentals/under_construction.html")
+    assertTemplateUsed(respuesta, "rentals/staff_reservations.html")
     assertContains(respuesta, 'href="/staff/reservations/"')
     assertContains(respuesta, 'href="/staff/returns/"')
 
