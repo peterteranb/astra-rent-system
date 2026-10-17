@@ -34,8 +34,11 @@ def foto_de_la_base():
             "start_datetime",
             "end_datetime",
             "picked_up_at",
+            "handed_over_by_id",
             "returned_at",
+            "received_by_id",
             "cancelled_at",
+            "cancelled_by_id",
             "return_note",
             "registered_by_id",
         )
