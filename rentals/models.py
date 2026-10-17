@@ -51,9 +51,13 @@ class Rental(models.Model):
     start_datetime = models.DateTimeField()
     # The client must return the unit by this moment.
     end_datetime = models.DateTimeField()
+    # When the client took the unit away; the operator registers it.
     picked_up_at = models.DateTimeField(null=True, blank=True)
+    # When the client brought the unit back; the operator registers it.
     returned_at = models.DateTimeField(null=True, blank=True)
+    # When the rental was cancelled; the operator (or the admin) registers it.
     cancelled_at = models.DateTimeField(null=True, blank=True)
+    # What the operator noticed when receiving the unit back.
     return_note = models.CharField(max_length=200, blank=True)
     # Empty when the client registered the rental online.
     registered_by = models.ForeignKey(
@@ -85,7 +89,7 @@ class Rental(models.Model):
         if self.returned_at is not None:
             return RentalStatus.RETURNED
         if self.picked_up_at is not None:
-            return RentalStatus.PICKED_UP
+            return RentalStatus.RENTED
         start = timezone.localtime(self.start_datetime)
         if rules.is_pickup_expired(start, timezone.localtime(now)):
             return RentalStatus.NOT_PICKED_UP
