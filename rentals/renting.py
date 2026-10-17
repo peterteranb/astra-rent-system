@@ -28,7 +28,7 @@ def create_rental(
 
     registered_by is the staff user who registered it (None when the
     client rents online); picked_up_at is set when the unit leaves now.
-    Raises a RentalRejectedError subclass if a rule is broken; in that
+    Raises a OperationRejectedError subclass if a rule is broken; in that
     case nothing is saved and no rental or unit is changed.
     """
     # The rules compare clock times (18:00, 09:00), so work in local time.

@@ -1,9 +1,9 @@
 """Sesion 12: contrato de la operacion create_rental (PRE-CU-01, rentar en linea).
 
 Interfaz que se comprueba:
-    rentals/services.py -> create_rental(client, equipment, start_datetime, end_datetime)
+    rentals/renting.py -> create_rental(client, equipment, start_datetime, end_datetime)
     - Si acepta: devuelve la Rental y guarda UNA fila nueva; no toca nada mas.
-    - Si rechaza: lanza un RentalRejectedError (E1 = EquipmentNotAvailableError)
+    - Si rechaza: lanza un OperationRejectedError (E1 = EquipmentNotAvailableError)
       y la base queda IGUAL que antes.
 
 Las pruebas llaman directo a la operacion (sin navegador ni teclado) y revisan
@@ -15,7 +15,7 @@ import pytest
 
 from rentals.errors import EquipmentNotAvailableError, InvalidPeriodError
 from rentals.models import EquipmentStatus, Rental
-from rentals.services import create_rental
+from rentals.renting import create_rental
 from tests.helpers import foto_de_la_base, local_datetime
 
 pytestmark = pytest.mark.django_db

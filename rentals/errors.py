@@ -1,25 +1,45 @@
-"""Domain errors raised when a rental request is rejected.
+"""Domain errors raised when an operation is rejected.
 
-The message of each error is written for the client, in Spanish, and
+The message of each error is written for the user, in Spanish, and
 names the cause of the rejection (PRE-RC-01).
 """
 
 
-class RentalRejectedError(Exception):
-    """Base class: the rental was not saved. The view catches this one."""
+class OperationRejectedError(Exception):
+    """Base class: the operation was not saved. The views catch this one."""
 
 
-class EquipmentNotAvailableError(RentalRejectedError):
+class EquipmentNotAvailableError(OperationRejectedError):
     """The unit is not "available" or already has an overlapping rental (E1)."""
 
 
-class InvalidPeriodError(RentalRejectedError):
+class InvalidPeriodError(OperationRejectedError):
     """The return is not after the pickup, or the rental is too long."""
 
 
-class OutsideRentalHoursError(RentalRejectedError):
+class OutsideRentalHoursError(OperationRejectedError):
     """The pickup or return time is outside the allowed window (ENT-19)."""
 
 
-class InvalidStatusChangeError(RentalRejectedError):
+class AlreadyPickedUpError(OperationRejectedError):
+    """The unit of the rental was already picked up."""
+
+
+class ReservationExpiredError(OperationRejectedError):
+    """The reservation was not picked up before the pickup deadline."""
+
+
+class AlreadyReturnedError(OperationRejectedError):
+    """The unit of the rental was already returned."""
+
+
+class IncompleteReturnError(OperationRejectedError):
+    """The return lacks something needed to register it."""
+
+
+class RentalCancelledError(OperationRejectedError):
+    """The rental was cancelled."""
+
+
+class InvalidStatusChangeError(OperationRejectedError):
     """The unit is retired, and a retirement is final."""
