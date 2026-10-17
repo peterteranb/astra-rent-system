@@ -19,3 +19,7 @@ class InvalidPeriodError(RentalRejectedError):
 
 class OutsideRentalHoursError(RentalRejectedError):
     """The pickup or return time is outside the allowed window (ENT-19)."""
+
+
+class InvalidStatusChangeError(RentalRejectedError):
+    """The unit is retired, and a retirement is final."""

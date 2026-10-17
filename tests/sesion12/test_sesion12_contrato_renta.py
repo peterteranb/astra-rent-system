@@ -14,22 +14,11 @@ de las fixtures de tests/conftest.py.
 import pytest
 
 from rentals.errors import EquipmentNotAvailableError, InvalidPeriodError
-from rentals.models import Equipment, EquipmentStatus, Rental
+from rentals.models import EquipmentStatus, Rental
 from rentals.services import create_rental
-from tests.helpers import local_datetime
+from tests.helpers import foto_de_la_base, local_datetime
 
 pytestmark = pytest.mark.django_db
-
-
-def foto_de_la_base():
-    """Copia independiente del estado relevante: todas las rentas y todos los equipos."""
-    rentas = list(
-        Rental.objects.order_by("pk").values(
-            "pk", "client_id", "equipment_id", "start_datetime", "end_datetime"
-        )
-    )
-    equipos = list(Equipment.objects.order_by("pk").values("pk", "inventory_id", "status"))
-    return rentas, equipos
 
 
 def test_aceptacion_c01_renta_eq01_y_solo_se_agrega_esa_renta(c01, eq01, eq02, doc_start, doc_end):
@@ -40,7 +29,7 @@ def test_aceptacion_c01_renta_eq01_y_solo_se_agrega_esa_renta(c01, eq01, eq02, d
                disponible (S-11) y EQ-02 no cambia.
     """
     # Preparar
-    _, equipos_antes = foto_de_la_base()
+    _, equipos_antes, _ = foto_de_la_base()
 
     # Ejecutar
     renta = create_rental(c01, eq01, doc_start, doc_end)
@@ -55,7 +44,7 @@ def test_aceptacion_c01_renta_eq01_y_solo_se_agrega_esa_renta(c01, eq01, eq02, d
     assert (guardada.start_datetime, guardada.end_datetime) == (doc_start, doc_end)
 
     # Comprobar: lo demas se conserva (los equipos no cambian de estado)
-    _, equipos_despues = foto_de_la_base()
+    _, equipos_despues, _ = foto_de_la_base()
     assert equipos_despues == equipos_antes
     eq01.refresh_from_db()
     assert eq01.status == EquipmentStatus.AVAILABLE

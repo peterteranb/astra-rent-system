@@ -95,3 +95,28 @@ class Rental(models.Model):
     def status(self):
         """Return the status of the rental right now."""
         return self.status_at(timezone.now())
+
+
+class StatusChange(models.Model):
+    """One change of state of a unit: who, when, from which state to which and why (ENT-34)."""
+
+    equipment = models.ForeignKey(
+        Equipment,
+        on_delete=models.PROTECT,
+        related_name="status_changes",
+    )
+    old_status = models.CharField(max_length=20, choices=EquipmentStatus.choices)
+    new_status = models.CharField(max_length=20, choices=EquipmentStatus.choices)
+    changed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="status_changes",
+    )
+    changed_at = models.DateTimeField(auto_now_add=True)
+    comment = models.TextField(blank=True)
+
+    class Meta:
+        ordering = ["changed_at"]
+
+    def __str__(self):
+        return f"{self.equipment.inventory_id}: {self.old_status} -> {self.new_status}"

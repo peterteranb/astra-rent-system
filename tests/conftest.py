@@ -15,6 +15,7 @@ Que significa el parametro db:
 
 Nombres de los datos (los mismos de los documentos):
     c01, c02          -> clientes C-01 y C-02
+    mt01              -> persona de mantenimiento, que cambia el estado de los equipos
     eq01, eq02        -> dos mesas iguales, disponibles
     eq03_in_review    -> una mesa devuelta que espera a mantenimiento (PRE-RF-04)
     doc_start/doc_end -> el periodo del escenario: 09/10/2026 18:00 a 12/10/2026 09:00
@@ -51,6 +52,12 @@ def c01(db):
 def c02(db):
     """Cliente C-02, el que llega segundo en el escenario de rechazo."""
     return get_user_model().objects.create_user("c02", password=DEMO_PASSWORD)
+
+
+@pytest.fixture
+def mt01(db):
+    """MT-01: persona de mantenimiento que revisa los equipos."""
+    return get_user_model().objects.create_user("mt01", password=DEMO_PASSWORD)
 
 
 @pytest.fixture
