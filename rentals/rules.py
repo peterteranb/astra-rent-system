@@ -28,8 +28,9 @@ LATEST_RETURN_TIME = time(9, 0)
 # whether a longer rental is rejected (Sesión 07 §7); we reject it.
 MAX_RENTAL_DURATION = timedelta(days=5)
 
-# ASSUMPTION: a reservation not picked up by 12:00 of the day after its
-# start expires. The hour is pending confirmation with the client.
+# Client, 17/10: "Si el equipo no es recogido hasta las doce del dia queda
+# disponible para ser rentado por otros"; "el sistema detecta por la hora
+# que sigue en reserva y lo cambia a las 12:01". So 12:00 is still on time.
 PICKUP_DEADLINE = time(12, 0)
 
 

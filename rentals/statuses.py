@@ -15,7 +15,7 @@ class RentalStatus(models.TextChoices):
     """Rental states; they are calculated from the rental moments, never stored."""
 
     RESERVED = "reserved", "Reservada"
-    PICKED_UP = "picked_up", "Rentada"
+    RENTED = "rented", "Rentada"
     NOT_PICKED_UP = "not_picked_up", "No recogida"
     RETURNED = "returned", "Devuelta"
     CANCELLED = "cancelled", "Cancelada"

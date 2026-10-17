@@ -51,10 +51,43 @@ class Rental(models.Model):
     start_datetime = models.DateTimeField()
     # The client must return the unit by this moment.
     end_datetime = models.DateTimeField()
-    picked_up_at = models.DateTimeField(null=True, blank=True)
-    returned_at = models.DateTimeField(null=True, blank=True)
-    cancelled_at = models.DateTimeField(null=True, blank=True)
-    return_note = models.CharField(max_length=200, blank=True)
+    # When the client took the unit away; the operator registers it.
+    picked_up_at = models.DateTimeField(verbose_name="Recogido el", null=True, blank=True)
+    # Operator who handed the unit over to the client (client: "tiene que estar todo inventariado").
+    handed_over_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="handed_over_rentals",
+        verbose_name="Entregado por",
+    )
+    # When the client brought the unit back; the operator registers it.
+    returned_at = models.DateTimeField(verbose_name="Devuelto el", null=True, blank=True)
+    # Operator who received the unit back from the client.
+    received_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="received_rentals",
+        verbose_name="Recibido por",
+    )
+    # When the rental was cancelled; the operator (or the admin) registers it.
+    cancelled_at = models.DateTimeField(verbose_name="Cancelado el", null=True, blank=True)
+    # Operator or admin who cancelled the rental; clients cannot cancel in the MVP.
+    cancelled_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="cancelled_rentals",
+        verbose_name="Cancelado por",
+    )
+    # What the operator noticed when receiving the unit back.
+    return_note = models.CharField(
+        verbose_name="Observación de la devolución", max_length=200, blank=True
+    )
     # Empty when the client registered the rental online.
     registered_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -62,6 +95,7 @@ class Rental(models.Model):
         null=True,
         blank=True,
         related_name="registered_rentals",
+        verbose_name="Registrado por",
     )
 
     class Meta:
@@ -85,7 +119,7 @@ class Rental(models.Model):
         if self.returned_at is not None:
             return RentalStatus.RETURNED
         if self.picked_up_at is not None:
-            return RentalStatus.PICKED_UP
+            return RentalStatus.RENTED
         start = timezone.localtime(self.start_datetime)
         if rules.is_pickup_expired(start, timezone.localtime(now)):
             return RentalStatus.NOT_PICKED_UP
