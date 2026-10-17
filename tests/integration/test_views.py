@@ -49,12 +49,15 @@ def test_login_correcto_abre_sesion_y_lleva_al_catalogo(client, c01):
     Caso:               C-01 inicia sesion con datos correctos.
     Entrada:            POST /login/ con usuario "c01" y clave "demo1234".
     Condiciones:        el usuario c01 existe (fixture).
-    Resultado esperado: redirige a "/" (el catalogo) y la sesion queda abierta para c01.
+    Resultado esperado: pasa por /home/, termina en "/" (el catalogo) y la sesion
+                        queda abierta para c01.
     Requisito:          PRE-CU-01 pasos 1 a 3 (inicio de sesion).
     Codigo que cubre:   accounts/urls.py -> LoginView con accounts/forms.py -> LoginForm.
     """
     # Ejecutar
-    respuesta = client.post("/login/", {"username": "c01", "password": DEMO_PASSWORD})
+    respuesta = client.post(
+        "/login/", {"username": "c01", "password": DEMO_PASSWORD}, follow=True
+    )
 
     # Comprobar
     assertRedirects(respuesta, "/")

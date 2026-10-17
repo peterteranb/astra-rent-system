@@ -1,5 +1,5 @@
-"""Views of PRE-CU-01. They read the request, call the service and
-choose a template; the business rules live in services.py and rules.py.
+"""Views of PRE-CU-01 and the staff pages. They read the request, call the
+service and choose a template; the business rules live in services.py and rules.py.
 """
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -9,7 +9,20 @@ from . import rules
 from .errors import EquipmentNotAvailableError, RentalRejectedError
 from .forms import RentalForm
 from .models import Equipment, Rental
+from .roles import MAINTENANCE, OPERATOR, has_role, role_required
 from .services import create_rental, list_catalog
+
+
+@login_required
+def home(request):
+    """After login, send each user to the first page of their role."""
+    if request.user.is_superuser:
+        return redirect("admin:index")
+    if has_role(request.user, OPERATOR):
+        return redirect("staff_reservations")
+    if has_role(request.user, MAINTENANCE):
+        return redirect("maintenance")
+    return redirect("catalog")
 
 
 @login_required
@@ -70,3 +83,21 @@ def rental_form_context(equipment, form):
         "latest_return_time": rules.LATEST_RETURN_TIME,
         "max_days": rules.MAX_RENTAL_DURATION.days,
     }
+
+
+@role_required(OPERATOR)
+def staff_reservations(request):
+    """Operator page to hand over reservations (under construction)."""
+    return render(request, "rentals/under_construction.html", {"page_title": "Reservas por entregar"})
+
+
+@role_required(OPERATOR)
+def staff_returns(request):
+    """Operator page to register returns (under construction)."""
+    return render(request, "rentals/under_construction.html", {"page_title": "Devoluciones"})
+
+
+@role_required(MAINTENANCE)
+def maintenance(request):
+    """Maintenance page to review returned units (under construction)."""
+    return render(request, "rentals/under_construction.html", {"page_title": "Mantenimiento"})

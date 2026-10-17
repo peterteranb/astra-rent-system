@@ -10,6 +10,17 @@
 <body>
   <header class="site-header">
     <a class="site-header__brand" href="{% url 'catalog' %}">SergioCorp · Mesas y sillas para eventos</a>
+    {% if is_operator or is_maintenance %}
+      <nav class="site-header__nav">
+        {% if is_operator %}
+          <a href="{% url 'staff_reservations' %}">Reservas por entregar</a>
+          <a href="{% url 'staff_returns' %}">Devoluciones</a>
+        {% endif %}
+        {% if is_maintenance %}
+          <a href="{% url 'maintenance' %}">Mantenimiento</a>
+        {% endif %}
+      </nav>
+    {% endif %}
     {% if user.is_authenticated %}
       <form class="site-header__logout" method="post" action="{% url 'logout' %}">
         {% csrf_token %}
