@@ -1,16 +1,10 @@
 """Database models for equipment and rentals (PRE-CU-01)."""
 from django.conf import settings
 from django.db import models
+from django.utils import timezone
 
-
-class EquipmentStatus(models.TextChoices):
-    """Equipment states agreed with the client (ENT-33)."""
-
-    AVAILABLE = "available", "Disponible"
-    RENTED = "rented", "Rentado"
-    IN_REVIEW = "in_review", "En revisión"
-    IN_REPAIR = "in_repair", "En reparación"
-    RETIRED = "retired", "Baja"
+from . import rules
+from .statuses import EquipmentStatus, RentalStatus
 
 
 class Equipment(models.Model):
@@ -36,8 +30,9 @@ class Equipment(models.Model):
 class Rental(models.Model):
     """A confirmed rental of one unit for one period.
 
-    There is no status field: a rental is confirmed the moment it is
-    saved (ENT-16), and a rejected request is never saved.
+    A rental is confirmed the moment it is saved (ENT-16), and a rejected
+    request is never saved. Its status is not stored: status_at()
+    calculates it from the pickup, return and cancellation moments.
     """
 
     # PROTECT: deleting a user or a unit must not silently erase rental
@@ -52,8 +47,22 @@ class Rental(models.Model):
         on_delete=models.PROTECT,
         related_name="rentals",
     )
+    # The client may pick up the unit from this moment.
     start_datetime = models.DateTimeField()
+    # The client must return the unit by this moment.
     end_datetime = models.DateTimeField()
+    picked_up_at = models.DateTimeField(null=True, blank=True)
+    returned_at = models.DateTimeField(null=True, blank=True)
+    cancelled_at = models.DateTimeField(null=True, blank=True)
+    return_note = models.CharField(max_length=200, blank=True)
+    # Empty when the client registered the rental online.
+    registered_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="registered_rentals",
+    )
 
     class Meta:
         ordering = ["start_datetime"]
@@ -68,3 +77,21 @@ class Rental(models.Model):
 
     def __str__(self):
         return f"{self.equipment.inventory_id} -> {self.client.username}"
+
+    def status_at(self, now):
+        """Return the status of the rental at the moment now."""
+        if self.cancelled_at is not None:
+            return RentalStatus.CANCELLED
+        if self.returned_at is not None:
+            return RentalStatus.RETURNED
+        if self.picked_up_at is not None:
+            return RentalStatus.PICKED_UP
+        start = timezone.localtime(self.start_datetime)
+        if rules.is_pickup_expired(start, timezone.localtime(now)):
+            return RentalStatus.NOT_PICKED_UP
+        return RentalStatus.RESERVED
+
+    @property
+    def status(self):
+        """Return the status of the rental right now."""
+        return self.status_at(timezone.now())

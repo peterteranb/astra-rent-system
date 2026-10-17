@@ -90,21 +90,20 @@ def test_cruce_de_periodos(nuevo_inicio, nuevo_fin, se_cruza):
         (EquipmentStatus.AVAILABLE, True),
         (EquipmentStatus.IN_REVIEW, False),
         (EquipmentStatus.IN_REPAIR, False),
-        (EquipmentStatus.RENTED, False),
         (EquipmentStatus.RETIRED, False),
     ],
-    ids=["disponible", "en revision", "en reparacion", "rentado", "baja"],
+    ids=["disponible", "en revision", "en reparacion", "baja"],
 )
 def test_solo_un_equipo_disponible_se_puede_rentar(estado, se_puede_rentar):
     """Decide si un equipo se puede rentar segun su estado.
 
     Caso:               el cliente intenta rentar un equipo que tiene cierto estado.
-    Entrada:            uno de los cinco estados acordados con el cliente.
+    Entrada:            uno de los cuatro estados del equipo.
     Condiciones:        ninguna; la regla solo mira el estado.
-    Resultado esperado: True solo para "disponible"; False para los otros cuatro.
+    Resultado esperado: True solo para "disponible"; False para los otros tres.
     Requisito:          PRE-RF-04 (un equipo en revision no se renta) y ENT-33
-                        (los cinco estados). Que reparacion, rentado y baja
-                        tambien bloqueen es un SUPUESTO nuestro (S-12).
+                        (estados del equipo). Que reparacion y baja tambien
+                        bloqueen es un SUPUESTO nuestro (S-12).
     Codigo que cubre:   rentals/rules.py -> is_rentable_status().
     """
     # Ejecutar
