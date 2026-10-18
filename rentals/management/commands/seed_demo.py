@@ -1,12 +1,14 @@
-"""Load the demo data: tables, chairs and two clients.
+"""Load the demo data: tables, chairs, two clients, the staff and the admin.
 
 Safe to run many times: it creates what is missing and resets the demo
 units and passwords to their initial values. It never deletes rentals.
 """
 from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Group
 from django.core.management.base import BaseCommand
 
 from rentals.models import Equipment, EquipmentStatus
+from rentals.roles import MAINTENANCE, OPERATOR
 
 DEMO_PASSWORD = "demo1234"
 
@@ -23,14 +25,21 @@ DEMO_EQUIPMENT = [
 
 # Usernames c01 and c02 stand for clients C-01 and C-02 of the documents.
 DEMO_CLIENTS = ["c01", "c02"]
+DEMO_STAFF = [("op01", OPERATOR), ("mt01", MAINTENANCE)]
+DEMO_ADMIN = "admin"
 
 
 class Command(BaseCommand):
-    help = "Create the demo equipment and the demo clients c01 and c02."
+    """Create or reset the demo data."""
+
+    help = "Create the demo equipment, the clients c01 and c02, op01, mt01 and admin."
 
     def handle(self, *args, **options):
+        """Load every part of the demo data."""
         self.create_equipment()
         self.create_clients()
+        self.create_staff()
+        self.create_admin()
         self.stdout.write(self.style.SUCCESS("Demo data ready."))
 
     def create_equipment(self):
@@ -48,10 +57,31 @@ class Command(BaseCommand):
             self.stdout.write(f"Equipment {inventory_id} ready.")
 
     def create_clients(self):
-        User = get_user_model()
+        """Create the demo clients."""
         for username in DEMO_CLIENTS:
-            user, _created = User.objects.get_or_create(username=username)
-            # set_password stores a hash, never the plain text.
-            user.set_password(DEMO_PASSWORD)
-            user.save()
+            reset_user(username)
             self.stdout.write(f"Client {username} ready (password: {DEMO_PASSWORD}).")
+
+    def create_staff(self):
+        """Create the operator and the maintenance user, each in its role's group."""
+        for username, role in DEMO_STAFF:
+            user = reset_user(username)
+            user.groups.add(Group.objects.get(name=role))
+            self.stdout.write(f"Staff {username} ({role}) ready (password: {DEMO_PASSWORD}).")
+
+    def create_admin(self):
+        """Create the administrator, who is the superuser."""
+        user = reset_user(DEMO_ADMIN)
+        user.is_staff = True
+        user.is_superuser = True
+        user.save()
+        self.stdout.write(f"Admin {DEMO_ADMIN} ready (password: {DEMO_PASSWORD}).")
+
+
+def reset_user(username):
+    """Create the user if missing, set the demo password and return it."""
+    user, _created = get_user_model().objects.get_or_create(username=username)
+    # set_password stores a hash, never the plain text.
+    user.set_password(DEMO_PASSWORD)
+    user.save()
+    return user

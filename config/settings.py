@@ -67,6 +67,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'rentals.context_processors.staff_roles',
             ],
         },
     },
@@ -131,7 +132,7 @@ STATICFILES_DIRS = [BASE_DIR / 'static']
 # Login and logout (PRE-CU-01, steps 1 to 3)
 
 LOGIN_URL = 'login'
-LOGIN_REDIRECT_URL = 'catalog'
+LOGIN_REDIRECT_URL = 'home'
 LOGOUT_REDIRECT_URL = 'login'
 
 

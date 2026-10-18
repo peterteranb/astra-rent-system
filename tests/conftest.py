@@ -15,14 +15,19 @@ Que significa el parametro db:
 
 Nombres de los datos (los mismos de los documentos):
     c01, c02          -> clientes C-01 y C-02
+    op01              -> operador de la tienda (grupo "operador")
+    mt01              -> persona de mantenimiento (grupo "mantenimiento")
+    admin             -> administrador (superusuario)
     eq01, eq02        -> dos mesas iguales, disponibles
     eq03_in_review    -> una mesa devuelta que espera a mantenimiento (PRE-RF-04)
     doc_start/doc_end -> el periodo del escenario: 09/10/2026 18:00 a 12/10/2026 09:00
 """
 import pytest
 from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Group
 
 from rentals.models import Equipment, EquipmentStatus
+from rentals.roles import MAINTENANCE, OPERATOR
 from tests.helpers import local_datetime
 
 # Clave de los clientes de prueba (la misma que usa seed_demo para la demo).
@@ -51,6 +56,28 @@ def c01(db):
 def c02(db):
     """Cliente C-02, el que llega segundo en el escenario de rechazo."""
     return get_user_model().objects.create_user("c02", password=DEMO_PASSWORD)
+
+
+@pytest.fixture
+def op01(db):
+    """OP-01: operador de la tienda; el grupo lo crea la migracion 0004."""
+    usuario = get_user_model().objects.create_user("op01", password=DEMO_PASSWORD)
+    usuario.groups.add(Group.objects.get(name=OPERATOR))
+    return usuario
+
+
+@pytest.fixture
+def mt01(db):
+    """MT-01: persona de mantenimiento que revisa los equipos."""
+    usuario = get_user_model().objects.create_user("mt01", password=DEMO_PASSWORD)
+    usuario.groups.add(Group.objects.get(name=MAINTENANCE))
+    return usuario
+
+
+@pytest.fixture
+def admin(db):
+    """Administrador: el cliente dijo que admin = superusuario."""
+    return get_user_model().objects.create_superuser("admin", password=DEMO_PASSWORD)
 
 
 @pytest.fixture

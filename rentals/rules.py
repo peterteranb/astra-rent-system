@@ -9,9 +9,9 @@ converts them before calling these functions.
 # limit on how far in advance a rental can be made ("puede ser al
 # instante"), and no document asks to reject past dates.
 """
-from datetime import time, timedelta
+from datetime import datetime, time, timedelta
 
-from .models import EquipmentStatus
+from .statuses import EquipmentStatus
 
 # ASSUMPTION: ENT-19 says units are handed over from 18:00 and returned
 # by 09:00. It is still pending whether the client chooses the time
@@ -28,6 +28,11 @@ LATEST_RETURN_TIME = time(9, 0)
 # whether a longer rental is rejected (Sesión 07 §7); we reject it.
 MAX_RENTAL_DURATION = timedelta(days=5)
 
+# Client, 17/10: "Si el equipo no es recogido hasta las doce del dia queda
+# disponible para ser rentado por otros"; "el sistema detecta por la hora
+# que sigue en reserva y lo cambia a las 12:01". So 12:00 is still on time.
+PICKUP_DEADLINE = time(12, 0)
+
 
 def periods_overlap(new_start, new_end, existing_start, existing_end) -> bool:
     """Return True if the new period overlaps an existing one (PRE-RF-01).
@@ -41,8 +46,8 @@ def periods_overlap(new_start, new_end, existing_start, existing_end) -> bool:
 def is_rentable_status(status: str) -> bool:
     """Return True if a unit with this status can be rented (PRE-RF-04).
 
-    Only "available" units can be rented; "in review", "in repair",
-    "rented" and "retired" units cannot (ENT-33).
+    Only "available" units can be rented; "in review", "in repair"
+    and "retired" units cannot (ENT-33).
     """
     return status == EquipmentStatus.AVAILABLE
 
@@ -65,3 +70,10 @@ def is_pickup_time_allowed(start) -> bool:
 def is_return_time_allowed(end) -> bool:
     """Return True if the return time is at or before LATEST_RETURN_TIME (ENT-19)."""
     return end.time() <= LATEST_RETURN_TIME
+
+
+def is_pickup_expired(start, now) -> bool:
+    """Return True if now is past PICKUP_DEADLINE of the day after start."""
+    next_day = start.date() + timedelta(days=1)
+    deadline = datetime.combine(next_day, PICKUP_DEADLINE, tzinfo=start.tzinfo)
+    return now > deadline

@@ -1,6 +1,6 @@
 """Pruebas de INTEGRACION de las paginas web (el recorrido completo del cliente).
 
-Archivos que se prueban: rentals/views.py, accounts/urls.py, accounts/forms.py,
+Archivos que se prueban: rentals/views/renting.py, accounts/urls.py, accounts/forms.py,
                          las plantillas de templates/ y, por debajo, el servicio y la base.
 Tipo de prueba:          integracion (usa la base de pruebas y el "cliente de pruebas" de Django).
 
@@ -19,7 +19,7 @@ Herramientas que se usan para comprobar:
                                             (el login real se prueba aparte)
 
 De donde salen los datos:
-    Igual que en test_rental_service.py: las fixtures de tests/conftest.py crean
+    Igual que en test_renting.py: las fixtures de tests/conftest.py crean
     los clientes y equipos en una base de pruebas que se vacia despues de cada
     prueba. No se usa seed_demo.
 """
@@ -27,7 +27,7 @@ import pytest
 from pytest_django.asserts import assertContains, assertRedirects, assertTemplateUsed
 
 from rentals.models import Rental
-from rentals.services import create_rental
+from rentals.renting import create_rental
 from tests.conftest import DEMO_PASSWORD
 
 pytestmark = pytest.mark.django_db
@@ -49,12 +49,15 @@ def test_login_correcto_abre_sesion_y_lleva_al_catalogo(client, c01):
     Caso:               C-01 inicia sesion con datos correctos.
     Entrada:            POST /login/ con usuario "c01" y clave "demo1234".
     Condiciones:        el usuario c01 existe (fixture).
-    Resultado esperado: redirige a "/" (el catalogo) y la sesion queda abierta para c01.
+    Resultado esperado: pasa por /home/, termina en "/" (el catalogo) y la sesion
+                        queda abierta para c01.
     Requisito:          PRE-CU-01 pasos 1 a 3 (inicio de sesion).
     Codigo que cubre:   accounts/urls.py -> LoginView con accounts/forms.py -> LoginForm.
     """
     # Ejecutar
-    respuesta = client.post("/login/", {"username": "c01", "password": DEMO_PASSWORD})
+    respuesta = client.post(
+        "/login/", {"username": "c01", "password": DEMO_PASSWORD}, follow=True
+    )
 
     # Comprobar
     assertRedirects(respuesta, "/")
@@ -119,7 +122,7 @@ def test_sin_sesion_el_catalogo_redirige_al_login(client, db):
     Resultado esperado: redirige a /login/?next=/ (next recuerda a donde queria ir).
     Requisito:          PRE-CU-01 (el cliente primero inicia sesion); precondicion
                         "el cliente tiene su usuario".
-    Codigo que cubre:   rentals/views.py -> catalog() con el decorador @login_required.
+    Codigo que cubre:   rentals/views/renting.py -> catalog() con el decorador @login_required.
     """
     # Ejecutar
     respuesta = client.get("/")
@@ -141,7 +144,7 @@ def test_el_catalogo_muestra_los_disponibles_y_oculta_los_que_estan_en_revision(
     Resultado esperado: la pagina muestra EQ-01 y no muestra EQ-03.
     Requisito:          PRE-02 (consultar disponibilidad). Mostrar SOLO los
                         disponibles es un SUPUESTO nuestro (S-04).
-    Codigo que cubre:   rentals/views.py -> catalog(); rentals/services.py -> list_catalog();
+    Codigo que cubre:   rentals/views/renting.py -> catalog(); rentals/renting.py -> list_catalog();
                         plantilla rentals/catalog.html.
     """
     # Preparar
@@ -169,8 +172,8 @@ def test_recorrido_completo_c01_renta_eq01_y_ve_la_confirmacion(client, c01, eq0
                         /rentals/<id>/ y la pagina dice "Renta confirmada", el equipo,
                         las fechas y "desde las 18:00".
     Requisito:          PRE-CU-01 completo (pasos 1 a 9), PRE-RF-01 caso normal, ENT-16.
-    Codigo que cubre:   todo el flujo: accounts (login), rentals/views.py (catalog,
-                        rent_equipment, rental_confirmation), forms.py, services.py y
+    Codigo que cubre:   todo el flujo: accounts (login), rentals/views/renting.py (catalog,
+                        rent_equipment, rental_confirmation), forms.py, renting.py y
                         las plantillas.
     """
     # Preparar: inicio de sesion por el formulario real
@@ -212,7 +215,7 @@ def test_c02_es_rechazado_y_vuelve_al_catalogo_con_el_mensaje_e1(
                         disponible del 09/10/2026 18:00 al 12/10/2026 09:00.";
                         no se guarda ninguna renta para C-02.
     Requisito:          PRE-CU-01 excepcion E1 (vuelve al catalogo), PRE-RF-01 y PRE-RC-01.
-    Codigo que cubre:   rentals/views.py -> rent_equipment() (except EquipmentNotAvailableError
+    Codigo que cubre:   rentals/views/renting.py -> rent_equipment() (except EquipmentNotAvailableError
                         -> messages.error + redirect), plantilla base.html (muestra el mensaje).
     """
     # Preparar
@@ -253,8 +256,8 @@ def test_un_periodo_invalido_deja_al_cliente_en_el_formulario_con_la_causa(
                         los datos que escribio el cliente todavia en los campos,
                         y no se guarda ninguna renta.
     Requisito:          ENT-18, ENT-19 y PRE-RC-01 (mensaje con la causa).
-    Codigo que cubre:   rentals/views.py -> rent_equipment() (except RentalRejectedError
-                        -> form.add_error), services.check_period() y la plantilla
+    Codigo que cubre:   rentals/views/renting.py -> rent_equipment() (except OperationRejectedError
+                        -> form.add_error), renting.check_period() y la plantilla
                         rentals/rent_form.html.
     """
     # Preparar
@@ -290,7 +293,7 @@ def test_un_cliente_no_puede_ver_la_confirmacion_de_otro(
                         que la renta existe.
     Requisito:          sentido comun de privacidad (ENT-11 deja los permisos por rol
                         para la siguiente iteracion).
-    Codigo que cubre:   rentals/views.py -> rental_confirmation()
+    Codigo que cubre:   rentals/views/renting.py -> rental_confirmation()
                         (get_object_or_404 filtra por client=request.user).
     """
     # Preparar
@@ -313,7 +316,7 @@ def test_rentar_un_equipo_que_no_existe_responde_404_y_no_guarda_nada(client, c0
     Resultado esperado: 404 (no encontrado) y ninguna renta guardada; no un 500
                         (error del servidor).
     Requisito:          precondicion de PRE-CU-01 ("el equipo existe en el inventario").
-    Codigo que cubre:   rentals/views.py -> rent_equipment() (get_object_or_404).
+    Codigo que cubre:   rentals/views/renting.py -> rent_equipment() (get_object_or_404).
     """
     # Preparar
     client.force_login(c01)
@@ -334,7 +337,7 @@ def test_numero_de_inventario_en_minusculas_encuentra_el_mismo_equipo(client, c0
     Resultado esperado: SI el cliente dice que no distinguen mayusculas, 200.
                         Hoy el sistema responde 404. Se activa cuando Sergio responda.
     Requisito:          pregunta abierta de la Sesion 4.
-    Codigo que cubre:   rentals/views.py -> rent_equipment().
+    Codigo que cubre:   rentals/views/renting.py -> rent_equipment().
     """
     # Preparar
     client.force_login(c01)

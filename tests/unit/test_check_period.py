@@ -1,6 +1,6 @@
 """Pruebas UNITARIAS de la revision del periodo pedido.
 
-Archivo que se prueba: rentals/services.py -> check_period()
+Archivo que se prueba: rentals/renting.py -> check_period()
 Tipo de prueba:        unitaria (no usa base de datos).
 
 Que hace check_period():
@@ -25,8 +25,8 @@ Como se comprueba un error (sin "pytest.raises" vacio):
 """
 import pytest
 
-from rentals.errors import InvalidPeriodError, OutsideRentalHoursError, RentalRejectedError
-from rentals.services import check_period
+from rentals.errors import InvalidPeriodError, OperationRejectedError, OutsideRentalHoursError
+from rentals.renting import check_period
 from tests.helpers import local_datetime
 
 # Periodo del escenario de los documentos (Sesion 6, PRE-RF-01), en hora de La Paz.
@@ -42,7 +42,7 @@ def test_el_periodo_de_los_documentos_es_valido():
     Condiciones:        dura 2 dias y 15 horas; las horas estan dentro del horario.
     Resultado esperado: no lanza ningun error; devuelve None.
     Requisito:          PRE-RF-01 (caso normal) y ENT-18, ENT-19.
-    Codigo que cubre:   rentals/services.py -> check_period().
+    Codigo que cubre:   rentals/renting.py -> check_period().
     """
     # Ejecutar
     resultado = check_period(RECOJO, DEVOLUCION)
@@ -97,11 +97,11 @@ def test_un_periodo_invalido_se_rechaza_con_su_mensaje(
     Resultado esperado: se lanza el tipo de error de la fila y su mensaje exacto.
     Requisito:          ENT-18 (5 dias), ENT-19 (18:00 y 09:00) y PRE-RC-01
                         (el rechazo dice la causa concreta, no solo "Error").
-    Codigo que cubre:   rentals/services.py -> check_period(), que usa rules.py,
+    Codigo que cubre:   rentals/renting.py -> check_period(), que usa rules.py,
                         y las clases de rentals/errors.py.
     """
-    # Ejecutar: atrapamos cualquier rechazo (todos heredan de RentalRejectedError)
-    with pytest.raises(RentalRejectedError) as error:
+    # Ejecutar: atrapamos cualquier rechazo (todos heredan de OperationRejectedError)
+    with pytest.raises(OperationRejectedError) as error:
         check_period(recojo, devolucion)
 
     # Comprobar: el tipo exacto de error y el mensaje que vera el cliente

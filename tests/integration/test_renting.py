@@ -1,6 +1,6 @@
 """Pruebas de INTEGRACION del servicio que guarda la renta.
 
-Archivo que se prueba: rentals/services.py -> create_rental()
+Archivo que se prueba: rentals/renting.py -> create_rental()
 Tipo de prueba:        integracion (usa una base PostgreSQL de pruebas).
 
 Que hace create_rental():
@@ -27,7 +27,7 @@ import pytest
 
 from rentals.errors import EquipmentNotAvailableError
 from rentals.models import Equipment, EquipmentStatus, Rental
-from rentals.services import create_rental
+from rentals.renting import create_rental
 from tests.helpers import local_datetime
 
 pytestmark = pytest.mark.django_db
@@ -43,7 +43,7 @@ def test_una_renta_valida_se_guarda_y_el_equipo_sigue_disponible(c01, eq01, doc_
                         y EQ-01 sigue "disponible" (para poder rentarlo en otras fechas).
     Requisito:          PRE-RF-01 (caso normal), ENT-16 (se confirma al instante)
                         y ENT-10 (el equipo queda ocupado solo en ese periodo).
-    Codigo que cubre:   rentals/services.py -> create_rental(); rentals/models.py -> Rental.
+    Codigo que cubre:   rentals/renting.py -> create_rental(); rentals/models.py -> Rental.
     """
     # Ejecutar
     renta = create_rental(c01, eq01, doc_start, doc_end)
@@ -74,7 +74,7 @@ def test_si_c01_ya_tiene_eq01_la_renta_de_c02_en_esas_fechas_se_rechaza(
                         renta (la de C-01, sin cambios) y ninguna de C-02.
     Requisito:          PRE-RF-01 (escenario de rechazo de la Sesion 6) y
                         PRE-RC-01 (el mensaje dice equipo y fechas).
-    Codigo que cubre:   rentals/services.py -> create_rental() y check_equipment_is_free(),
+    Codigo que cubre:   rentals/renting.py -> create_rental() y check_equipment_is_free(),
                         que usa rules.periods_overlap().
     """
     # Preparar: C-01 confirma primero
@@ -106,7 +106,7 @@ def test_un_equipo_en_revision_no_se_puede_rentar(c01, eq03_in_review, doc_start
     Resultado esperado: se lanza EquipmentNotAvailableError con el estado en el
                         mensaje; no se guarda ninguna renta y EQ-03 sigue "en revision".
     Requisito:          PRE-RF-04 (un equipo en revision no se renta) y PRE-RC-01.
-    Codigo que cubre:   rentals/services.py -> check_equipment_is_free(), que usa
+    Codigo que cubre:   rentals/renting.py -> check_equipment_is_free(), que usa
                         rules.is_rentable_status().
     """
     # Ejecutar
@@ -133,7 +133,7 @@ def test_otra_unidad_del_mismo_modelo_si_se_puede_rentar_en_las_mismas_fechas(
     Resultado esperado: la renta de C-02 se guarda; hay dos rentas, una por unidad.
     Requisito:          ENT-09 (cada equipo se registra individualmente) y
                         caso limite "dos unidades del mismo modelo" (Sesion 4).
-    Codigo que cubre:   rentals/services.py -> create_rental() (solo mira las rentas de ESA unidad).
+    Codigo que cubre:   rentals/renting.py -> create_rental() (solo mira las rentas de ESA unidad).
     """
     # Preparar
     create_rental(c01, eq01, doc_start, doc_end)
@@ -158,7 +158,7 @@ def test_el_mismo_equipo_se_puede_rentar_cuando_termina_la_renta_anterior(
     Resultado esperado: la renta de C-02 se guarda; EQ-01 tiene dos rentas.
     Requisito:          ENT-10 (el equipo queda apartado solo en su periodo) y caso
                         limite del plan de las Sesiones 8 y 9.
-    Codigo que cubre:   rentals/services.py -> create_rental() con rules.periods_overlap().
+    Codigo que cubre:   rentals/renting.py -> create_rental() con rules.periods_overlap().
     """
     # Preparar
     create_rental(c01, eq01, doc_start, doc_end)
@@ -182,7 +182,7 @@ def test_el_estado_se_vuelve_a_leer_de_la_base_al_confirmar(c01, eq01, doc_start
     Resultado esperado: se lanza EquipmentNotAvailableError y no se guarda la renta.
     Requisito:          situacion del encargo: "un equipo esta disponible al abrir la
                         pantalla, pero ya no lo esta al confirmar"; PRE-RF-04.
-    Codigo que cubre:   rentals/services.py -> create_rental(): select_for_update().get()
+    Codigo que cubre:   rentals/renting.py -> create_rental(): select_for_update().get()
                         vuelve a leer la fila del equipo antes de revisarla.
     """
     # Preparar: cambiamos el estado directo en la base, sin tocar el objeto eq01

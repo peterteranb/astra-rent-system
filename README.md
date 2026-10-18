@@ -91,10 +91,10 @@ Las omitidas (`skip`) corresponden a decisiones pendientes del cliente.
 | `accounts/urls.py` | Login (`LoginView`) y logout (solo POST) |
 | `accounts/forms.py` | Formulario de login con el mensaje de E2 |
 | `rentals/urls.py` | Catálogo, formulario de renta y confirmación |
-| `rentals/views.py` | Lee la petición, llama al servicio y elige la plantilla |
+| `rentals/views/` | Lee la petición, llama al servicio y elige la plantilla |
 | `rentals/forms.py` | Fecha (`type="date"`) y hora libre (`type="time"`) de recojo y devolución |
-| `rentals/services.py` | `create_rental`: aplica las reglas, bloquea la fila del equipo y guarda la renta |
-| `rentals/errors.py` | Errores de rechazo: `RentalRejectedError` y sus 3 subclases |
+| `rentals/renting.py` | `create_rental`: aplica las reglas, bloquea la fila del equipo y guarda la renta |
+| `rentals/errors.py` | Errores de rechazo: `OperationRejectedError` y sus 9 subclases |
 | `rentals/rules.py` | Reglas puras: cruce de periodos, estado, duración máxima y horarios |
 | `rentals/models.py` | Modelos `Equipment` (estados de ENT-33) y `Rental` |
 | `rentals/admin.py` | Pantallas de `/admin` para equipos y rentas |
@@ -128,7 +128,7 @@ Reglas que tomamos sin confirmación del cliente. Lista generada con `grep -rn "
 | `rentals/rules.py:16` | El cliente elige la hora dentro de la ventana de ENT-19 (recojo desde las 18:00, devolución hasta las 09:00); fuera de ella se rechaza. |
 | `rentals/rules.py:21` | La tolerancia de 5 minutos de ENT-31 vale para registrar la devolución, no para pedir la renta. |
 | `rentals/rules.py:26` | Una renta de más de 5 días se rechaza (ENT-18); el plazo de 2 semanas del cliente frecuente no se aplica (ENT-20). |
-| `rentals/services.py:18` | El catálogo muestra solo los equipos «disponibles» (PRE-02). |
+| `rentals/renting.py:18` | El catálogo muestra solo los equipos «disponibles» (PRE-02). |
 
 ## Equipo
 
