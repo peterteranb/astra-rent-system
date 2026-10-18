@@ -1,4 +1,4 @@
-"""Pruebas de INTEGRACION de la entrega del equipo al cliente (rentals/handover.py y su pagina).
+"""Pruebas de INTEGRACION de la entrega y la devolucion del equipo (rentals/handover.py y su pagina).
 
 Las fechas son relativas a hoy: con las fechas fijas de los documentos
 (09/10/2026) la reserva ya estaria vencida y no se podria entregar.
@@ -9,10 +9,16 @@ import pytest
 from django.utils import timezone
 from pytest_django.asserts import assertContains, assertRedirects
 
-from rentals.errors import AlreadyPickedUpError, ReservationExpiredError
-from rentals.handover import register_pickup
+from rentals.errors import (
+    AlreadyPickedUpError,
+    AlreadyReturnedError,
+    IncompleteReturnError,
+    ReservationExpiredError,
+)
+from rentals.handover import register_pickup, register_return
+from rentals.models import StatusChange
 from rentals.renting import create_rental
-from rentals.statuses import RentalStatus
+from rentals.statuses import EquipmentStatus, RentalStatus
 from tests.helpers import foto_de_la_base, local_datetime
 
 pytestmark = pytest.mark.django_db
@@ -116,3 +122,84 @@ def test_op01_registra_un_recojo_desde_la_pagina_de_reservas(client, op01, c01, 
     reserva.refresh_from_db()
     assert reserva.status == RentalStatus.RENTED
     assert reserva.handed_over_by == op01
+
+
+def test_el_operador_registra_la_devolucion_y_el_equipo_pasa_a_revision(op01, c01, eq01):
+    """Requisito: C3 (#56), registrar la devolucion guarda cuando, quien y como llego.
+    Caso:      OP-01 recibe de C-01 el EQ-01 rentado, con la nota "Una pata floja".
+    Esperado:  la renta queda "Devuelta", EQ-01 "En revision" y una fila de historial con la nota.
+    """
+    # Preparar
+    renta = register_pickup(reserva_de_c01(c01, eq01, dias_desde_hoy=0), op01)
+    rentas, equipos, historial = foto_de_la_base()
+    antes_de_devolver = timezone.now()
+
+    # Ejecutar
+    devuelta = register_return(renta, op01, "Una pata floja")
+
+    # Comprobar: la respuesta
+    assert devuelta.status == RentalStatus.RETURNED
+
+    # Comprobar: lo guardado
+    renta.refresh_from_db()
+    assert antes_de_devolver <= renta.returned_at <= timezone.now()
+    rentas[0].update(
+        returned_at=renta.returned_at, received_by_id=op01.pk, return_note="Una pata floja"
+    )
+    equipos[0].update(status=EquipmentStatus.IN_REVIEW)
+    cambio = StatusChange.objects.get()
+    historial.append(
+        {
+            "pk": cambio.pk,
+            "equipment_id": eq01.pk,
+            "old_status": EquipmentStatus.AVAILABLE,
+            "new_status": EquipmentStatus.IN_REVIEW,
+            "changed_by_id": op01.pk,
+            "changed_at": cambio.changed_at,
+            "comment": "Una pata floja",
+        }
+    )
+    assert foto_de_la_base() == (rentas, equipos, historial)
+
+
+def test_una_devolucion_repetida_se_rechaza_con_la_fecha_de_la_primera(op01, c01, eq01):
+    """Requisito: C3 (#56), una renta se devuelve una sola vez.
+    Caso:      OP-01 ya registro la devolucion de EQ-01 e intenta registrarla otra vez.
+    Esperado:  AlreadyReturnedError con la fecha; EQ-01 sigue "En revision" con un solo cambio.
+    """
+    # Preparar
+    renta = register_pickup(reserva_de_c01(c01, eq01, dias_desde_hoy=0), op01)
+    renta = register_return(renta, op01, "Sin danos")
+    devuelta = timezone.localtime(renta.returned_at)
+    antes = foto_de_la_base()
+
+    # Ejecutar
+    with pytest.raises(AlreadyReturnedError) as error:
+        register_return(renta, op01, "Sin danos")
+
+    # Comprobar: la respuesta
+    assert str(error.value) == f"La renta de EQ-01 ya fue devuelta el {devuelta:%d/%m/%Y %H:%M}."
+
+    # Comprobar: lo guardado
+    assert foto_de_la_base() == antes
+    assert StatusChange.objects.filter(new_status=EquipmentStatus.IN_REVIEW).count() == 1
+
+
+def test_una_devolucion_sin_nota_se_rechaza(op01, c01, eq01):
+    """Requisito: C3 (#56), la nota de como llego el equipo es obligatoria.
+    Caso:      OP-01 intenta registrar la devolucion de EQ-01 con una nota de solo espacios.
+    Esperado:  IncompleteReturnError con la causa; la base queda igual.
+    """
+    # Preparar
+    renta = register_pickup(reserva_de_c01(c01, eq01, dias_desde_hoy=0), op01)
+    antes = foto_de_la_base()
+
+    # Ejecutar
+    with pytest.raises(IncompleteReturnError) as error:
+        register_return(renta, op01, "   ")
+
+    # Comprobar: la respuesta
+    assert str(error.value) == "Escribe cómo llegó el equipo."
+
+    # Comprobar: lo guardado
+    assert foto_de_la_base() == antes
