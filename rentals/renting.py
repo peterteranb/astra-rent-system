@@ -85,9 +85,43 @@ def check_equipment_is_free(equipment, start, end):
 
     # Compare with every rental of this unit using the same rule the
     # unit tests check, instead of repeating the condition in SQL.
+    now = timezone.now()
+
     for rental in equipment.rentals.all():
+        # B2: Si la renta fue cancelada, no bloquea el equipo
+        if rental.cancelled_at is not None:
+            continue
+
+        # B2: Si la renta ya fue devuelta, no bloquea el equipo
+        if rental.returned_at is not None:
+            continue
+
+        # B2: Si pasó el tiempo límite de recojo y nunca se recogió, se considera expirada/no recogida y libera el equipo
+        start_local = timezone.localtime(rental.start_datetime)
+        if rental.picked_up_at is None and rules.is_pickup_expired(start_local, timezone.localtime(now)):
+            continue
+
+        # Validar solapamiento de fechas para las rentas que SÍ están vigentes/activas/pendientes
         if rules.periods_overlap(start, end, rental.start_datetime, rental.end_datetime):
+            inicio_ocupado = timezone.localtime(rental.start_datetime).strftime(DATETIME_FORMAT)
+            fin_ocupado = timezone.localtime(rental.end_datetime).strftime(DATETIME_FORMAT)
+
             raise EquipmentNotAvailableError(
-                f"El equipo {equipment.inventory_id} no está disponible "
-                f"del {start:{DATETIME_FORMAT}} al {end:{DATETIME_FORMAT}}."
+                f"El equipo {equipment.inventory_id} está ocupado desde el "
+                f"{inicio_ocupado} hasta el {fin_ocupado}. "
+                f"Volverá a estar libre a partir del {fin_ocupado}."
             )
+
+def cancel_rental(rental, cancelled_by) -> Rental:
+    """Cancel a rental that has not yet been picked up."""
+    if rental.picked_up_at is not None:
+        raise ValueError("No se puede cancelar una reserva que ya ha sido recogida.")
+    if rental.returned_at is not None:
+        raise ValueError("No se puede cancelar una reserva que ya fue devuelta.")
+    if rental.cancelled_at is not None:
+        raise ValueError("La reserva ya se encuentra cancelada.")
+
+    rental.cancelled_at = timezone.now()
+    rental.cancelled_by = cancelled_by
+    rental.save()
+    return rental

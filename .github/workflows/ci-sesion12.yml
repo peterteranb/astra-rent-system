@@ -39,7 +39,7 @@ jobs:
 
     steps:
       - name: Obtener la version del repositorio
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4  #se cambio de v6 a v4 para evitar problemas de compatibilidad
 
       - name: Preparar Python
         uses: actions/setup-python@v5
@@ -57,15 +57,15 @@ jobs:
       # Para paquetes src/ con pyproject.toml, agregar aqui su instalacion:
       # - run: python -m pip install -e .
 
-      - name: Comprobar el contrato del flujo
-        run: python -m pytest tests/sesion12 -q --junitxml=evidencias/sesion12-junit.xml
+      - name: Correr todas las pruebas del proyecto con Pytest
+        run: python -m pytest -q --junitxml=evidencias/junit.xml
 
       - name: Conservar el resultado de las pruebas
         if: ${{ always() }}
         uses: actions/upload-artifact@v4
         with:
-          name: resultados-sesion12-${{ github.run_id }}-${{ github.run_attempt }}
-          path: evidencias/sesion12-junit.xml
+          name: resultados-pruebas-${{ github.run_id }}-${{ github.run_attempt }}
+          path: evidencias/junit.xml
           if-no-files-found: warn
           retention-days: 14
 

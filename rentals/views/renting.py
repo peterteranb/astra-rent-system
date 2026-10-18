@@ -4,12 +4,16 @@ and choose a template; the business rules live in renting.py and rules.py.
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, redirect, render
+from django.views.decorators.http import require_POST
 
 from .. import rules
 from ..errors import EquipmentNotAvailableError, OperationRejectedError
 from ..forms import RentalForm
 from ..models import Equipment, Rental
 from ..renting import create_rental, list_catalog
+from ..models import Rental
+from ..renting import cancel_rental
+from ..roles import OPERATOR, role_required
 
 
 @login_required
@@ -70,3 +74,20 @@ def rental_form_context(equipment, form):
         "latest_return_time": rules.LATEST_RETURN_TIME,
         "max_days": rules.MAX_RENTAL_DURATION.days,
     }
+
+@require_POST
+@role_required(OPERATOR)
+def cancel_reservation(request, rental_id):
+    """Permite al operador cancelar una reserva que aún no ha sido recogida."""
+    rental = get_object_or_404(Rental, pk=rental_id)
+
+    try:
+        cancel_rental(rental, request.user)
+        messages.success(
+            request,
+            f"La reserva del equipo {rental.equipment.inventory_id} fue cancelada correctamente.",
+        )
+    except ValueError as e:
+        messages.error(request, str(e))
+
+    return redirect("staff_reservations")

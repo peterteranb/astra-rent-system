@@ -16,4 +16,5 @@ urlpatterns = [
     ),
     path("staff/returns/", handover.staff_returns, name="staff_returns"),
     path("maintenance/", review.maintenance, name="maintenance"),
+    path("staff/reservations/<int:rental_id>/cancel/", renting.cancel_reservation, name="cancel_reservation",),
 ]
