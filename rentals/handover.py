@@ -31,6 +31,19 @@ def reservations_to_hand_over() -> list[Rental]:
     return [rental for rental in pending if rental.status_at(now) == RentalStatus.RESERVED]
 
 
+def rentals_to_receive():
+    """Return the rentals not returned nor cancelled, the ones due first at the top (C5).
+
+    Rentals never picked up are included on purpose: the client asked that
+    they can be returned too, and their status shows the missing pickup.
+    """
+    return (
+        Rental.objects.filter(returned_at__isnull=True, cancelled_at__isnull=True)
+        .select_related("equipment", "client")
+        .order_by("end_datetime")
+    )
+
+
 def register_pickup(rental, staff_user) -> Rental:
     """Record that the client took the unit now and which operator handed it over (C1).
 

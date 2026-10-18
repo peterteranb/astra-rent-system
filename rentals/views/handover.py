@@ -8,7 +8,13 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
 from ..errors import OperationRejectedError
-from ..handover import register_pickup, reservations_to_hand_over
+from ..forms import ReturnForm
+from ..handover import (
+    register_pickup,
+    register_return,
+    rentals_to_receive,
+    reservations_to_hand_over,
+)
 from ..models import Rental
 from ..roles import OPERATOR, role_required
 
@@ -43,5 +49,30 @@ def pickup_reservation(request, rental_id):
 
 @role_required(OPERATOR)
 def staff_returns(request):
-    """Operator page to register returns (under construction)."""
-    return render(request, "rentals/under_construction.html", {"page_title": "Devoluciones"})
+    """Show the rentals still to be returned, with their status (C5)."""
+    return render(request, "rentals/staff_returns.html", {"rentals": rentals_to_receive()})
+
+
+@role_required(OPERATOR)
+def return_rental(request, rental_id):
+    """Show the return note form for one rental and register the return (C5)."""
+    rental = get_object_or_404(Rental, pk=rental_id)
+    form = ReturnForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        try:
+            returned = register_return(rental, request.user, form.cleaned_data["note"])
+        except OperationRejectedError as error:
+            # Stay on the form so the operator can fix the note.
+            form.add_error(None, str(error))
+        else:
+            messages.success(request, return_message(returned))
+            return redirect("staff_returns")
+    return render(request, "rentals/return_form.html", {"rental": rental, "form": form})
+
+
+def return_message(rental):
+    """Success message of a return, ending with how it arrived (C4)."""
+    return (
+        f"Devolución registrada: {rental.equipment.inventory_id} recibido de "
+        f"{rental.client.username}. {rental.return_result.label}."
+    )
