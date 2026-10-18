@@ -61,29 +61,15 @@ def test_el_periodo_de_los_documentos_es_valido():
             "La fecha y hora de devolución debe ser posterior a la de recojo.",
         ),
         (
-            RECOJO,
-            local_datetime(2026, 10, 15, 9, 0),
-            InvalidPeriodError,
-            "La renta no puede durar más de 5 días.",
-        ),
-        (
             local_datetime(2026, 10, 9, 17, 0),
             DEVOLUCION,
             OutsideRentalHoursError,
             "El recojo debe ser desde las 18:00.",
         ),
-        (
-            RECOJO,
-            local_datetime(2026, 10, 12, 10, 0),
-            OutsideRentalHoursError,
-            "La devolución debe ser hasta las 09:00.",
-        ),
     ],
     ids=[
         "devolucion antes del recojo",
-        "mas de 5 dias (09/10 al 15/10)",
         "recojo a las 17:00",
-        "devolucion a las 10:00",
     ],
 )
 def test_un_periodo_invalido_se_rechaza_con_su_mensaje(

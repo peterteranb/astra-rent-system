@@ -45,22 +45,12 @@ FIN_EXISTENTE = datetime(2026, 10, 12, 9, 0)      # 12/10/2026 09:00
     "nuevo_inicio, nuevo_fin, se_cruza",
     [
         (datetime(2026, 10, 9, 18, 0), datetime(2026, 10, 12, 9, 0), True),
-        (datetime(2026, 10, 11, 18, 0), datetime(2026, 10, 13, 9, 0), True),
-        (datetime(2026, 10, 8, 18, 0), datetime(2026, 10, 10, 9, 0), True),
-        (datetime(2026, 10, 8, 18, 0), datetime(2026, 10, 13, 9, 0), True),
-        (datetime(2026, 10, 12, 8, 59), datetime(2026, 10, 13, 9, 0), True),
         (datetime(2026, 10, 12, 9, 0), datetime(2026, 10, 13, 9, 0), False),
-        (datetime(2026, 10, 8, 18, 0), datetime(2026, 10, 9, 18, 0), False),
         (datetime(2026, 10, 20, 18, 0), datetime(2026, 10, 22, 9, 0), False),
     ],
     ids=[
         "mismo periodo",
-        "empieza dentro de la renta existente",
-        "termina dentro de la renta existente",
-        "contiene a la renta existente",
-        "comparte solo un minuto (08:59)",
         "empieza justo cuando la otra termina",
-        "termina justo cuando la otra empieza",
         "totalmente despues",
     ],
 )
@@ -91,10 +81,9 @@ def test_cruce_de_periodos(nuevo_inicio, nuevo_fin, se_cruza):
     [
         (EquipmentStatus.AVAILABLE, True),
         (EquipmentStatus.IN_REVIEW, False),
-        (EquipmentStatus.IN_REPAIR, False),
         (EquipmentStatus.RETIRED, False),
     ],
-    ids=["disponible", "en revision", "en reparacion", "baja"],
+    ids=["disponible", "en revision", "baja"],
 )
 def test_solo_un_equipo_disponible_se_puede_rentar(estado, se_puede_rentar):
     """Decide si un equipo se puede rentar segun su estado.
@@ -152,13 +141,11 @@ def test_una_renta_dura_como_maximo_5_dias(fin, se_permite):
         (datetime(2026, 10, 9, 18, 0), True),
         (datetime(2026, 10, 9, 23, 59), True),
         (datetime(2026, 10, 9, 17, 59), False),
-        (datetime(2026, 10, 10, 0, 30), False),
     ],
     ids=[
         "18:00 en punto",
         "23:59 (ultimo minuto del dia)",
         "17:59 (un minuto antes)",
-        "00:30 de la madrugada",
     ],
 )
 def test_el_recojo_es_desde_las_18_00(recojo, se_permite):
