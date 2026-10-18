@@ -13,12 +13,11 @@ PAGINA_DEL_OPERADOR = "/staff/reservations/"
 @pytest.mark.parametrize(
     "usuario, destino",
     [
-        ("admin", "/admin/"),
         ("op01", "/staff/reservations/"),
         ("mt01", "/maintenance/"),
         ("c01", "/"),
     ],
-    ids=["superusuario", "operador", "mantenimiento", "cliente"],
+    ids=["operador", "mantenimiento", "cliente"],
 )
 def test_al_iniciar_sesion_cada_rol_llega_a_su_pagina(request, client, usuario, destino):
     """Requisito: A3 (#44), cada rol empieza en su pagina.

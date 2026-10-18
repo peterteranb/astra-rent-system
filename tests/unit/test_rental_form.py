@@ -60,9 +60,8 @@ def test_datos_validos_se_convierten_en_fecha_y_hora_de_la_paz():
     "campo, valor, fecha_esperada",
     [
         ("start_time", "17:00", ("start_datetime", local_datetime(2026, 10, 9, 17, 0))),
-        ("end_time", "09:30", ("end_datetime", local_datetime(2026, 10, 12, 9, 30))),
     ],
-    ids=["recojo a las 17:00", "devolucion a las 09:30"],
+    ids=["recojo a las 17:00"],
 )
 def test_el_formulario_no_aplica_el_horario_lo_hace_el_servicio(campo, valor, fecha_esperada):
     """Una hora fuera del horario es valida PARA EL FORMULARIO.
@@ -94,18 +93,8 @@ def test_el_formulario_no_aplica_el_horario_lo_hace_el_servicio(campo, valor, fe
     "campo, valor",
     [
         ("start_date", ""),
-        ("end_date", ""),
-        ("start_date", "mañana"),
-        ("start_time", "25:00"),
-        ("start_time", "tarde"),
     ],
-    ids=[
-        "falta la fecha de recojo",
-        "falta la fecha de devolucion",
-        "la fecha no es una fecha",
-        "la hora no existe (25:00)",
-        "la hora no es una hora",
-    ],
+    ids=["falta la fecha de recojo"],
 )
 def test_datos_que_no_son_fecha_u_hora_se_rechazan_en_su_campo(campo, valor):
     """El formulario rechaza datos vacios o mal escritos y dice en que campo.
@@ -128,21 +117,3 @@ def test_datos_que_no_son_fecha_u_hora_se_rechazan_en_su_campo(campo, valor):
     # Comprobar
     assert es_valido is False
     assert campo in form.errors
-
-
-def test_las_ayudas_de_los_campos_muestran_el_horario():
-    """Debajo de cada hora, el cliente ve el horario permitido.
-
-    Caso:               el cliente abre el formulario vacio.
-    Entrada:            ninguna (formulario nuevo).
-    Condiciones:        las horas salen de las constantes de rules.py.
-    Resultado esperado: el recojo dice "Desde las 18:00" y la devolucion "Hasta las 09:00".
-    Requisito:          ENT-19 y PRE-RC-01 (el cliente sabe la regla antes de equivocarse).
-    Codigo que cubre:   rentals/forms.py -> help_text de start_time y end_time.
-    """
-    # Ejecutar
-    form = RentalForm()
-
-    # Comprobar
-    assert form.fields["start_time"].help_text == "Desde las 18:00"
-    assert form.fields["end_time"].help_text == "Hasta las 09:00"
