@@ -5,6 +5,9 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
+from django.contrib.auth import get_user_model #necesario para walk-in rentals
+from django.utils.dateparse import parse_datetime #necesario para walk-in rentals
+from django.utils import timezone #necesario para mostrar las fechas ocupadas de cada equipo en el catalogo
 
 from .. import rules
 from ..errors import EquipmentNotAvailableError, OperationRejectedError
@@ -14,6 +17,8 @@ from ..renting import create_rental, list_catalog
 from ..models import Rental
 from ..renting import cancel_rental
 from ..roles import OPERATOR, role_required
+
+User = get_user_model() #necesario para walk-in rentals
 
 
 @login_required
@@ -91,3 +96,100 @@ def cancel_reservation(request, rental_id):
         messages.error(request, str(e))
 
     return redirect("staff_reservations")
+
+@role_required(OPERATOR)
+def walk_in_rental(request):
+    """Permite al operador registrar una renta en tienda buscando al cliente por ID/username."""
+    client_found = None
+    client_query = request.GET.get("client_id", "").strip()
+
+    # Si se realizó una búsqueda de cliente
+    if client_query:
+        client_found = User.objects.filter(username=client_query).first() or \
+                       User.objects.filter(id=client_query if client_query.isdigit() else None).first()
+        if not client_found:
+            messages.error(request, f"No se encontró ningún cliente con el ID/usuario '{client_query}'.")
+
+    if request.method == "POST":
+        client_id = request.POST.get("client_id")
+        inventory_id = request.POST.get("inventory_id")
+        start_raw = request.POST.get("start_datetime")
+        end_raw = request.POST.get("end_datetime")
+
+        client = get_object_or_404(User, pk=client_id)
+        equipment = get_object_or_404(Equipment, inventory_id=inventory_id)
+
+        try:
+            start_dt = parse_datetime(start_raw)
+            end_dt = parse_datetime(end_raw)
+
+            rental = create_rental(
+                client=client,
+                equipment=equipment,
+                start_datetime=start_dt,
+                end_datetime=end_dt,
+                registered_by=request.user, # Operador que atiende
+            )
+            messages.success(
+                request,
+                f"Renta registrada exitosamente para {client.get_full_name() or client.username}.",
+            )
+            return redirect("staff_reservations")
+        except Exception as e:
+            messages.error(request, str(e))
+
+    equipments = Equipment.objects.filter(status="available")
+    return render(
+        request,
+        "rentals/walk_in_rental.html",
+        {
+            "client_found": client_found,
+            "client_query": client_query,
+            "equipments": equipments,
+        },
+    )
+
+@login_required
+def client_rentals_view(request):
+    """Muestra al cliente la lista de sus rentas (activas e historial)."""
+    # Obtenemos las rentas del usuario logueado, ordenadas por fecha de inicio
+    rentals = request.user.rentals.all().order_by("-start_datetime")
+
+    return render(
+        request,
+        "rentals/client_rentals.html",
+        {"rentals": rentals}
+    )
+
+@login_required
+def catalog(request):
+    """Step 4: show the units the client can choose with their busy periods (B7)."""
+    now = timezone.now()
+    equipments = list_catalog()
+
+    catalog_data = []
+    for eq in equipments:
+        active_rentals = []
+        for rental in eq.rentals.all():
+            # B2: Omitir si la renta ya fue cancelada o devuelta
+            if rental.cancelled_at is not None or rental.returned_at is not None:
+                continue
+
+            # B2: Omitir si expiró el tiempo límite de recojo sin haber sido recogida
+            start_local = timezone.localtime(rental.start_datetime)
+            if rental.picked_up_at is None and rules.is_pickup_expired(start_local, timezone.localtime(now)):
+                continue
+
+            # B7: Si la renta finaliza en el futuro, es un periodo ocupado a mostrar
+            if rental.end_datetime >= now:
+                active_rentals.append({
+                    "start": timezone.localtime(rental.start_datetime),
+                    "end": timezone.localtime(rental.end_datetime),
+                })
+
+        catalog_data.append({
+            "equipment": eq,
+            "busy_periods": active_rentals,
+        })
+
+    return render(request, "rentals/catalog.html", {"catalog_data": catalog_data})

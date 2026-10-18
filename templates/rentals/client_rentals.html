@@ -1,0 +1,48 @@
+<!--este archivo crea una vista donde el cliente puede consultar su historial de rentas-->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+
+</body>
+</html>{% extends "base.html" %}
+
+{% block title %}Mis Rentas{% endblock %}
+
+{% block content %}
+  <h1 class="page__title">Mis Rentas y Reservas</h1>
+
+  {% if rentals %}
+    <table>
+      <thead>
+        <tr>
+          <th>Equipo</th>
+          <th>Desde</th>
+          <th>Hasta</th>
+          <th>Estado Actual</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for rental in rentals %}
+          <tr>
+            <td>{{ rental.equipment.inventory_id }} · {{ rental.equipment.description }}</td>
+            <td>{{ rental.start_datetime|date:"d/m/Y H:i" }}</td>
+            <td>{{ rental.end_datetime|date:"d/m/Y H:i" }}</td>
+            <td>
+              <!-- Usamos la propiedad .status que ya calcula dinámicamente el estado -->
+              <span class="badge badge--{{ rental.status }}">
+                {{ rental.get_status_display|default:rental.status }}
+              </span>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p class="catalog__empty">No tienes ninguna renta registrada actualmente.</p>
+  {% endif %}
+{% endblock %}
