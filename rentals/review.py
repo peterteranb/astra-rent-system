@@ -1,6 +1,7 @@
 """Use case: maintenance reviews a returned unit and sets its new status."""
 from .errors import InvalidStatusChangeError
 from .history import change_status
+from .models import Equipment
 from .statuses import EquipmentStatus
 
 # The client agreed (review flow of 17/10): from review or repair a unit goes
@@ -29,3 +30,9 @@ def check_review_result(equipment, new_status):
         raise InvalidStatusChangeError(
             f"El equipo {equipment.inventory_id} solo puede pasar a disponible, en reparación o baja."
         )
+
+def equipment_to_review():
+    """Return the units waiting for maintenance: in review or in repair."""
+    return Equipment.objects.filter(
+        status__in=[EquipmentStatus.IN_REVIEW, EquipmentStatus.IN_REPAIR]
+    )
