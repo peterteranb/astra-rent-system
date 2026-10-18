@@ -15,5 +15,6 @@ urlpatterns = [
         name="register_pickup",
     ),
     path("staff/returns/", handover.staff_returns, name="staff_returns"),
+    path("staff/returns/<int:rental_id>/", handover.return_rental, name="return_rental"),
     path("maintenance/", review.maintenance, name="maintenance"),
 ]
