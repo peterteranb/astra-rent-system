@@ -21,18 +21,20 @@ Periodo base usado en todo el archivo (escenario de la Sesion 6, PRE-RF-01):
 Las fechas se escriben sin zona horaria porque estas reglas solo comparan
 horas de reloj; el servicio les entrega siempre la hora local de La Paz.
 """
-from datetime import datetime
+from datetime import date, datetime
 
 import pytest
 
 from rentals.models import EquipmentStatus
 from rentals.rules import (
+    classify_return,
     is_pickup_time_allowed,
     is_rentable_status,
     is_return_time_allowed,
     is_within_max_duration,
     periods_overlap,
 )
+from rentals.statuses import ReturnResult
 
 # Renta que ya existe: C-01 tiene EQ-01 en este periodo.
 INICIO_EXISTENTE = datetime(2026, 10, 9, 18, 0)   # 09/10/2026 18:00
@@ -194,9 +196,9 @@ def test_la_devolucion_es_hasta_las_09_00(devolucion, se_permite):
     Entrada:            una fecha y hora de devolucion.
     Condiciones:        se devuelve hasta las 09:00 (constante LATEST_RETURN_TIME).
     Resultado esperado: hasta las 09:00 en punto se permite; 09:01 no.
-    Requisito:          ENT-19 (devolucion hasta las 9:00). La tolerancia de 5 minutos
-                        (ENT-31) es para la devolucion REAL, no para pedir la renta
-                        (SUPUESTO S-10).
+    Requisito:          ENT-19 (devolucion hasta las 9:00). Ya no hay tolerancia de
+                        5 minutos (ENT-31); la regla vigente es ENT-63/ENT-65: a las
+                        09:00:01 ya hay multa.
     Codigo que cubre:   rentals/rules.py -> is_return_time_allowed().
     """
     # Ejecutar
@@ -204,3 +206,43 @@ def test_la_devolucion_es_hasta_las_09_00(devolucion, se_permite):
 
     # Comprobar
     assert resultado is se_permite
+
+
+# Dia en que vence la renta del escenario (12/10/2026, a las 09:00).
+DIA_DE_DEVOLUCION = date(2026, 10, 12)
+
+
+def test_una_devolucion_a_las_09_00_esta_a_tiempo():
+    """Requisito: C4 (#57) y ENT-63, se devuelve hasta las 9 sin multa.
+    Caso:      la renta vence el 12/10 y el equipo vuelve el 12/10 a las 09:00.
+    Esperado:  ON_TIME.
+    """
+    # Ejecutar
+    resultado = classify_return(datetime(2026, 10, 12, 9, 0), DIA_DE_DEVOLUCION)
+
+    # Comprobar
+    assert resultado == ReturnResult.ON_TIME
+
+
+def test_una_devolucion_a_las_12_00_tiene_multa():
+    """Requisito: C4 (#57) y ENT-65, hasta las 12:00 se cobra multa.
+    Caso:      la renta vence el 12/10 y el equipo vuelve el 12/10 a las 12:00.
+    Esperado:  WITH_FINE.
+    """
+    # Ejecutar
+    resultado = classify_return(datetime(2026, 10, 12, 12, 0), DIA_DE_DEVOLUCION)
+
+    # Comprobar
+    assert resultado == ReturnResult.WITH_FINE
+
+
+def test_una_devolucion_a_las_12_01_cobra_un_dia_mas():
+    """Requisito: C4 (#57) y ENT-65, desde las 12:01 se cobra un dia mas.
+    Caso:      la renta vence el 12/10 y el equipo vuelve el 12/10 a las 12:01.
+    Esperado:  EXTRA_DAY.
+    """
+    # Ejecutar
+    resultado = classify_return(datetime(2026, 10, 12, 12, 1), DIA_DE_DEVOLUCION)
+
+    # Comprobar
+    assert resultado == ReturnResult.EXTRA_DAY
