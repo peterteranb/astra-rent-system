@@ -125,6 +125,14 @@ class Rental(models.Model):
             return RentalStatus.NOT_PICKED_UP
         return RentalStatus.RESERVED
 
+    def occupies_equipment_at(self, now):
+        """Return True if the rental still holds its unit's dates at the moment now.
+
+        Only "reserved" and "rented" rentals do: cancelled, returned and
+        not-picked-up rentals leave the dates free for other clients (ENT-55, ENT-59).
+        """
+        return self.status_at(now) in (RentalStatus.RESERVED, RentalStatus.RENTED)
+
     @property
     def status(self):
         """Return the status of the rental right now."""

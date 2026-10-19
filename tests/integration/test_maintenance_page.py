@@ -39,7 +39,8 @@ def test_mt01_deja_disponible_a_eq03_y_vuelve_al_catalogo(client, mt01, eq03_in_
     assert eq03_in_review.status == EquipmentStatus.AVAILABLE
     cambio = StatusChange.objects.get()
     assert (cambio.changed_by, cambio.comment) == (mt01, "Revisada, sin daños")
-    assert list(client.get("/").context["equipment_list"]) == [eq03_in_review]
+    catalogo = client.get("/").context["catalog_entries"]
+    assert [entrada.equipment for entrada in catalogo] == [eq03_in_review]
 
 
 def test_una_baja_no_se_puede_cambiar_desde_la_pagina(client, mt01, eq03_in_review):

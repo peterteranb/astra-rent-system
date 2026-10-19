@@ -1,21 +1,29 @@
-"""Views of PRE-CU-01 (renting). They read the request, call the use case
-and choose a template; the business rules live in renting.py and rules.py.
+"""Renting pages: catalog, online and store rental, confirmation, cancellation and "Mis rentas".
+
+They read the request, call renting.py and choose a template; the
+business rules live in renting.py and rules.py.
 """
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
+from django.views.decorators.http import require_POST
 
 from .. import rules
 from ..errors import EquipmentNotAvailableError, OperationRejectedError
-from ..forms import RentalForm
+from ..forms import RentalForm, WalkInRentalForm
 from ..models import Equipment, Rental
-from ..renting import create_rental, list_catalog
+from ..renting import cancel_rental, catalog_entries, create_rental, find_clients
+from ..roles import OPERATOR, role_required
 
 
 @login_required
 def catalog(request):
-    """Step 4: show the units the client can choose."""
-    return render(request, "rentals/catalog.html", {"equipment_list": list_catalog()})
+    """Step 4: show the units the client can choose, each with its next busy periods."""
+    return render(
+        request, "rentals/catalog.html", {"catalog_entries": catalog_entries(timezone.now())}
+    )
 
 
 @login_required
@@ -51,9 +59,11 @@ def rent_equipment(request, inventory_id):
 
 @login_required
 def rental_confirmation(request, rental_id):
-    """Step 9: show the confirmed rental to the client who made it."""
-    # Filtering by client means nobody can open another client's rental.
-    rental = get_object_or_404(Rental, pk=rental_id, client=request.user)
+    """Step 9: show the confirmed rental to its client or to the operator who registered it."""
+    # Filtering by user means nobody else can open the rental (#50).
+    rental = get_object_or_404(
+        Rental, Q(client=request.user) | Q(registered_by=request.user), pk=rental_id
+    )
     return render(
         request,
         "rentals/rental_confirmation.html",
@@ -70,3 +80,63 @@ def rental_form_context(equipment, form):
         "latest_return_time": rules.LATEST_RETURN_TIME,
         "max_days": rules.MAX_RENTAL_DURATION.days,
     }
+
+
+# role_required goes outside so a visitor is sent to the login before
+# require_POST answers 405 to a GET.
+@role_required(OPERATOR)
+@require_POST
+def cancel_reservation(request, rental_id):
+    """Cancel one reservation and go back to the list of reservations (#49)."""
+    rental = get_object_or_404(Rental, pk=rental_id)
+    try:
+        cancel_rental(rental, request.user)
+    except OperationRejectedError as error:
+        messages.error(request, str(error))
+    else:
+        messages.success(
+            request,
+            f"Reserva cancelada: {rental.equipment.inventory_id} de {rental.client.username}.",
+        )
+    # Redirect after the POST so reloading the page does not send it again.
+    return redirect("staff_reservations")
+
+
+@role_required(OPERATOR)
+def walk_in_rental(request):
+    """Find a client by GET and register a store rental for them by POST (PRE-CU-02)."""
+    # The form posts to the same address with ?q=, so the search results
+    # stay on the page when the rental is rejected.
+    query = request.GET.get("q", "")
+    form = WalkInRentalForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        try:
+            rental = create_rental(
+                form.cleaned_data["client"],
+                form.cleaned_data["equipment"],
+                form.cleaned_data["start_datetime"],
+                form.cleaned_data["end_datetime"],
+                registered_by=request.user,
+                picked_up_now=form.cleaned_data["takes_it_now"],
+            )
+        except OperationRejectedError as error:
+            # Same rejections as online; stay on the form so the operator can fix it.
+            form.add_error(None, str(error))
+        else:
+            return redirect("rental_confirmation", rental_id=rental.pk)
+    return render(
+        request,
+        "rentals/walk_in_rental.html",
+        {"form": form, "query": query, "clients": find_clients(query)},
+    )
+
+
+@login_required
+def client_rentals(request):
+    """Show the client's rentals, the latest first, each with its status (#51)."""
+    rentals = (
+        Rental.objects.filter(client=request.user)
+        .select_related("equipment")
+        .order_by("-start_datetime")
+    )
+    return render(request, "rentals/client_rentals.html", {"rentals": rentals})

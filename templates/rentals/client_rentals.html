@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block title %}Mis rentas{% endblock %}
+
+{% block content %}
+  <h1 class="page__title">Mis rentas</h1>
+
+  {% if rentals %}
+    <table>
+      <thead>
+        <tr>
+          <th>Equipo</th>
+          <th>Desde</th>
+          <th>Hasta</th>
+          <th>Estado</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for rental in rentals %}
+          <tr>
+            <td>{{ rental.equipment.inventory_id }} · {{ rental.equipment.description }}</td>
+            <td>{{ rental.start_datetime|date:"d/m/Y H:i" }}</td>
+            <td>{{ rental.end_datetime|date:"d/m/Y H:i" }}</td>
+            <td>{{ rental.status.label }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p class="catalog__empty">Todavía no tienes rentas.</p>
+  {% endif %}
+{% endblock %}

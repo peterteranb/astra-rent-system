@@ -16,7 +16,7 @@ import pytest
 from rentals.errors import EquipmentNotAvailableError, InvalidPeriodError
 from rentals.models import EquipmentStatus, Rental
 from rentals.renting import create_rental
-from tests.helpers import foto_de_la_base, local_datetime
+from tests.helpers import dentro_de, foto_de_la_base, local_datetime
 
 pytestmark = pytest.mark.django_db
 
@@ -52,24 +52,27 @@ def test_aceptacion_c01_renta_eq01_y_solo_se_agrega_esa_renta(c01, eq01, eq02, d
 
 @pytest.mark.parametrize("quien_repite", ["c01", "c02"], ids=["C-01 repite (doble clic)", "C-02 llega segundo (E1)"])
 def test_rechazo_y_repeticion_no_crean_otra_renta_ni_cambian_nada(
-    request, c01, c02, eq01, doc_start, doc_end, quien_repite
+    request, c01, c02, eq01, quien_repite
 ):
-    """Rechazo/repeticion: EQ-01 ya esta rentado en ese periodo y alguien lo pide otra vez.
+    """Rechazo/repeticion: EQ-01 ya esta reservado en ese periodo y alguien lo pide otra vez.
 
     Requisito: PRE-CU-01 excepcion E1, PRE-RF-01 (rechazo), PRE-RC-01 (mensaje con la causa).
     Esperado:  EquipmentNotAvailableError con equipo y fechas; la base queda
-               identica a la copia tomada antes del intento.
+               identica a la copia tomada antes del intento. Las fechas son futuras
+               para que la reserva no haya vencido.
     """
     # Preparar
-    create_rental(c01, eq01, doc_start, doc_end)
+    inicio = dentro_de(7, 18)
+    fin = dentro_de(10, 9)
+    create_rental(c01, eq01, inicio, fin)
     antes = foto_de_la_base()
     cliente = request.getfixturevalue(quien_repite)
 
     # Ejecutar y comprobar la respuesta
     with pytest.raises(EquipmentNotAvailableError) as error:
-        create_rental(cliente, eq01, doc_start, doc_end)
+        create_rental(cliente, eq01, inicio, fin)
     assert "EQ-01" in str(error.value)
-    assert "09/10/2026 18:00" in str(error.value)
+    assert f"{inicio:%d/%m/%Y %H:%M}" in str(error.value)
 
     # Comprobar: nada cambio
     assert foto_de_la_base() == antes

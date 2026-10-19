@@ -27,8 +27,10 @@ import pytest
 from pytest_django.asserts import assertContains, assertRedirects, assertTemplateUsed
 
 from rentals.models import Rental
-from rentals.renting import create_rental
+from rentals.renting import cancel_rental, create_rental
+from rentals.statuses import RentalStatus
 from tests.conftest import DEMO_PASSWORD
+from tests.helpers import dentro_de, foto_de_la_base
 
 pytestmark = pytest.mark.django_db
 
@@ -144,7 +146,8 @@ def test_el_catalogo_muestra_los_disponibles_y_oculta_los_que_estan_en_revision(
     Resultado esperado: la pagina muestra EQ-01 y no muestra EQ-03.
     Requisito:          PRE-02 (consultar disponibilidad). Mostrar SOLO los
                         disponibles es un SUPUESTO nuestro (S-04).
-    Codigo que cubre:   rentals/views/renting.py -> catalog(); rentals/renting.py -> list_catalog();
+    Codigo que cubre:   rentals/views/renting.py -> catalog(); rentals/renting.py -> catalog_entries()
+                        y list_catalog();
                         plantilla rentals/catalog.html.
     """
     # Preparar
@@ -154,9 +157,61 @@ def test_el_catalogo_muestra_los_disponibles_y_oculta_los_que_estan_en_revision(
     respuesta = client.get("/")
 
     # Comprobar: lo que recibio la plantilla y lo que se ve en el HTML
-    assert list(respuesta.context["equipment_list"]) == [eq01]
+    assert [entrada.equipment for entrada in respuesta.context["catalog_entries"]] == [eq01]
     assertContains(respuesta, "EQ-01")
     assert "EQ-03" not in respuesta.content.decode()
+
+
+def test_el_catalogo_muestra_cuando_esta_ocupado_un_equipo_reservado(client, c01, eq01):
+    """Requisito: B7 (#53), el cliente ve antes de elegir fechas cuando esta ocupado cada equipo.
+    Caso:      C-01 reservo EQ-01 del dia 7 al 10 desde hoy y abre el catalogo.
+    Esperado:  EQ-01 muestra "Ocupado del ... al ..." con esas fechas; abrir la pagina no cambia la base.
+    Ejemplo:   reserva del dia 7 18:00 al 10 09:00 -> "Ocupado del <dia 7> 18:00 al <dia 10> 09:00".
+    """
+    # Preparar
+    inicio = dentro_de(7, 18)
+    fin = dentro_de(10, 9)
+    reserva = create_rental(c01, eq01, inicio, fin)
+    client.force_login(c01)
+    antes = foto_de_la_base()
+
+    # Ejecutar
+    respuesta = client.get("/")
+
+    # Comprobar: la respuesta
+    [entrada] = respuesta.context["catalog_entries"]
+    assert entrada.busy_rentals == [reserva]
+    assertContains(
+        respuesta, f"Ocupado del {inicio:%d/%m/%Y %H:%M} al {fin:%d/%m/%Y %H:%M}"
+    )
+    assert "Libre" not in respuesta.content.decode()
+
+    # Comprobar: lo guardado
+    assert foto_de_la_base() == antes
+
+
+def test_una_reserva_cancelada_no_aparece_en_el_catalogo(client, op01, c01, eq01):
+    """Requisito: B7 (#53) y B2 (#48), una reserva cancelada ya no ocupa fechas.
+    Caso:      OP-01 cancelo la reserva de EQ-01 de C-01 del dia 7 al 10; C-01 abre el catalogo.
+    Esperado:  EQ-01 no muestra ningun periodo ocupado y dice "Libre"; abrir la pagina no cambia la base.
+    Ejemplo:   reserva cancelada del dia 7 al 10 -> "Libre", sin "Ocupado del".
+    """
+    # Preparar
+    cancel_rental(create_rental(c01, eq01, dentro_de(7, 18), dentro_de(10, 9)), op01)
+    client.force_login(c01)
+    antes = foto_de_la_base()
+
+    # Ejecutar
+    respuesta = client.get("/")
+
+    # Comprobar: la respuesta
+    [entrada] = respuesta.context["catalog_entries"]
+    assert entrada.busy_rentals == []
+    assertContains(respuesta, "Libre")
+    assert "Ocupado del" not in respuesta.content.decode()
+
+    # Comprobar: lo guardado
+    assert foto_de_la_base() == antes
 
 
 # ---------- Renta aceptada (PRE-CU-01, pasos 5 a 9) ----------
@@ -203,33 +258,40 @@ def test_recorrido_completo_c01_renta_eq01_y_ve_la_confirmacion(client, c01, eq0
 
 # ---------- Renta rechazada ----------
 
-def test_c02_es_rechazado_y_vuelve_al_catalogo_con_el_mensaje_e1(
-    client, c01, c02, eq01, doc_start, doc_end
-):
+def test_c02_es_rechazado_y_vuelve_al_catalogo_con_el_mensaje_e1(client, c01, c02, eq01):
     """Rechazo E1 visto por el cliente: vuelve al catalogo con la causa.
 
     Caso:               C-01 ya confirmo EQ-01; C-02 pide EQ-01 en las mismas fechas.
-    Entrada:            POST /equipment/EQ-01/rent/ con sesion de c02.
-    Condiciones:        existe la renta de C-01 del 09/10 18:00 al 12/10 09:00.
-    Resultado esperado: C-02 termina en el catalogo y ve "El equipo EQ-01 no está
-                        disponible del 09/10/2026 18:00 al 12/10/2026 09:00.";
-                        no se guarda ninguna renta para C-02.
+    Entrada:            POST /equipment/EQ-01/rent/ con sesion de c02, recojo dentro de
+                        7 dias a las 18:00 y devolucion 3 dias despues a las 09:00.
+    Condiciones:        existe la renta de C-01 para ese periodo (fechas futuras, para
+                        que la reserva no haya vencido).
+    Resultado esperado: C-02 termina en el catalogo y ve "El equipo EQ-01 está
+                        ocupado del ... al ..."; no se guarda ninguna renta para C-02.
     Requisito:          PRE-CU-01 excepcion E1 (vuelve al catalogo), PRE-RF-01 y PRE-RC-01.
     Codigo que cubre:   rentals/views/renting.py -> rent_equipment() (except EquipmentNotAvailableError
                         -> messages.error + redirect), plantilla base.html (muestra el mensaje).
     """
     # Preparar
-    create_rental(c01, eq01, doc_start, doc_end)
+    inicio = dentro_de(7, 18)
+    fin = dentro_de(10, 9)
+    create_rental(c01, eq01, inicio, fin)
     client.force_login(c02)
+    datos = {
+        "start_date": f"{inicio:%Y-%m-%d}",
+        "start_time": "18:00",
+        "end_date": f"{fin:%Y-%m-%d}",
+        "end_time": "09:00",
+    }
 
     # Ejecutar
-    respuesta = client.post("/equipment/EQ-01/rent/", DATOS_DEL_FORMULARIO, follow=True)
+    respuesta = client.post("/equipment/EQ-01/rent/", datos, follow=True)
 
     # Comprobar
     assertRedirects(respuesta, "/")
     assertContains(
         respuesta,
-        "El equipo EQ-01 no está disponible del 09/10/2026 18:00 al 12/10/2026 09:00.",
+        f"El equipo EQ-01 está ocupado del {inicio:%d/%m/%Y %H:%M} al {fin:%d/%m/%Y %H:%M}.",
     )
     assert not Rental.objects.filter(client=c02).exists()
 
@@ -347,3 +409,108 @@ def test_numero_de_inventario_en_minusculas_encuentra_el_mismo_equipo(client, c0
 
     # Comprobar
     assert respuesta.status_code == 200
+
+
+# ---------- Renta en tienda (PRE-CU-02, B4 #50) ----------
+
+def test_op01_renta_en_tienda_y_el_cliente_se_lo_lleva_ahora(client, op01, c01, eq01):
+    """Requisito: B4 (#50) y ENT-57, con "Se lo lleva ahora" la renta nace "Rentada".
+    Caso:      OP-01 busca "c01", lo elige y le renta EQ-01 marcando "Se lo lleva ahora".
+    Esperado:  va a la confirmacion con "Registrada por op01"; la renta queda "Rentada", entregada y registrada por OP-01.
+    Ejemplo:   POST /staff/walk-in/?q=c01 con takes_it_now=on -> renta "Rentada", handed_over_by = op01.
+    """
+    # Preparar
+    client.force_login(op01)
+    inicio = dentro_de(1, 18)
+    fin = dentro_de(3, 9)
+    datos = {
+        "client": c01.pk,
+        "equipment": "EQ-01",
+        "start_date": f"{inicio:%Y-%m-%d}",
+        "start_time": "18:00",
+        "end_date": f"{fin:%Y-%m-%d}",
+        "end_time": "09:00",
+        "takes_it_now": "on",
+    }
+
+    # Ejecutar
+    respuesta = client.post("/staff/walk-in/?q=c01", datos, follow=True)
+
+    # Comprobar: la respuesta
+    renta = Rental.objects.get()
+    assertRedirects(respuesta, f"/rentals/{renta.pk}/")
+    assertContains(respuesta, "Registrada por")
+    assertContains(respuesta, "op01")
+
+    # Comprobar: lo guardado
+    assert renta.client == c01
+    assert renta.status == RentalStatus.RENTED
+    assert renta.handed_over_by == op01
+    assert renta.registered_by == op01
+
+
+def test_un_cliente_no_puede_abrir_la_renta_en_tienda(client, c01, eq01):
+    """Requisito: B4 (#50), solo el operador registra rentas en la tienda.
+    Caso:      C-01 envia el formulario de /staff/walk-in/ con datos validos.
+    Esperado:  403 y la base queda igual.
+    Ejemplo:   POST /staff/walk-in/ con sesion de c01 -> 403.
+    """
+    # Preparar
+    client.force_login(c01)
+    antes = foto_de_la_base()
+    datos = {**DATOS_DEL_FORMULARIO, "client": c01.pk, "equipment": "EQ-01"}
+
+    # Ejecutar
+    respuesta = client.post("/staff/walk-in/?q=c01", datos)
+
+    # Comprobar
+    assert respuesta.status_code == 403
+    assert foto_de_la_base() == antes
+
+
+def test_op01_ve_la_confirmacion_que_registro_y_otro_cliente_no(client, op01, c01, c02, eq01):
+    """Requisito: B4 (#50), la confirmacion la ve el cliente o quien la registro.
+    Caso:      OP-01 registro una renta de EQ-01 para C-01; OP-01 y C-02 abren su confirmacion.
+    Esperado:  OP-01 la ve con "Registrada por op01"; C-02 recibe 404.
+    Ejemplo:   GET /rentals/<id>/ -> 200 para op01, 404 para c02.
+    """
+    # Preparar
+    renta = create_rental(c01, eq01, dentro_de(1, 18), dentro_de(3, 9), registered_by=op01)
+
+    # Ejecutar
+    client.force_login(op01)
+    para_op01 = client.get(f"/rentals/{renta.pk}/")
+    client.force_login(c02)
+    para_c02 = client.get(f"/rentals/{renta.pk}/")
+
+    # Comprobar
+    assertContains(para_op01, "Registrada por")
+    assertContains(para_op01, "op01")
+    assert para_c02.status_code == 404
+
+
+# ---------- Mis rentas (B5 #51) ----------
+
+def test_mis_rentas_muestra_solo_las_rentas_del_cliente(client, c01, c02, eq01, eq02):
+    """Requisito: B5 (#51), el cliente ve que ha reservado y en que estado esta.
+    Caso:      C-01 renta EQ-01 y C-02 renta EQ-02; C-01 abre /my-rentals/.
+    Esperado:  ve solo su renta, "Reservada"; abrir la pagina no cambia la base.
+    Ejemplo:   GET /my-rentals/ con sesion de c01 -> [renta de EQ-01], sin EQ-02.
+    """
+    # Preparar
+    renta_c01 = create_rental(c01, eq01, dentro_de(1, 18), dentro_de(3, 9))
+    create_rental(c02, eq02, dentro_de(1, 18), dentro_de(3, 9))
+    client.force_login(c01)
+    antes = foto_de_la_base()
+
+    # Ejecutar
+    respuesta = client.get("/my-rentals/")
+
+    # Comprobar: la respuesta
+    assert list(respuesta.context["rentals"]) == [renta_c01]
+    assertContains(respuesta, "EQ-01")
+    assertContains(respuesta, "Reservada")
+    assert "EQ-02" not in respuesta.content.decode()
+
+    # Comprobar: lo guardado
+    assert foto_de_la_base() == antes
