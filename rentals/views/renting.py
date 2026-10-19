@@ -192,4 +192,4 @@ def catalog(request):
             "busy_periods": active_rentals,
         })
 
-    return render(request, "rentals/catalog.html", {"catalog_data": catalog_data})
+    return render(request, "rentals/catalog.html", {"catalog_data": catalog_data, "equipment_list": equipments})

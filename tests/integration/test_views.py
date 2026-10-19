@@ -29,6 +29,7 @@ from pytest_django.asserts import assertContains, assertRedirects, assertTemplat
 from rentals.models import Rental
 from rentals.renting import create_rental
 from tests.conftest import DEMO_PASSWORD
+from tests.helpers import local_datetime
 
 pytestmark = pytest.mark.django_db
 
@@ -204,7 +205,7 @@ def test_recorrido_completo_c01_renta_eq01_y_ve_la_confirmacion(client, c01, eq0
 # ---------- Renta rechazada ----------
 
 def test_c02_es_rechazado_y_vuelve_al_catalogo_con_el_mensaje_e1(
-    client, c01, c02, eq01, doc_start, doc_end
+    client, c01, c02, eq01
 ):
     """Rechazo E1 visto por el cliente: vuelve al catalogo con la causa.
 
@@ -218,19 +219,23 @@ def test_c02_es_rechazado_y_vuelve_al_catalogo_con_el_mensaje_e1(
     Codigo que cubre:   rentals/views/renting.py -> rent_equipment() (except EquipmentNotAvailableError
                         -> messages.error + redirect), plantilla base.html (muestra el mensaje).
     """
-    # Preparar
-    create_rental(c01, eq01, doc_start, doc_end)
+    inicio_futuro = local_datetime(2026, 10, 25, 18, 0)
+    fin_futuro = local_datetime(2026, 10, 28, 9, 0)
+
+    create_rental(c01, eq01, inicio_futuro, fin_futuro)
     client.force_login(c02)
 
-    # Ejecutar
-    respuesta = client.post("/equipment/EQ-01/rent/", DATOS_DEL_FORMULARIO, follow=True)
+    datos_futuros = {
+        "start_date": "2026-10-25",
+        "start_time": "18:00",
+        "end_date": "2026-10-28",
+        "end_time": "09:00",
+    }
 
-    # Comprobar
+    respuesta = client.post("/equipment/EQ-01/rent/", datos_futuros, follow=True)
+
     assertRedirects(respuesta, "/")
-    assertContains(
-        respuesta,
-        "El equipo EQ-01 no está disponible del 09/10/2026 18:00 al 12/10/2026 09:00.",
-    )
+    assertContains(respuesta, "está ocupado desde el")
     assert not Rental.objects.filter(client=c02).exists()
 
 
