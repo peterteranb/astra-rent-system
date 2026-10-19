@@ -1,4 +1,4 @@
-"""Forms for the rental request (PRE-CU-01, step 6) and for the return note (C5)."""
+"""Forms for the rental request (PRE-CU-01, step 6), the store rental (PRE-CU-02) and the return note (C5)."""
 from datetime import datetime
 
 from django import forms
@@ -6,6 +6,7 @@ from django.utils import timezone
 
 from . import rules
 from .models import Rental
+from .renting import client_accounts, list_catalog
 
 
 def combine_local(day, chosen_time):
@@ -58,6 +59,28 @@ class RentalForm(forms.Form):
                 cleaned_data["end_date"], cleaned_data["end_time"]
             )
         return cleaned_data
+
+
+class WalkInRentalForm(RentalForm):
+    """Rental the operator registers at the store for a client (PRE-CU-02).
+
+    It reuses the La Paz date and time of RentalForm and adds the client,
+    the unit and whether the client takes it now.
+    """
+
+    # The page offers only the search results (renting.find_clients), but any
+    # client is accepted, so the POST does not depend on repeating the search.
+    client = forms.ModelChoiceField(
+        label="Cliente", queryset=client_accounts(), widget=forms.RadioSelect
+    )
+    # The service checks the unit again when saving; the list only helps choose.
+    equipment = forms.ModelChoiceField(
+        label="Equipo",
+        queryset=list_catalog(),
+        to_field_name="inventory_id",
+        empty_label="Elige un equipo",
+    )
+    takes_it_now = forms.BooleanField(label="Se lo lleva ahora", required=False)
 
 
 class ReturnForm(forms.Form):

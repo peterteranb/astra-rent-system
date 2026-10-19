@@ -5,8 +5,9 @@ rules.py and talks to the database. It knows nothing about HTTP.
 """
 from dataclasses import dataclass
 
+from django.contrib.auth import get_user_model
 from django.db import transaction
-from django.db.models import Prefetch
+from django.db.models import Prefetch, Q
 from django.utils import timezone
 
 from . import rules
@@ -17,12 +18,16 @@ from .errors import (
     RentalNotCancellableError,
 )
 from .models import Equipment, EquipmentStatus, Rental
+from .roles import MAINTENANCE, OPERATOR
 from .statuses import RentalStatus
 
 DATETIME_FORMAT = "%d/%m/%Y %H:%M"
 
 # #53: the catalog shows at most the next 3 busy periods of each unit.
 MAX_BUSY_PERIODS_SHOWN = 3
+
+# #50: the operator picks the client from a short list, not from every client.
+MAX_CLIENTS_FOUND = 10
 
 
 @dataclass(frozen=True)
@@ -67,15 +72,40 @@ def busy_rentals_at(rentals, now) -> list[Rental]:
     return busy[:MAX_BUSY_PERIODS_SHOWN]
 
 
+def client_accounts():
+    """Return the users who are clients: not staff, not superusers and not in a staff role."""
+    return (
+        get_user_model()
+        .objects.filter(is_staff=False, is_superuser=False)
+        .exclude(groups__name__in=[OPERATOR, MAINTENANCE])
+    )
+
+
+def find_clients(text):
+    """Return up to MAX_CLIENTS_FOUND clients whose username, names or email contain text (ENT-54)."""
+    text = text.strip()
+    # An empty search would list every client; the operator must type something.
+    if not text:
+        return client_accounts().none()
+    matches = (
+        Q(username__icontains=text)
+        | Q(first_name__icontains=text)
+        | Q(last_name__icontains=text)
+        | Q(email__icontains=text)
+    )
+    return client_accounts().filter(matches).order_by("username")[:MAX_CLIENTS_FOUND]
+
+
 def create_rental(
-    client, equipment, start_datetime, end_datetime, registered_by=None, picked_up_at=None
+    client, equipment, start_datetime, end_datetime, registered_by=None, picked_up_now=False
 ) -> Rental:
     """Save a confirmed rental of one unit and return it (ENT-16).
 
     registered_by is the staff user who registered it (None when the
-    client rents online); picked_up_at is set when the unit leaves now.
-    Raises an OperationRejectedError subclass if a rule is broken; in that
-    case nothing is saved and no rental or unit is changed.
+    client rents online). picked_up_now means the client takes the unit
+    at the store right away: the rental is born "rented", handed over by
+    registered_by (ENT-57). Raises an OperationRejectedError subclass if a
+    rule is broken; in that case nothing is saved and no rental or unit is changed.
     """
     # The rules compare clock times (18:00, 09:00), so work in local time.
     start = timezone.localtime(start_datetime)
@@ -91,14 +121,19 @@ def create_rental(
         # Reading the row again also gets its current status.
         locked_equipment = Equipment.objects.select_for_update().get(pk=equipment.pk)
         check_equipment_is_free(locked_equipment, start, end)
-        return Rental.objects.create(
+        rental = Rental(
             client=client,
             equipment=locked_equipment,
             start_datetime=start,
             end_datetime=end,
             registered_by=registered_by,
-            picked_up_at=picked_up_at,
         )
+        if picked_up_now:
+            # No client rule yet for taking a unit now with a later start; pending question (ENT-57).
+            rental.picked_up_at = timezone.now()
+            rental.handed_over_by = registered_by
+        rental.save()
+        return rental
 
 
 def check_period(start, end):

@@ -3,22 +3,19 @@ and choose a template; the business rules live in renting.py and rules.py.
 """
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
-from django.contrib.auth import get_user_model #necesario para walk-in rentals
-from django.utils.dateparse import parse_datetime #necesario para walk-in rentals
 from django.utils import timezone #necesario para mostrar las fechas ocupadas de cada equipo en el catalogo
 
 from .. import rules
 from ..errors import EquipmentNotAvailableError, OperationRejectedError
-from ..forms import RentalForm
+from ..forms import RentalForm, WalkInRentalForm
 from ..models import Equipment, Rental
-from ..renting import catalog_entries, create_rental
+from ..renting import catalog_entries, create_rental, find_clients
 from ..models import Rental
 from ..renting import cancel_rental
 from ..roles import OPERATOR, role_required
-
-User = get_user_model() #necesario para walk-in rentals
 
 
 @login_required
@@ -62,9 +59,11 @@ def rent_equipment(request, inventory_id):
 
 @login_required
 def rental_confirmation(request, rental_id):
-    """Step 9: show the confirmed rental to the client who made it."""
-    # Filtering by client means nobody can open another client's rental.
-    rental = get_object_or_404(Rental, pk=rental_id, client=request.user)
+    """Step 9: show the confirmed rental to its client or to the operator who registered it."""
+    # Filtering by user means nobody else can open the rental (#50).
+    rental = get_object_or_404(
+        Rental, Q(client=request.user) | Q(registered_by=request.user), pk=rental_id
+    )
     return render(
         request,
         "rentals/rental_confirmation.html",
@@ -103,55 +102,32 @@ def cancel_reservation(request, rental_id):
 
 @role_required(OPERATOR)
 def walk_in_rental(request):
-    """Permite al operador registrar una renta en tienda buscando al cliente por ID/username."""
-    client_found = None
-    client_query = request.GET.get("client_id", "").strip()
-
-    # Si se realizó una búsqueda de cliente
-    if client_query:
-        client_found = User.objects.filter(username=client_query).first() or \
-                       User.objects.filter(id=client_query if client_query.isdigit() else None).first()
-        if not client_found:
-            messages.error(request, f"No se encontró ningún cliente con el ID/usuario '{client_query}'.")
-
-    if request.method == "POST":
-        client_id = request.POST.get("client_id")
-        inventory_id = request.POST.get("inventory_id")
-        start_raw = request.POST.get("start_datetime")
-        end_raw = request.POST.get("end_datetime")
-
-        client = get_object_or_404(User, pk=client_id)
-        equipment = get_object_or_404(Equipment, inventory_id=inventory_id)
-
+    """Find a client by GET and register a store rental for them by POST (PRE-CU-02)."""
+    # The form posts to the same address with ?q=, so the search results
+    # stay on the page when the rental is rejected.
+    query = request.GET.get("q", "")
+    form = WalkInRentalForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
         try:
-            start_dt = parse_datetime(start_raw)
-            end_dt = parse_datetime(end_raw)
-
             rental = create_rental(
-                client=client,
-                equipment=equipment,
-                start_datetime=start_dt,
-                end_datetime=end_dt,
-                registered_by=request.user, # Operador que atiende
+                form.cleaned_data["client"],
+                form.cleaned_data["equipment"],
+                form.cleaned_data["start_datetime"],
+                form.cleaned_data["end_datetime"],
+                registered_by=request.user,
+                picked_up_now=form.cleaned_data["takes_it_now"],
             )
-            messages.success(
-                request,
-                f"Renta registrada exitosamente para {client.get_full_name() or client.username}.",
-            )
-            return redirect("staff_reservations")
-        except Exception as e:
-            messages.error(request, str(e))
-
-    equipments = Equipment.objects.filter(status="available")
+        except OperationRejectedError as error:
+            # Same rejections as online; stay on the form so the operator can fix it.
+            form.add_error(None, str(error))
+        else:
+            return redirect("rental_confirmation", rental_id=rental.pk)
     return render(
         request,
         "rentals/walk_in_rental.html",
-        {
-            "client_found": client_found,
-            "client_query": client_query,
-            "equipments": equipments,
-        },
+        {"form": form, "query": query, "clients": find_clients(query)},
     )
+
 
 @login_required
 def client_rentals_view(request):
