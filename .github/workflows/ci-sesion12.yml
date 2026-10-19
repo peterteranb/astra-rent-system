@@ -57,6 +57,13 @@ jobs:
       # Para paquetes src/ con pyproject.toml, agregar aqui su instalacion:
       # - run: python -m pip install -e .
 
+      - name: Revisar la configuracion de Django
+        run: python manage.py check
+
+      # Falla si un modelo cambio y nadie creo su migracion.
+      - name: Revisar que no falte ninguna migracion
+        run: python manage.py makemigrations --check --dry-run
+
       - name: Correr todas las pruebas del proyecto con Pytest
         run: python -m pytest -q --junitxml=evidencias/junit.xml
 

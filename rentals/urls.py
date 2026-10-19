@@ -1,4 +1,4 @@
-"""Client pages of PRE-CU-01 (catalog, rental form, confirmation) and the staff pages."""
+"""Client pages (catalog, rental form, confirmation, my rentals) and the staff pages."""
 from django.urls import path
 
 from .views import handover, home, renting, review
@@ -15,9 +15,14 @@ urlpatterns = [
         name="register_pickup",
     ),
     path("staff/returns/", handover.staff_returns, name="staff_returns"),
+    path("staff/returns/<int:rental_id>/", handover.return_rental, name="return_rental"),
     path("maintenance/", review.maintenance, name="maintenance"),
-    path("staff/reservations/<int:rental_id>/cancel/", renting.cancel_reservation, name="cancel_reservation",),
-    path("staff/walk-in/", renting.walk_in_rental, name="walk_in_rental"),
-    path("my-rentals/", renting.client_rentals_view, name="client_rentals"),
     path("maintenance/<str:inventory_id>/", review.review_unit, name="review_unit"),
+    path(
+        "staff/reservations/<int:rental_id>/cancel/",
+        renting.cancel_reservation,
+        name="cancel_reservation",
+    ),
+    path("staff/walk-in/", renting.walk_in_rental, name="walk_in_rental"),
+    path("my-rentals/", renting.client_rentals, name="client_rentals"),
 ]

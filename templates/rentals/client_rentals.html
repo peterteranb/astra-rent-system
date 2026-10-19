@@ -1,20 +1,9 @@
-<!--este archivo crea una vista donde el cliente puede consultar su historial de rentas-->
+{% extends "base.html" %}
 
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Title</title>
-</head>
-<body>
-
-</body>
-</html>{% extends "base.html" %}
-
-{% block title %}Mis Rentas{% endblock %}
+{% block title %}Mis rentas{% endblock %}
 
 {% block content %}
-  <h1 class="page__title">Mis Rentas y Reservas</h1>
+  <h1 class="page__title">Mis rentas</h1>
 
   {% if rentals %}
     <table>
@@ -23,7 +12,7 @@
           <th>Equipo</th>
           <th>Desde</th>
           <th>Hasta</th>
-          <th>Estado Actual</th>
+          <th>Estado</th>
         </tr>
       </thead>
       <tbody>
@@ -32,17 +21,12 @@
             <td>{{ rental.equipment.inventory_id }} · {{ rental.equipment.description }}</td>
             <td>{{ rental.start_datetime|date:"d/m/Y H:i" }}</td>
             <td>{{ rental.end_datetime|date:"d/m/Y H:i" }}</td>
-            <td>
-              <!-- Usamos la propiedad .status que ya calcula dinámicamente el estado -->
-              <span class="badge badge--{{ rental.status }}">
-                {{ rental.get_status_display|default:rental.status }}
-              </span>
-            </td>
+            <td>{{ rental.status.label }}</td>
           </tr>
         {% endfor %}
       </tbody>
     </table>
   {% else %}
-    <p class="catalog__empty">No tienes ninguna renta registrada actualmente.</p>
+    <p class="catalog__empty">Todavía no tienes rentas.</p>
   {% endif %}
 {% endblock %}

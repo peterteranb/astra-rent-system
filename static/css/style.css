@@ -151,6 +151,13 @@ body {
   border-radius: 0.375rem;
 }
 
+.form__choice {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
 .form__help {
   color: var(--color-muted);
 }
@@ -205,6 +212,24 @@ body {
 
 .catalog__description {
   flex: 1;
+}
+
+/* Busy periods go on their own line under the unit. */
+.catalog__busy,
+.catalog__free {
+  flex-basis: 100%;
+  margin: 0;
+  padding: 0;
+  font-size: 0.9rem;
+  list-style: none;
+}
+
+.catalog__busy {
+  color: var(--color-muted);
+}
+
+.catalog__free {
+  color: var(--color-success);
 }
 
 .catalog__empty,

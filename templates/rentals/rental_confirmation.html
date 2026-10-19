@@ -12,6 +12,10 @@
       <dd>{{ rental.start_datetime|date:"d/m/Y H:i" }}</dd>
       <dt>Devolución</dt>
       <dd>{{ rental.end_datetime|date:"d/m/Y H:i" }}</dd>
+      {% if rental.registered_by %}
+        <dt>Registrada por</dt>
+        <dd>{{ rental.registered_by.username }}</dd>
+      {% endif %}
     </dl>
     <p class="rental-hint">Entregamos los equipos desde las {{ earliest_pickup_time|time:"H:i" }}.</p>
     <a class="button" href="{% url 'catalog' %}">Volver al catálogo</a>

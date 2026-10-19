@@ -31,8 +31,8 @@ Un caso de uso por sección: primero **qué hace** (actor, pasos y rechazos), de
 |---|---|
 | **Actor** | Cliente (`c01`) |
 | **Disparador** | Elige un equipo del catálogo y unas fechas. |
-| **Pasos** | 1. Elige el equipo. 2. Escribe el recojo (desde las 18:00) y la devolución (hasta las 09:00). 3. Confirma. 4. Ve la confirmación. |
-| **Rechazos** | Fechas inválidas: se queda en el formulario con la causa. Fechas ocupadas: vuelve al catálogo con «ocupado del … al …, libre hasta …». |
+| **Pasos** | 1. Elige el equipo en el catálogo, que muestra «Ocupado del … al …» (hasta 3 periodos) o «Libre» (`renting.catalog_entries`). 2. Escribe el recojo (desde las 18:00) y la devolución (hasta las 09:00). 3. Confirma. 4. Ve la confirmación. |
+| **Rechazos** | Fechas inválidas: se queda en el formulario con la causa. Fechas ocupadas: vuelve al catálogo con «El equipo EQ-01 está ocupado del … al ….» y, si esa renta empieza después del recojo pedido, «Está libre hasta el … a las 09:00.». |
 | **Reglas** | PRE-RF-01 (gana el primero, sin cruces), ENT-19, ENT-52, ENT-64. |
 
 ```mermaid
@@ -57,12 +57,13 @@ sequenceDiagram
         V-->>N: mismo formulario con la causa
     else periodo válido
         U->>DB: BEGIN · SELECT equipo FOR UPDATE (bloquea EQ-01)
-        U->>DB: SELECT rentas de EQ-01
+        U->>DB: SELECT rentas de EQ-01 (por fecha de inicio)
+        U->>U: check_equipment_is_free: occupies_equipment_at(ahora) («Reservada» o «Rentada»)
         U->>R: periods_overlap con cada renta que sigue ocupando el equipo
         alt fechas ocupadas
             U->>DB: ROLLBACK (no se guardó nada)
-            U-->>V: EquipmentNotAvailableError
-            V-->>N: catálogo con «ocupado del … al …, libre hasta …»
+            U-->>V: EquipmentNotAvailableError (busy_message)
+            V-->>N: 302 al catálogo con «ocupado del … al …. Está libre hasta …»
         else fechas libres
             U->>DB: INSERT renta · COMMIT
             U-->>V: renta «Reservada»
@@ -81,7 +82,7 @@ sequenceDiagram
 |---|---|
 | **Actor** | Operador (`op01`) |
 | **Disparador** | Un cliente llega a la tienda. |
-| **Pasos** | 1. Busca al cliente por nombre, apellido, usuario o correo. 2. Lo elige. 3. Elige el equipo y las fechas. 4. Si el cliente se lo lleva en ese momento, marca «Se lo lleva ahora». 5. Confirma. |
+| **Pasos** | 1. Abre «Renta en tienda» y busca al cliente por nombre, apellido, usuario o correo. 2. Lo elige. 3. Elige el equipo y las fechas. 4. Si el cliente se lo lleva en ese momento, marca «Se lo lleva ahora». 5. Confirma. 6. Ve la confirmación con «Registrada por: op01». |
 | **Rechazos** | Los mismos de PRE-CU-01: las reglas son iguales para todos. |
 | **Reglas** | ENT-53, ENT-54, ENT-57. La renta queda «Registrada por: op01». Con «Se lo lleva ahora» nace «Rentada». |
 
@@ -90,22 +91,23 @@ sequenceDiagram
     actor O as Operador
     participant N as Navegador
     participant MW as Middleware de Django<br/>(sesión, CSRF, usuario)
-    participant V as Vista<br/>views.renting (renta en tienda)
+    participant V as Vista<br/>views.renting.walk_in_rental
     participant U as Caso de uso<br/>renting.py
     participant DB as PostgreSQL
 
     O->>N: Escribe «perez» y busca
-    N->>MW: GET con el texto buscado
+    N->>MW: GET /staff/walk-in/?q=perez
     MW->>V: request con op01
     V->>V: @role_required(OPERATOR)
     V->>U: find_clients("perez")
-    U->>DB: SELECT clientes por usuario, nombre, apellido o correo (sin personal, máx. 10)
+    U->>DB: SELECT clientes por usuario, nombre, apellido o correo (sin personal, operador ni mantenimiento, máx. 10)
     U-->>V: lista de clientes
-    V-->>N: resultados
+    V-->>N: resultados y WalkInRentalForm
     O->>N: Elige a c01, el equipo, las fechas y «Se lo lleva ahora»
-    N->>MW: POST
+    N->>MW: POST /staff/walk-in/?q=perez
     MW->>V: request con op01
-    V->>U: create_rental(c01, EQ-02, inicio, fin, registered_by=op01, se lo lleva ahora)
+    V->>V: WalkInRentalForm (cliente, equipo, fechas → hora de La Paz, «Se lo lleva ahora»)
+    V->>U: create_rental(c01, EQ-02, inicio, fin, registered_by=op01, picked_up_now=True)
     Note over U,DB: Mismas validaciones y bloqueo que PRE-CU-01
     alt rechazo
         U-->>V: OperationRejectedError (causa)
@@ -113,7 +115,7 @@ sequenceDiagram
     else éxito
         U->>DB: INSERT renta (registered_by, picked_up_at, handed_over_by) · COMMIT
         U-->>V: renta «Rentada»
-        V-->>N: 302 con el mensaje de éxito
+        V-->>N: 302 a la confirmación con «Registrada por: op01»
     end
 ```
 
@@ -260,8 +262,8 @@ sequenceDiagram
 |---|---|
 | **Actor** | Operador desde «Reservas por entregar», o admin desde su panel |
 | **Disparador** | El cliente avisa que no vendrá, o hay un problema (por ejemplo, el equipo se rompió antes, ENT-47). |
-| **Pasos** | 1. Presiona «Cancelar» en la reserva. 2. Ve «Reserva cancelada.». |
-| **Rechazos** | Solo se cancela una reserva que todavía no se recogió. |
+| **Pasos** | 1. Presiona «Cancelar» en la reserva. 2. Ve «Reserva cancelada: EQ-01 de c01.». |
+| **Rechazos** | Solo se cancela una reserva «Reservada». Si ya fue entregada, devuelta o cancelada, el mensaje dice cuándo; si venció, «La reserva de EQ-01 venció a las 12:00.». |
 | **Reglas** | ENT-55 («hacer y deshacer reservas»). Las fechas quedan libres para otros. |
 
 ```mermaid
@@ -269,7 +271,7 @@ sequenceDiagram
     actor O as Operador
     participant N as Navegador
     participant MW as Middleware de Django<br/>(sesión, CSRF, usuario)
-    participant V as Vista<br/>cancelar reserva
+    participant V as Vista<br/>views.renting.cancel_reservation
     participant U as Caso de uso<br/>renting.cancel_rental
     participant DB as PostgreSQL
 
@@ -279,15 +281,15 @@ sequenceDiagram
     V->>V: @role_required(OPERATOR) y @require_POST
     V->>U: cancel_rental(renta 7, op01)
     U->>DB: BEGIN · SELECT renta FOR UPDATE
-    U->>U: ¿sigue «Reservada»?
-    alt ya recogida, devuelta o cancelada
-        U->>DB: ROLLBACK
-        U-->>V: OperationRejectedError
+    U->>U: check_can_cancel: ¿status_at(ahora) es «Reservada»?
+    alt entregada, devuelta, cancelada o vencida
+        U->>DB: ROLLBACK (no se guardó nada)
+        U-->>V: RentalNotCancellableError (con la causa)
         V-->>N: 302 a la lista con la causa
     else reservada
         U->>DB: UPDATE cancelled_at, cancelled_by · COMMIT
         U-->>V: renta «Cancelada»
-        V-->>N: 302 con «Reserva cancelada.»
+        V-->>N: 302 a la lista con «Reserva cancelada: EQ-01 de c01.»
     end
 ```
 
@@ -297,7 +299,7 @@ sequenceDiagram
 
 | Botón | Función | Tabla: columnas que cambian |
 |---|---|---|
-| Rentar (cliente u operador) | `renting.create_rental` | `rentals_rental`: fila nueva |
+| Rentar (cliente u operador) | `renting.create_rental` | `rentals_rental`: fila nueva (con «Se lo lleva ahora», también `picked_up_at` y `handed_over_by`) |
 | Registrar recojo | `handover.register_pickup` | `rentals_rental`: `picked_up_at`, `handed_over_by` |
 | Registrar devolución | `handover.register_return` | `rentals_rental`: `returned_at`, `received_by`, `return_note` |
 | ↳ (dentro de la devolución) | `history.change_status` | `rentals_equipment`: `status` · `rentals_statuschange`: fila nueva |

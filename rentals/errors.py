@@ -41,5 +41,9 @@ class RentalCancelledError(OperationRejectedError):
     """The rental was cancelled."""
 
 
+class RentalNotCancellableError(OperationRejectedError):
+    """The rental is no longer a reservation, so it cannot be cancelled."""
+
+
 class InvalidStatusChangeError(OperationRejectedError):
     """The unit is retired, and a retirement is final."""

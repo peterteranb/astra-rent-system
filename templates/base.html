@@ -13,12 +13,18 @@
     {% if is_operator or is_maintenance %}
       <nav class="site-header__nav">
         {% if is_operator %}
+          <a href="{% url 'walk_in_rental' %}">Renta en tienda</a>
           <a href="{% url 'staff_reservations' %}">Reservas por entregar</a>
           <a href="{% url 'staff_returns' %}">Devoluciones</a>
         {% endif %}
         {% if is_maintenance %}
           <a href="{% url 'maintenance' %}">Mantenimiento</a>
         {% endif %}
+      </nav>
+    {% elif user.is_authenticated %}
+      {# Anyone logged in without a staff role is a client. #}
+      <nav class="site-header__nav">
+        <a href="{% url 'client_rentals' %}">Mis rentas</a>
       </nav>
     {% endif %}
     {% if user.is_authenticated %}
