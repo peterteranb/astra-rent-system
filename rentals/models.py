@@ -10,10 +10,11 @@ from .statuses import EquipmentStatus, RentalStatus
 class Equipment(models.Model):
     """Una unidad física del inventario, por ejemplo una sola mesa (ENT-09, RF-05)."""
 
-    inventory_id = models.CharField(max_length=20, unique=True)
-    serial_number = models.CharField(max_length=50)
-    description = models.CharField(max_length=200)
+    inventory_id = models.CharField(verbose_name="Código", max_length=20, unique=True)
+    serial_number = models.CharField(verbose_name="Número de serie", max_length=50)
+    description = models.CharField(verbose_name="Descripción", max_length=200)
     status = models.CharField(
+        verbose_name="Estado",
         max_length=20,
         choices=EquipmentStatus.choices,
         default=EquipmentStatus.AVAILABLE,
@@ -21,6 +22,8 @@ class Equipment(models.Model):
 
     class Meta:
         ordering = ["inventory_id"]
+        verbose_name = "Equipo"
+        verbose_name_plural = "Equipos"
 
     def __str__(self):
         """Muestra el código y la descripción, por ejemplo «EQ-01 - Mesa plegable 1,80 m»."""
@@ -40,14 +43,16 @@ class Rental(models.Model):
         settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,
         related_name="rentals",
+        verbose_name="Cliente",
     )
     equipment = models.ForeignKey(
         Equipment,
         on_delete=models.PROTECT,
         related_name="rentals",
+        verbose_name="Equipo",
     )
-    start_datetime = models.DateTimeField()
-    end_datetime = models.DateTimeField()
+    start_datetime = models.DateTimeField(verbose_name="Recojo desde")
+    end_datetime = models.DateTimeField(verbose_name="Devolución hasta")
     picked_up_at = models.DateTimeField(verbose_name="Recogido el", null=True, blank=True)
     # ENT-56: se registra quién entregó «porque tiene q estar todo inventariado».
     handed_over_by = models.ForeignKey(
@@ -92,6 +97,8 @@ class Rental(models.Model):
 
     class Meta:
         ordering = ["start_datetime"]
+        verbose_name = "Renta"
+        verbose_name_plural = "Rentas"
         constraints = [
             # Última defensa: la base misma rechaza un periodo que termina antes
             # de empezar, aunque alguien se salte el caso de uso.
@@ -148,19 +155,27 @@ class StatusChange(models.Model):
         Equipment,
         on_delete=models.PROTECT,
         related_name="status_changes",
+        verbose_name="Equipo",
     )
-    old_status = models.CharField(max_length=20, choices=EquipmentStatus.choices)
-    new_status = models.CharField(max_length=20, choices=EquipmentStatus.choices)
+    old_status = models.CharField(
+        verbose_name="Estado anterior", max_length=20, choices=EquipmentStatus.choices
+    )
+    new_status = models.CharField(
+        verbose_name="Estado nuevo", max_length=20, choices=EquipmentStatus.choices
+    )
     changed_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,
         related_name="status_changes",
+        verbose_name="Cambiado por",
     )
-    changed_at = models.DateTimeField(auto_now_add=True)
-    comment = models.TextField(blank=True)
+    changed_at = models.DateTimeField(verbose_name="Fecha", auto_now_add=True)
+    comment = models.TextField(verbose_name="Comentario", blank=True)
 
     class Meta:
         ordering = ["changed_at"]
+        verbose_name = "Cambio de estado"
+        verbose_name_plural = "Cambios de estado"
 
     def __str__(self):
         """Muestra el equipo y el cambio, por ejemplo «EQ-01: in_review -> available»."""
