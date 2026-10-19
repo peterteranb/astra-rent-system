@@ -31,7 +31,7 @@
 | RF-09 | El admin cancela reservas y corrige estados desde el admin de Django, sin crear ni editar rentas a mano. | `rentals/admin.py` |
 | RF-10 | Cada rol ve solo lo suyo: cliente (catálogo y sus rentas), operador (reservas y devoluciones), mantenimiento (equipos por revisar), admin (todo). | `templates/base.html`, vistas |
 | RF-11 | Las páginas del personal revisan el rol: sin sesión van al login; sin el rol, error 403. | `roles.role_required` |
-| RC-01 | Cada rechazo muestra una frase con la causa. | `rentals/errors.py` |
+| RC-01 | Cada rechazo muestra una frase con la causa. | `rentals/errors.py`, `rentals/formatting.py` |
 | RT-01 | Se usa desde el navegador en celular, tablet o computadora. | `static/css/style.css` |
 
 ## Historias de usuario
@@ -98,7 +98,7 @@ sequenceDiagram
 | | |
 |---|---|
 | **Actor** | Operador (`op01`) |
-| **Flujo** | 1. Abre «Renta en tienda» y busca al cliente (por ejemplo, «rojas»). 2. Lo elige, elige el equipo y las fechas. 3. Si se lo lleva en ese momento, marca «Se lo lleva ahora». 4. Confirma y ve la renta con «Registrada por: op01». |
+| **Flujo** | 1. Abre «Renta en tienda» y busca al cliente (por ejemplo, «rojas»). 2. Lo elige, elige el equipo y las fechas. 3. Si se lo lleva en ese momento, marca «Se lo lleva ahora». 4. Confirma y ve la renta con «Registrada por» op01. |
 | **Rechazos** | Los mismos de CU-01: las reglas son iguales para todos. |
 | **Reglas** | En la búsqueda solo aparecen clientes (máximo 10). Con «Se lo lleva ahora» la renta nace «Rentada». |
 
@@ -128,7 +128,7 @@ sequenceDiagram
     else fechas libres
         U->>BD: guarda la renta con recojo y op01
         U-->>V: renta «Rentada»
-        V-->>N: «Renta confirmada · Registrada por: op01»
+        V-->>N: «Renta confirmada» con «Registrada por» op01
     end
 ```
 
@@ -140,7 +140,7 @@ sequenceDiagram
 |---|---|
 | **Actor** | Operador (`op01`) |
 | **Flujo** | 1. Abre «Reservas por entregar». 2. Presiona «Registrar recojo». 3. Ve «Recojo registrado: EQ-01 entregado a cl01.». |
-| **Rechazos** | Ya entregada, cancelada, o vencida (pasó las 12:00 del día siguiente al inicio). |
+| **Rechazos** | Solo se entrega una renta «Reservada»: no una ya entregada, devuelta, cancelada o vencida (pasó las 12:00 del día siguiente al inicio). El mensaje dice cuándo pasó, por ejemplo «La renta de EQ-01 ya fue cancelada el 19/10/2026 10:00.». |
 | **Reglas** | Solo cambia la renta: el estado del equipo no se toca, porque «Rentada» se calcula desde la hora de recojo. |
 
 ```mermaid
@@ -159,7 +159,7 @@ sequenceDiagram
     V->>V: ¿es operador? (role_required)
     V->>U: register_pickup(renta 7, op01)
     U->>BD: bloquea la fila de la renta
-    alt ya entregada, cancelada o vencida
+    alt ya entregada, devuelta, cancelada o vencida
         U-->>V: rechazo con la causa
         V-->>N: vuelve a la lista con el error
     else sigue reservada
@@ -178,7 +178,7 @@ sequenceDiagram
 | **Actor** | Operador (`op01`) |
 | **Flujo** | 1. Abre «Devoluciones pendientes». 2. Elige la renta y escribe cómo llegó el equipo. 3. Ve «Devolución registrada: … A tiempo.» (o «Con multa», o «Se cobra un día más»). |
 | **Rechazos** | Sin observación, ya devuelta o cancelada. |
-| **Reglas** | La devolución se compara con las 09:00 del día de vencimiento. El equipo pasa a «En revisión» y queda una fila en el historial. Una renta que nunca se recogió también se puede devolver. |
+| **Reglas** | La devolución se compara con las 09:00 del día de vencimiento. El equipo pasa a «En revisión» y queda una fila en el historial. Una renta que nunca se recogió también se puede devolver (ENT-60); si su equipo ya está «En revisión», no se agrega otra fila al historial. |
 
 ```mermaid
 sequenceDiagram
@@ -215,7 +215,7 @@ sequenceDiagram
 |---|---|
 | **Actor** | Mantenimiento (`mt01`) |
 | **Flujo** | 1. Abre «Mantenimiento»: ve los equipos en revisión o en reparación. 2. Elige el nuevo estado y escribe un comentario opcional. 3. Ve «EQ-05 ahora está «Disponible».». |
-| **Rechazos** | Un equipo de baja ya no cambia. Un estado que no es resultado de una revisión. |
+| **Rechazos** | Un equipo de baja ya no cambia. Un estado que no es resultado de una revisión. No se pasa al mismo estado («El equipo EQ-06 ya está «En reparación».»); por eso el formulario no ofrece el estado actual. |
 | **Reglas** | Disponible vuelve al catálogo. Reparación vuelve a esta lista. Baja es definitiva. |
 
 ```mermaid
@@ -235,7 +235,7 @@ sequenceDiagram
     V->>U: review_equipment(EQ-05, mt01, «Disponible», comentario)
     U->>H: change_status(EQ-05, «Disponible»)
     H->>BD: bloquea la fila de EQ-05
-    alt el equipo está de baja
+    alt el equipo está de baja o ya tiene ese estado
         H-->>V: rechazo con la causa
         V-->>N: vuelve a la lista con el error
     else se puede cambiar
@@ -289,7 +289,7 @@ sequenceDiagram
 |---|---|
 | **Actor** | Admin (`ad01`, superusuario) |
 | **Flujo** | 1. En el admin, abre «Equipos» y marca uno o varios. 2. Elige la acción «Mandar a reparación» (o «Marcar disponible», o «Dar de baja»). 3. Ve cuántos cambió y cuáles no. 4. En «Cambios de estado» ve la fila nueva con su usuario. |
-| **Rechazos** | Un equipo de baja o que ya está en ese estado no cambia y se lista en «No se cambiaron». |
+| **Rechazos** | Un equipo de baja no cambia, y no se pasa al mismo estado: los dos se listan en «No se cambiaron». |
 | **Reglas** | El admin no puede editar el estado a mano ni crear rentas: todo pasa por las mismas funciones que validan y dejan historial. |
 
 ```mermaid
@@ -325,7 +325,7 @@ sequenceDiagram
 |---|---|---|
 | Rentar (cliente u operador) | `renting.create_rental` | Una fila nueva en `rentals_rental` |
 | Registrar recojo | `handover.register_pickup` | `picked_up_at`, `handed_over_by` |
-| Registrar devolución | `handover.register_return` | `returned_at`, `received_by`, `return_note`; el estado del equipo y una fila en `rentals_statuschange` |
+| Registrar devolución | `handover.register_return` | `returned_at`, `received_by`, `return_note`; el estado del equipo y una fila en `rentals_statuschange` (si el equipo no estaba ya «En revisión») |
 | Guardar (mantenimiento) | `review.review_equipment` | El estado del equipo y una fila en `rentals_statuschange` |
 | Cancelar | `renting.cancel_rental` | `cancelled_at`, `cancelled_by` |
 | Acciones del admin | `history.change_status` o `renting.cancel_rental` | Lo mismo que arriba |
