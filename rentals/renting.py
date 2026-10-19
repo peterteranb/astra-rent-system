@@ -1,7 +1,8 @@
-"""Use case PRE-CU-01: a client rents one unit for one period.
+"""Use cases of renting: the catalog, online and store rentals, and cancelling a reservation.
 
-The view calls create_rental; this module applies the rules from
-rules.py and talks to the database. It knows nothing about HTTP.
+It covers PRE-CU-01, PRE-CU-02 and PRE-CU-06. The views call this module;
+it applies the rules from rules.py and talks to the database. It knows
+nothing about HTTP.
 """
 from dataclasses import dataclass
 

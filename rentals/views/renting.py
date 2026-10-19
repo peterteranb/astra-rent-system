@@ -1,20 +1,20 @@
-"""Views of PRE-CU-01 (renting). They read the request, call the use case
-and choose a template; the business rules live in renting.py and rules.py.
+"""Renting pages: catalog, online and store rental, confirmation, cancellation and "Mis rentas".
+
+They read the request, call renting.py and choose a template; the
+business rules live in renting.py and rules.py.
 """
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
 from django.views.decorators.http import require_POST
-from django.utils import timezone #necesario para mostrar las fechas ocupadas de cada equipo en el catalogo
 
 from .. import rules
 from ..errors import EquipmentNotAvailableError, OperationRejectedError
 from ..forms import RentalForm, WalkInRentalForm
 from ..models import Equipment, Rental
-from ..renting import catalog_entries, create_rental, find_clients
-from ..models import Rental
-from ..renting import cancel_rental
+from ..renting import cancel_rental, catalog_entries, create_rental, find_clients
 from ..roles import OPERATOR, role_required
 
 
@@ -81,6 +81,7 @@ def rental_form_context(equipment, form):
         "max_days": rules.MAX_RENTAL_DURATION.days,
     }
 
+
 # role_required goes outside so a visitor is sent to the login before
 # require_POST answers 405 to a GET.
 @role_required(OPERATOR)
@@ -99,6 +100,7 @@ def cancel_reservation(request, rental_id):
         )
     # Redirect after the POST so reloading the page does not send it again.
     return redirect("staff_reservations")
+
 
 @role_required(OPERATOR)
 def walk_in_rental(request):
