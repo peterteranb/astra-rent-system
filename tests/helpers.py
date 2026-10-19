@@ -1,10 +1,4 @@
-"""Funciones de ayuda para las pruebas.
-
-Diferencia con conftest.py:
-    conftest.py tiene fixtures, que solo existen DENTRO de una prueba.
-    Aqui hay funciones normales, que se importan y se pueden usar en cualquier
-    lugar, por ejemplo para crear constantes al inicio de un archivo de pruebas.
-"""
+"""Funciones de ayuda para las pruebas: fechas en hora de La Paz y una foto de la base para los rechazos."""
 from datetime import datetime, timedelta
 
 from django.utils import timezone
@@ -13,53 +7,23 @@ from rentals.models import Equipment, Rental, StatusChange
 
 
 def local_datetime(year, month, day, hour, minute=0):
-    """Crea una fecha y hora CON zona horaria de La Paz (America/La_Paz).
-
-    Ejemplo: local_datetime(2026, 10, 9, 18) -> 09/10/2026 18:00 en Bolivia.
-
-    Por que hace falta: el proyecto usa USE_TZ = True, asi que todas las fechas
-    llevan zona horaria. timezone.make_aware() le pone la zona de TIME_ZONE
-    (settings.py). Sin esto, las comparaciones con 18:00 y 09:00 fallarian.
-    """
+    """Crea una fecha y hora con la zona de La Paz, por ejemplo local_datetime(2026, 10, 9, 18) -> 09/10/2026 18:00."""
     return timezone.make_aware(datetime(year, month, day, hour, minute))
 
 
 def dentro_de(dias, hora, minuto=0):
-    """Crea la fecha y hora de La Paz que cae "dias" despues de hoy, a esa hora.
+    """Crea la fecha y hora de La Paz que cae dias después de hoy, a esa hora.
 
-    Ejemplo: si hoy es 18/10/2026, dentro_de(7, 18) -> 25/10/2026 18:00.
-
-    Por que hace falta: una reserva sin recojo vence a las 12:00 del dia siguiente
-    y deja de ocupar el equipo, asi que con una fecha fija que ya paso la prueba
-    de un cruce de fechas no probaria nada.
+    Hace falta porque una reserva vence a las 12:00 del día siguiente: con una
+    fecha fija que ya pasó, la reserva ya no ocuparía el equipo.
     """
     dia = timezone.localdate() + timedelta(days=dias)
     return local_datetime(dia.year, dia.month, dia.day, hora, minuto)
 
 
 def foto_de_la_base():
-    """Copia independiente de lo que cambian las operaciones: rentas, equipos e historial."""
-    rentas = list(
-        Rental.objects.order_by("pk").values(
-            "pk",
-            "client_id",
-            "equipment_id",
-            "start_datetime",
-            "end_datetime",
-            "picked_up_at",
-            "handed_over_by_id",
-            "returned_at",
-            "received_by_id",
-            "cancelled_at",
-            "cancelled_by_id",
-            "return_note",
-            "registered_by_id",
-        )
-    )
-    equipos = list(Equipment.objects.order_by("pk").values("pk", "inventory_id", "status"))
-    historial = list(
-        StatusChange.objects.order_by("pk").values(
-            "pk", "equipment_id", "old_status", "new_status", "changed_by_id", "changed_at", "comment"
-        )
-    )
+    """Copia de todo lo que cambian las operaciones: rentas, equipos e historial."""
+    rentas = list(Rental.objects.order_by("pk").values())
+    equipos = list(Equipment.objects.order_by("pk").values())
+    historial = list(StatusChange.objects.order_by("pk").values())
     return rentas, equipos, historial
