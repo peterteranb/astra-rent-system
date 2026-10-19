@@ -28,7 +28,7 @@ import pytest
 from rentals.errors import EquipmentNotAvailableError
 from rentals.models import Equipment, EquipmentStatus, Rental
 from rentals.renting import create_rental
-from tests.helpers import local_datetime
+from tests.helpers import dentro_de
 
 pytestmark = pytest.mark.django_db
 
@@ -67,28 +67,37 @@ def test_si_c01_ya_tiene_eq01_la_renta_de_c02_en_esas_fechas_se_rechaza(
     """Rechazo E1: el segundo cliente no puede rentar el mismo equipo en las mismas fechas.
 
     Caso:               C-01 confirmo EQ-01 primero; despues C-02 pide EQ-01 para el mismo periodo.
-    Entrada:            c02, eq01, recojo 09/10 18:00, devolucion 12/10 09:00.
-    Condiciones:        ya existe la renta de C-01 para ese periodo.
+    Entrada:            c02, eq01, recojo dentro de 7 dias a las 18:00, devolucion 3 dias despues a las 09:00.
+    Condiciones:        ya existe la renta de C-01 para ese periodo (fechas futuras, para
+                        que la reserva no haya vencido).
     Resultado esperado: se lanza EquipmentNotAvailableError con un mensaje que dice
-                        el equipo y las fechas; en la base sigue habiendo una sola
+                        el equipo y las fechas ocupadas; en la base sigue habiendo una sola
                         renta (la de C-01, sin cambios) y ninguna de C-02.
     Requisito:          PRE-RF-01 (escenario de rechazo de la Sesion 6) y
                         PRE-RC-01 (el mensaje dice equipo y fechas).
     Codigo que cubre:   rentals/renting.py -> create_rental() y check_equipment_is_free(),
                         que usa rules.periods_overlap().
     """
-    inicio_futuro = local_datetime(2026, 10, 25, 18, 0)
-    fin_futuro = local_datetime(2026, 10, 28, 9, 0)
+    # Preparar: C-01 confirma primero
+    inicio = dentro_de(7, 18)
+    fin = dentro_de(10, 9)
+    create_rental(c01, eq01, inicio, fin)
 
-    create_rental(c01, eq01, inicio_futuro, fin_futuro)
-
+    # Ejecutar: C-02 pide lo mismo
     with pytest.raises(EquipmentNotAvailableError) as error:
-        create_rental(c02, eq01, inicio_futuro, fin_futuro)
+        create_rental(c02, eq01, inicio, fin)
 
-    assert "está ocupado desde el" in str(error.value)
+    # Comprobar: el mensaje que vera C-02 (sin "libre hasta": la renta de C-01 empieza a la vez)
+    assert str(error.value) == (
+        f"El equipo EQ-01 está ocupado del {inicio:%d/%m/%Y %H:%M} al {fin:%d/%m/%Y %H:%M}."
+    )
 
+    # Comprobar: la renta de C-01 sigue igual y no se guardo nada para C-02
     unica = Rental.objects.get()
     assert unica.client == c01
+    assert unica.start_datetime == inicio
+    assert unica.end_datetime == fin
+    assert not Rental.objects.filter(client=c02).exists()
 
 
 def test_un_equipo_en_revision_no_se_puede_rentar(c01, eq03_in_review, doc_start, doc_end):
@@ -117,23 +126,25 @@ def test_un_equipo_en_revision_no_se_puede_rentar(c01, eq03_in_review, doc_start
 
 
 def test_otra_unidad_del_mismo_modelo_si_se_puede_rentar_en_las_mismas_fechas(
-    c01, c02, eq01, eq02, doc_start, doc_end
+    c01, c02, eq01, eq02
 ):
     """La disponibilidad es por UNIDAD, no por modelo.
 
     Caso:               C-01 tiene EQ-01; C-02 pide EQ-02 (misma mesa, otra unidad) en las mismas fechas.
-    Entrada:            c02, eq02, recojo y devolucion de los documentos.
-    Condiciones:        EQ-01 y EQ-02 tienen la misma descripcion; EQ-01 ya esta rentado en ese periodo.
+    Entrada:            c02, eq02, recojo dentro de 7 dias a las 18:00, devolucion 3 dias despues a las 09:00.
+    Condiciones:        EQ-01 y EQ-02 tienen la misma descripcion; EQ-01 ya esta reservado en ese periodo.
     Resultado esperado: la renta de C-02 se guarda; hay dos rentas, una por unidad.
     Requisito:          ENT-09 (cada equipo se registra individualmente) y
                         caso limite "dos unidades del mismo modelo" (Sesion 4).
     Codigo que cubre:   rentals/renting.py -> create_rental() (solo mira las rentas de ESA unidad).
     """
     # Preparar
-    create_rental(c01, eq01, doc_start, doc_end)
+    inicio = dentro_de(7, 18)
+    fin = dentro_de(10, 9)
+    create_rental(c01, eq01, inicio, fin)
 
     # Ejecutar
-    renta_c02 = create_rental(c02, eq02, doc_start, doc_end)
+    renta_c02 = create_rental(c02, eq02, inicio, fin)
 
     # Comprobar
     assert Rental.objects.count() == 2
@@ -141,13 +152,12 @@ def test_otra_unidad_del_mismo_modelo_si_se_puede_rentar_en_las_mismas_fechas(
     assert renta_c02.client == c02
 
 
-def test_el_mismo_equipo_se_puede_rentar_cuando_termina_la_renta_anterior(
-    c01, c02, eq01, doc_start, doc_end
-):
+def test_el_mismo_equipo_se_puede_rentar_cuando_termina_la_renta_anterior(c01, c02, eq01):
     """Caso limite: una renta que empieza despues de que termina la otra se acepta.
 
-    Caso:               C-01 tiene EQ-01 hasta el 12/10 09:00; C-02 lo pide del 12/10 18:00 al 14/10 09:00.
-    Entrada:            c02, eq01, recojo 12/10 18:00, devolucion 14/10 09:00.
+    Caso:               C-01 tiene EQ-01 hasta el dia 10 desde hoy a las 09:00; C-02 lo pide
+                        desde ese mismo dia a las 18:00 hasta dos dias despues a las 09:00.
+    Entrada:            c02, eq01, recojo dentro de 10 dias a las 18:00, devolucion dentro de 12 dias a las 09:00.
     Condiciones:        los periodos no comparten ningun minuto.
     Resultado esperado: la renta de C-02 se guarda; EQ-01 tiene dos rentas.
     Requisito:          ENT-10 (el equipo queda apartado solo en su periodo) y caso
@@ -155,9 +165,9 @@ def test_el_mismo_equipo_se_puede_rentar_cuando_termina_la_renta_anterior(
     Codigo que cubre:   rentals/renting.py -> create_rental() con rules.periods_overlap().
     """
     # Preparar
-    create_rental(c01, eq01, doc_start, doc_end)
-    recojo_siguiente = local_datetime(2026, 10, 12, 18, 0)
-    devolucion_siguiente = local_datetime(2026, 10, 14, 9, 0)
+    create_rental(c01, eq01, dentro_de(7, 18), dentro_de(10, 9))
+    recojo_siguiente = dentro_de(10, 18)
+    devolucion_siguiente = dentro_de(12, 9)
 
     # Ejecutar
     create_rental(c02, eq01, recojo_siguiente, devolucion_siguiente)

@@ -29,7 +29,7 @@ from pytest_django.asserts import assertContains, assertRedirects, assertTemplat
 from rentals.models import Rental
 from rentals.renting import create_rental
 from tests.conftest import DEMO_PASSWORD
-from tests.helpers import local_datetime
+from tests.helpers import dentro_de
 
 pytestmark = pytest.mark.django_db
 
@@ -204,38 +204,41 @@ def test_recorrido_completo_c01_renta_eq01_y_ve_la_confirmacion(client, c01, eq0
 
 # ---------- Renta rechazada ----------
 
-def test_c02_es_rechazado_y_vuelve_al_catalogo_con_el_mensaje_e1(
-    client, c01, c02, eq01
-):
+def test_c02_es_rechazado_y_vuelve_al_catalogo_con_el_mensaje_e1(client, c01, c02, eq01):
     """Rechazo E1 visto por el cliente: vuelve al catalogo con la causa.
 
     Caso:               C-01 ya confirmo EQ-01; C-02 pide EQ-01 en las mismas fechas.
-    Entrada:            POST /equipment/EQ-01/rent/ con sesion de c02.
-    Condiciones:        existe la renta de C-01 del 09/10 18:00 al 12/10 09:00.
-    Resultado esperado: C-02 termina en el catalogo y ve "El equipo EQ-01 no está
-                        disponible del 09/10/2026 18:00 al 12/10/2026 09:00.";
-                        no se guarda ninguna renta para C-02.
+    Entrada:            POST /equipment/EQ-01/rent/ con sesion de c02, recojo dentro de
+                        7 dias a las 18:00 y devolucion 3 dias despues a las 09:00.
+    Condiciones:        existe la renta de C-01 para ese periodo (fechas futuras, para
+                        que la reserva no haya vencido).
+    Resultado esperado: C-02 termina en el catalogo y ve "El equipo EQ-01 está
+                        ocupado del ... al ..."; no se guarda ninguna renta para C-02.
     Requisito:          PRE-CU-01 excepcion E1 (vuelve al catalogo), PRE-RF-01 y PRE-RC-01.
     Codigo que cubre:   rentals/views/renting.py -> rent_equipment() (except EquipmentNotAvailableError
                         -> messages.error + redirect), plantilla base.html (muestra el mensaje).
     """
-    inicio_futuro = local_datetime(2026, 10, 25, 18, 0)
-    fin_futuro = local_datetime(2026, 10, 28, 9, 0)
-
-    create_rental(c01, eq01, inicio_futuro, fin_futuro)
+    # Preparar
+    inicio = dentro_de(7, 18)
+    fin = dentro_de(10, 9)
+    create_rental(c01, eq01, inicio, fin)
     client.force_login(c02)
-
-    datos_futuros = {
-        "start_date": "2026-10-25",
+    datos = {
+        "start_date": f"{inicio:%Y-%m-%d}",
         "start_time": "18:00",
-        "end_date": "2026-10-28",
+        "end_date": f"{fin:%Y-%m-%d}",
         "end_time": "09:00",
     }
 
-    respuesta = client.post("/equipment/EQ-01/rent/", datos_futuros, follow=True)
+    # Ejecutar
+    respuesta = client.post("/equipment/EQ-01/rent/", datos, follow=True)
 
+    # Comprobar
     assertRedirects(respuesta, "/")
-    assertContains(respuesta, "está ocupado desde el")
+    assertContains(
+        respuesta,
+        f"El equipo EQ-01 está ocupado del {inicio:%d/%m/%Y %H:%M} al {fin:%d/%m/%Y %H:%M}.",
+    )
     assert not Rental.objects.filter(client=c02).exists()
 
 

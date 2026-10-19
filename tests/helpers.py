@@ -5,7 +5,7 @@ Diferencia con conftest.py:
     Aqui hay funciones normales, que se importan y se pueden usar en cualquier
     lugar, por ejemplo para crear constantes al inicio de un archivo de pruebas.
 """
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from django.utils import timezone
 
@@ -22,6 +22,19 @@ def local_datetime(year, month, day, hour, minute=0):
     (settings.py). Sin esto, las comparaciones con 18:00 y 09:00 fallarian.
     """
     return timezone.make_aware(datetime(year, month, day, hour, minute))
+
+
+def dentro_de(dias, hora, minuto=0):
+    """Crea la fecha y hora de La Paz que cae "dias" despues de hoy, a esa hora.
+
+    Ejemplo: si hoy es 18/10/2026, dentro_de(7, 18) -> 25/10/2026 18:00.
+
+    Por que hace falta: una reserva sin recojo vence a las 12:00 del dia siguiente
+    y deja de ocupar el equipo, asi que con una fecha fija que ya paso la prueba
+    de un cruce de fechas no probaria nada.
+    """
+    dia = timezone.localdate() + timedelta(days=dias)
+    return local_datetime(dia.year, dia.month, dia.day, hora, minuto)
 
 
 def foto_de_la_base():

@@ -83,34 +83,34 @@ def check_equipment_is_free(equipment, start, end):
             f"(estado: {equipment.get_status_display()})."
         )
 
-    # Compare with every rental of this unit using the same rule the
-    # unit tests check, instead of repeating the condition in SQL.
+    # Compare with every rental of this unit using the same rules the
+    # unit tests check, instead of repeating the conditions in SQL.
+    # Rentals come ordered by start (Rental.Meta), so the first clash is the
+    # one that starts first and the message names the closest busy period.
     now = timezone.now()
-
     for rental in equipment.rentals.all():
-        # B2: Si la renta fue cancelada, no bloquea el equipo
-        if rental.cancelled_at is not None:
+        if not rental.occupies_equipment_at(now):
             continue
-
-        # B2: Si la renta ya fue devuelta, no bloquea el equipo
-        if rental.returned_at is not None:
-            continue
-
-        # B2: Si pasó el tiempo límite de recojo y nunca se recogió, se considera expirada/no recogida y libera el equipo
-        start_local = timezone.localtime(rental.start_datetime)
-        if rental.picked_up_at is None and rules.is_pickup_expired(start_local, timezone.localtime(now)):
-            continue
-
-        # Validar solapamiento de fechas para las rentas que SÍ están vigentes/activas/pendientes
         if rules.periods_overlap(start, end, rental.start_datetime, rental.end_datetime):
-            inicio_ocupado = timezone.localtime(rental.start_datetime).strftime(DATETIME_FORMAT)
-            fin_ocupado = timezone.localtime(rental.end_datetime).strftime(DATETIME_FORMAT)
+            raise EquipmentNotAvailableError(busy_message(equipment, rental, start))
 
-            raise EquipmentNotAvailableError(
-                f"El equipo {equipment.inventory_id} está ocupado desde el "
-                f"{inicio_ocupado} hasta el {fin_ocupado}. "
-                f"Volverá a estar libre a partir del {fin_ocupado}."
-            )
+
+def busy_message(equipment, rental, start):
+    """Say when the unit is busy and, if that rental starts later, until when it is free (ENT-36, ENT-64)."""
+    busy_start = timezone.localtime(rental.start_datetime)
+    busy_end = timezone.localtime(rental.end_datetime)
+    message = (
+        f"El equipo {equipment.inventory_id} está ocupado "
+        f"del {busy_start:{DATETIME_FORMAT}} al {busy_end:{DATETIME_FORMAT}}."
+    )
+    # Only a rental that starts after the requested pickup leaves free days
+    # before it, and the unit must be back by 09:00 of its first day (#47).
+    if busy_start > start:
+        message += (
+            f" Está libre hasta el {busy_start:%d/%m/%Y} a las {rules.LATEST_RETURN_TIME:%H:%M}."
+        )
+    return message
+
 
 def cancel_rental(rental, cancelled_by) -> Rental:
     """Cancel a rental that has not yet been picked up."""
