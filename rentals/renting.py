@@ -3,7 +3,10 @@
 The view calls create_rental; this module applies the rules from
 rules.py and talks to the database. It knows nothing about HTTP.
 """
+from dataclasses import dataclass
+
 from django.db import transaction
+from django.db.models import Prefetch
 from django.utils import timezone
 
 from . import rules
@@ -12,13 +15,50 @@ from .models import Equipment, EquipmentStatus, Rental
 
 DATETIME_FORMAT = "%d/%m/%Y %H:%M"
 
+# #53: the catalog shows at most the next 3 busy periods of each unit.
+MAX_BUSY_PERIODS_SHOWN = 3
+
+
+@dataclass(frozen=True)
+class CatalogEntry:
+    """One unit of the catalog with the rentals that keep it busy from now on."""
+
+    equipment: Equipment
+    busy_rentals: list[Rental]
+
 
 def list_catalog():
     """Return the units shown in the catalog (PRE-CU-01, step 4)."""
-    # ASSUMPTION: the catalog shows only "available" units. Whether it
-    # should show all units is pending (Sesión 07 §7, PRE-02). Step 7
-    # checks the unit again anyway, so this is only a convenience.
+    # ASSUMPTION: the catalog shows only "available" units, each with the
+    # dates it is busy, so the client sees what can be rented and until
+    # when (ENT-61, ENT-64). Whether it should also show the units in review
+    # or repair is pending (Sesión 07 §7, PRE-02). Step 7 checks the unit
+    # again anyway, so this is only a convenience.
     return Equipment.objects.filter(status=EquipmentStatus.AVAILABLE)
+
+
+def catalog_entries(now) -> list[CatalogEntry]:
+    """Return each catalog unit with its next busy periods at now, soonest first (#53)."""
+    # One extra query for all the units instead of one per unit. Only rentals
+    # that have not ended can be busy from now on; the prefetch keeps
+    # Rental.Meta's order by start.
+    upcoming = Prefetch(
+        "rentals",
+        queryset=Rental.objects.filter(end_datetime__gt=now),
+        to_attr="upcoming_rentals",
+    )
+    return [
+        CatalogEntry(equipment, busy_rentals_at(equipment.upcoming_rentals, now))
+        for equipment in list_catalog().prefetch_related(upcoming)
+    ]
+
+
+def busy_rentals_at(rentals, now) -> list[Rental]:
+    """Return the first rentals that still hold the unit at now, up to MAX_BUSY_PERIODS_SHOWN."""
+    # Expiry depends on the La Paz clock, so the model rule decides it
+    # instead of repeating the pickup deadline in SQL.
+    busy = [rental for rental in rentals if rental.occupies_equipment_at(now)]
+    return busy[:MAX_BUSY_PERIODS_SHOWN]
 
 
 def create_rental(

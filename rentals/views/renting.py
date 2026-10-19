@@ -13,7 +13,7 @@ from .. import rules
 from ..errors import EquipmentNotAvailableError, OperationRejectedError
 from ..forms import RentalForm
 from ..models import Equipment, Rental
-from ..renting import create_rental, list_catalog
+from ..renting import catalog_entries, create_rental
 from ..models import Rental
 from ..renting import cancel_rental
 from ..roles import OPERATOR, role_required
@@ -23,8 +23,10 @@ User = get_user_model() #necesario para walk-in rentals
 
 @login_required
 def catalog(request):
-    """Step 4: show the units the client can choose."""
-    return render(request, "rentals/catalog.html", {"equipment_list": list_catalog()})
+    """Step 4: show the units the client can choose, each with its next busy periods."""
+    return render(
+        request, "rentals/catalog.html", {"catalog_entries": catalog_entries(timezone.now())}
+    )
 
 
 @login_required
@@ -160,36 +162,3 @@ def client_rentals_view(request):
         "rentals/client_rentals.html",
         {"rentals": rentals}
     )
-
-@login_required
-def catalog(request):
-    """Step 4: show the units the client can choose with their busy periods (B7)."""
-    now = timezone.now()
-    equipments = list_catalog()
-
-    catalog_data = []
-    for eq in equipments:
-        active_rentals = []
-        for rental in eq.rentals.all():
-            # B2: Omitir si la renta ya fue cancelada o devuelta
-            if rental.cancelled_at is not None or rental.returned_at is not None:
-                continue
-
-            # B2: Omitir si expiró el tiempo límite de recojo sin haber sido recogida
-            start_local = timezone.localtime(rental.start_datetime)
-            if rental.picked_up_at is None and rules.is_pickup_expired(start_local, timezone.localtime(now)):
-                continue
-
-            # B7: Si la renta finaliza en el futuro, es un periodo ocupado a mostrar
-            if rental.end_datetime >= now:
-                active_rentals.append({
-                    "start": timezone.localtime(rental.start_datetime),
-                    "end": timezone.localtime(rental.end_datetime),
-                })
-
-        catalog_data.append({
-            "equipment": eq,
-            "busy_periods": active_rentals,
-        })
-
-    return render(request, "rentals/catalog.html", {"catalog_data": catalog_data, "equipment_list": equipments})

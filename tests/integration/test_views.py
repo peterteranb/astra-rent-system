@@ -145,7 +145,8 @@ def test_el_catalogo_muestra_los_disponibles_y_oculta_los_que_estan_en_revision(
     Resultado esperado: la pagina muestra EQ-01 y no muestra EQ-03.
     Requisito:          PRE-02 (consultar disponibilidad). Mostrar SOLO los
                         disponibles es un SUPUESTO nuestro (S-04).
-    Codigo que cubre:   rentals/views/renting.py -> catalog(); rentals/renting.py -> list_catalog();
+    Codigo que cubre:   rentals/views/renting.py -> catalog(); rentals/renting.py -> catalog_entries()
+                        y list_catalog();
                         plantilla rentals/catalog.html.
     """
     # Preparar
@@ -155,7 +156,7 @@ def test_el_catalogo_muestra_los_disponibles_y_oculta_los_que_estan_en_revision(
     respuesta = client.get("/")
 
     # Comprobar: lo que recibio la plantilla y lo que se ve en el HTML
-    assert list(respuesta.context["equipment_list"]) == [eq01]
+    assert [entrada.equipment for entrada in respuesta.context["catalog_entries"]] == [eq01]
     assertContains(respuesta, "EQ-01")
     assert "EQ-03" not in respuesta.content.decode()
 

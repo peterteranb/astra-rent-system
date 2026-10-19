@@ -5,30 +5,22 @@
 {% block content %}
   <h1 class="page__title">Catálogo de equipos disponibles</h1>
 
-  {% if catalog_data %}
+  {% if catalog_entries %}
     <ul class="catalog">
-      {% for item in catalog_data %}
-        <li class="catalog__item" style="display: flex; flex-direction: column; align-items: flex-start; margin-bottom: 1.5rem; padding: 1rem; border: 1px solid #ddd; border-radius: 4px;">
-          <div>
-            <span class="catalog__id"><strong>{{ item.equipment.inventory_id }}</strong></span>
-            <span class="catalog__description"> - {{ item.equipment.description }}</span>
-          </div>
-
-          <!-- Fechas ocupadas (B7) -->
-          <div class="catalog__busy-periods" style="margin: 0.5rem 0; font-size: 0.9rem; color: #555;">
-            {% if item.busy_periods %}
-              <strong>Fechas reservadas / ocupadas:</strong>
-              <ul style="margin: 0.2rem 0 0 1.2rem; padding: 0;">
-                {% for period in item.busy_periods %}
-                  <li>{{ period.start|date:"d/m/Y H:i" }} — {{ period.end|date:"d/m/Y H:i" }}</li>
-                {% endfor %}
-              </ul>
-            {% else %}
-              <span style="color: #28a745;">¡Disponible en todos los horarios!</span>
-            {% endif %}
-          </div>
-
-          <a class="button" href="{% url 'rent_equipment' item.equipment.inventory_id %}">Rentar</a>
+      {% for entry in catalog_entries %}
+        <li class="catalog__item">
+          <span class="catalog__id">{{ entry.equipment.inventory_id }}</span>
+          <span class="catalog__description">{{ entry.equipment.description }}</span>
+          <a class="button" href="{% url 'rent_equipment' entry.equipment.inventory_id %}">Rentar</a>
+          {% if entry.busy_rentals %}
+            <ul class="catalog__busy">
+              {% for rental in entry.busy_rentals %}
+                <li>Ocupado del {{ rental.start_datetime|date:"d/m/Y H:i" }} al {{ rental.end_datetime|date:"d/m/Y H:i" }}</li>
+              {% endfor %}
+            </ul>
+          {% else %}
+            <p class="catalog__free">Libre</p>
+          {% endif %}
         </li>
       {% endfor %}
     </ul>
