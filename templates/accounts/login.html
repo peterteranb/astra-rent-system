@@ -1,18 +1,11 @@
 {% extends "base.html" %}
 
 {% block title %}Iniciar sesión{% endblock %}
+{% block heading %}Iniciar sesión{% endblock %}
 
 {% block content %}
   <section class="card login">
-    <h1 class="card__title">Iniciar sesión</h1>
-
-    {% if form.non_field_errors %}
-      <div class="form-errors">
-        {% for error in form.non_field_errors %}
-          <p class="form-errors__item">{{ error }}</p>
-        {% endfor %}
-      </div>
-    {% endif %}
+    {% include "includes/form_errors.html" %}
 
     <form class="form" method="post" action="{% url 'login' %}">
       {% csrf_token %}

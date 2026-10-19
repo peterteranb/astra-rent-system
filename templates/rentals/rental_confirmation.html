@@ -1,11 +1,11 @@
 {% extends "base.html" %}
 
 {% block title %}Renta confirmada{% endblock %}
+{% block heading %}Renta confirmada{% endblock %}
 
 {% block content %}
-  <section class="card confirmation">
-    <h1 class="card__title">Renta confirmada</h1>
-    <dl class="confirmation__details">
+  <section class="card">
+    <dl class="details">
       <dt>Equipo</dt>
       <dd>{{ rental.equipment.inventory_id }} · {{ rental.equipment.description }}</dd>
       <dt>Recojo</dt>
@@ -17,7 +17,12 @@
         <dd>{{ rental.registered_by.username }}</dd>
       {% endif %}
     </dl>
-    <p class="rental-hint">Entregamos los equipos desde las {{ earliest_pickup_time|time:"H:i" }}.</p>
-    <a class="button" href="{% url 'catalog' %}">Volver al catálogo</a>
+    <p class="hint">Entregamos los equipos desde las {{ earliest_pickup_time|time:"H:i" }}.</p>
+    {# Solo el operador que la registró vuelve a la renta en tienda; el cliente, al catálogo. #}
+    {% if rental.registered_by == user %}
+      <a class="button" href="{% url 'walk_in_rental' %}">Nueva renta en tienda</a>
+    {% else %}
+      <a class="button" href="{% url 'catalog' %}">Volver al catálogo</a>
+    {% endif %}
   </section>
 {% endblock %}

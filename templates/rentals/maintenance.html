@@ -1,17 +1,17 @@
 {% extends "base.html" %}
 
 {% block title %}Mantenimiento{% endblock %}
+{% block heading %}Mantenimiento{% endblock %}
 
 {% block content %}
-  <h1 class="page__title">Mantenimiento</h1>
-
   {% if entries %}
-    <ul class="catalog">
+    <ul class="list">
       {% for equipment, choices in entries %}
-        <li class="catalog__item">
-          <span class="catalog__id">{{ equipment.inventory_id }}</span>
-          <span class="catalog__description">{{ equipment.description }} · {{ equipment.get_status_display }}</span>
-          <form class="form__actions" method="post" action="{% url 'review_unit' equipment.inventory_id %}">
+        <li class="list__item">
+          <span class="list__id">{{ equipment.inventory_id }}</span>
+          <span class="list__description">{{ equipment.description }}</span>
+          <span class="badge badge--{{ equipment.status }}">{{ equipment.get_status_display }}</span>
+          <form class="list__form" method="post" action="{% url 'review_unit' equipment.inventory_id %}">
             {% csrf_token %}
             <select name="status" aria-label="Nuevo estado de {{ equipment.inventory_id }}">
               {% for value, label in choices %}
@@ -25,6 +25,6 @@
       {% endfor %}
     </ul>
   {% else %}
-    <p class="catalog__empty">No hay equipos esperando revisión.</p>
+    <p class="empty">No hay equipos esperando revisión.</p>
   {% endif %}
 {% endblock %}
