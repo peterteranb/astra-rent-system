@@ -39,7 +39,8 @@ jobs:
 
     steps:
       - name: Obtener la version del repositorio
-        uses: actions/checkout@v4  #se cambio de v6 a v4 para evitar problemas de compatibilidad
+        # Se usa la v4 porque con la v6 el workflow tuvo problemas de compatibilidad.
+        uses: actions/checkout@v4
 
       - name: Preparar Python
         uses: actions/setup-python@v5
@@ -53,9 +54,6 @@ jobs:
 
       - name: Instalar dependencias declaradas
         run: python -m pip install -r requirements-ci.txt
-
-      # Para paquetes src/ con pyproject.toml, agregar aqui su instalacion:
-      # - run: python -m pip install -e .
 
       - name: Revisar la configuracion de Django
         run: python manage.py check

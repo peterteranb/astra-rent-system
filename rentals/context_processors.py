@@ -1,10 +1,11 @@
-"""Template variables that tell base.html which staff links to show."""
+"""Variables de plantilla que le dicen a base.html qué enlaces mostrar según el rol (RF-10)."""
 from .roles import MAINTENANCE, OPERATOR, has_role
 
 
 def staff_roles(request):
-    """Return is_operator and is_maintenance for the user of the request."""
+    """Devuelve is_operator, is_maintenance e is_admin para el usuario de la petición."""
     return {
         "is_operator": has_role(request.user, OPERATOR),
         "is_maintenance": has_role(request.user, MAINTENANCE),
+        "is_admin": request.user.is_superuser,
     }

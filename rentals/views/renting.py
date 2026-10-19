@@ -1,11 +1,9 @@
-"""Renting pages: catalog, online and store rental, confirmation, cancellation and "Mis rentas".
+"""Páginas de CU-01, CU-02 y CU-06: catálogo, renta en línea y en tienda, confirmación, cancelación y «Mis rentas».
 
-They read the request, call renting.py and choose a template; the
-business rules live in renting.py and rules.py.
+Leen la petición, llaman a renting.py y eligen la plantilla; las reglas están en renting.py y rules.py.
 """
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
@@ -14,13 +12,20 @@ from .. import rules
 from ..errors import EquipmentNotAvailableError, OperationRejectedError
 from ..forms import RentalForm, WalkInRentalForm
 from ..models import Equipment, Rental
-from ..renting import cancel_rental, catalog_entries, create_rental, find_clients
+from ..renting import (
+    cancel_rental,
+    catalog_entries,
+    create_rental,
+    find_clients,
+    rentals_of,
+    visible_rental,
+)
 from ..roles import OPERATOR, role_required
 
 
 @login_required
 def catalog(request):
-    """Step 4: show the units the client can choose, each with its next busy periods."""
+    """Muestra los equipos que el cliente puede elegir, cada uno con sus próximos periodos ocupados."""
     return render(
         request, "rentals/catalog.html", {"catalog_entries": catalog_entries(timezone.now())}
     )
@@ -28,51 +33,44 @@ def catalog(request):
 
 @login_required
 def rent_equipment(request, inventory_id):
-    """Steps 5 to 8: show the form for one unit and try to rent it."""
-    # A unit that is not in the inventory answers 404 (PRE-CU-01
-    # precondition "the unit exists").
+    """Muestra el formulario de un equipo e intenta rentarlo (CU-01)."""
     equipment = get_object_or_404(Equipment, inventory_id=inventory_id)
-
-    if request.method == "POST":
-        form = RentalForm(request.POST)
-        if form.is_valid():
-            try:
-                rental = create_rental(
-                    request.user,
-                    equipment,
-                    form.cleaned_data["start_datetime"],
-                    form.cleaned_data["end_datetime"],
-                )
-                return redirect("rental_confirmation", rental_id=rental.pk)
-            except EquipmentNotAvailableError as error:
-                # E1: show the cause and send the client back to the catalog.
-                messages.error(request, str(error))
-                return redirect("catalog")
-            except OperationRejectedError as error:
-                # Wrong dates or hours: stay on the form so the client can fix them.
-                form.add_error(None, str(error))
-    else:
-        form = RentalForm()
-
+    form = RentalForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        try:
+            rental = create_rental(
+                request.user,
+                equipment,
+                form.cleaned_data["start_datetime"],
+                form.cleaned_data["end_datetime"],
+            )
+        except EquipmentNotAvailableError as error:
+            # Fechas ocupadas: vuelve al catálogo, donde ve cuándo está libre.
+            messages.error(request, str(error))
+            return redirect("catalog")
+        except OperationRejectedError as error:
+            # Fechas u horas inválidas: se queda en el formulario para corregirlas.
+            form.add_error(None, str(error))
+        else:
+            return redirect("rental_confirmation", rental_id=rental.pk)
     return render(request, "rentals/rent_form.html", rental_form_context(equipment, form))
 
 
 @login_required
 def rental_confirmation(request, rental_id):
-    """Step 9: show the confirmed rental to its client or to the operator who registered it."""
-    # Filtering by user means nobody else can open the rental (#50).
-    rental = get_object_or_404(
-        Rental, Q(client=request.user) | Q(registered_by=request.user), pk=rental_id
-    )
+    """Muestra la renta confirmada a su cliente o al operador que la registró."""
     return render(
         request,
         "rentals/rental_confirmation.html",
-        {"rental": rental, "earliest_pickup_time": rules.EARLIEST_PICKUP_TIME},
+        {
+            "rental": visible_rental(request.user, rental_id),
+            "earliest_pickup_time": rules.EARLIEST_PICKUP_TIME,
+        },
     )
 
 
 def rental_form_context(equipment, form):
-    """Data the rental form template needs, including the rule limits."""
+    """Datos que necesita la plantilla del formulario de renta, con los límites de las reglas."""
     return {
         "equipment": equipment,
         "form": form,
@@ -82,12 +80,11 @@ def rental_form_context(equipment, form):
     }
 
 
-# role_required goes outside so a visitor is sent to the login before
-# require_POST answers 405 to a GET.
+# role_required va afuera: un visitante va al login antes de que require_POST responda 405.
 @role_required(OPERATOR)
 @require_POST
 def cancel_reservation(request, rental_id):
-    """Cancel one reservation and go back to the list of reservations (#49)."""
+    """Cancela una reserva y vuelve a la lista de reservas (CU-06)."""
     rental = get_object_or_404(Rental, pk=rental_id)
     try:
         cancel_rental(rental, request.user)
@@ -98,15 +95,15 @@ def cancel_reservation(request, rental_id):
             request,
             f"Reserva cancelada: {rental.equipment.inventory_id} de {rental.client.username}.",
         )
-    # Redirect after the POST so reloading the page does not send it again.
+    # Redirige después del POST: recargar la página no lo envía otra vez.
     return redirect("staff_reservations")
 
 
 @role_required(OPERATOR)
 def walk_in_rental(request):
-    """Find a client by GET and register a store rental for them by POST (PRE-CU-02)."""
-    # The form posts to the same address with ?q=, so the search results
-    # stay on the page when the rental is rejected.
+    """Busca un cliente por GET y registra una renta en tienda para él por POST (CU-02)."""
+    # El formulario se envía a la misma dirección con ?q=, así los resultados
+    # de la búsqueda siguen en la página si la renta se rechaza.
     query = request.GET.get("q", "")
     form = WalkInRentalForm(request.POST or None)
     if request.method == "POST" and form.is_valid():
@@ -120,7 +117,6 @@ def walk_in_rental(request):
                 picked_up_now=form.cleaned_data["takes_it_now"],
             )
         except OperationRejectedError as error:
-            # Same rejections as online; stay on the form so the operator can fix it.
             form.add_error(None, str(error))
         else:
             return redirect("rental_confirmation", rental_id=rental.pk)
@@ -133,10 +129,5 @@ def walk_in_rental(request):
 
 @login_required
 def client_rentals(request):
-    """Show the client's rentals, the latest first, each with its status (#51)."""
-    rentals = (
-        Rental.objects.filter(client=request.user)
-        .select_related("equipment")
-        .order_by("-start_datetime")
-    )
-    return render(request, "rentals/client_rentals.html", {"rentals": rentals})
+    """Muestra las rentas del cliente con su estado (HU-08)."""
+    return render(request, "rentals/client_rentals.html", {"rentals": rentals_of(request.user)})

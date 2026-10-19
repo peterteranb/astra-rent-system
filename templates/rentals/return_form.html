@@ -1,24 +1,20 @@
 {% extends "base.html" %}
 
 {% block title %}Devolver {{ rental.equipment.inventory_id }}{% endblock %}
+{% block heading %}Devolver {{ rental.equipment.inventory_id }}{% endblock %}
 
 {% block content %}
   <section class="card">
-    <h1 class="card__title">Devolver {{ rental.equipment.inventory_id }}</h1>
-    <p class="equipment-summary">{{ rental.equipment.description }}</p>
-    <p class="rental-hint">
-      Cliente {{ rental.client.username }} · {{ rental.status.label }} ·
-      vence el {{ rental.end_datetime|date:"d/m/Y H:i" }}.
-    </p>
+    <p>{{ rental.equipment.description }}</p>
+    {% with status=rental.status %}
+      <p class="hint">
+        Cliente {{ rental.client.get_full_name|default:rental.client.username }} ·
+        <span class="badge badge--{{ status }}">{{ status.label }}</span> ·
+        vence el {{ rental.end_datetime|date:"d/m/Y H:i" }}.
+      </p>
+    {% endwith %}
 
-    {# Rejections from the service (cancelled, already returned, no note) appear here. #}
-    {% if form.non_field_errors %}
-      <div class="form-errors">
-        {% for error in form.non_field_errors %}
-          <p class="form-errors__item">{{ error }}</p>
-        {% endfor %}
-      </div>
-    {% endif %}
+    {% include "includes/form_errors.html" %}
 
     <form class="form" method="post" action="{% url 'return_rental' rental.pk %}">
       {% csrf_token %}
