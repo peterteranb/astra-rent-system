@@ -2,11 +2,17 @@
 from django.db import transaction
 from django.utils import timezone
 
-from . import rules
-from .errors import AlreadyPickedUpError, RentalCancelledError, ReservationExpiredError
+from . import history, rules
+from .errors import (
+    AlreadyPickedUpError,
+    AlreadyReturnedError,
+    IncompleteReturnError,
+    RentalCancelledError,
+    ReservationExpiredError,
+)
 from .models import Rental
 from .renting import DATETIME_FORMAT
-from .statuses import RentalStatus
+from .statuses import EquipmentStatus, RentalStatus
 
 
 def reservations_to_hand_over() -> list[Rental]:
@@ -23,6 +29,19 @@ def reservations_to_hand_over() -> list[Rental]:
     # used everywhere else instead of repeating the deadline in SQL.
     now = timezone.now()
     return [rental for rental in pending if rental.status_at(now) == RentalStatus.RESERVED]
+
+
+def rentals_to_receive():
+    """Return the rentals not returned nor cancelled, the ones due first at the top (C5).
+
+    Rentals never picked up are included on purpose: the client asked that
+    they can be returned too, and their status shows the missing pickup.
+    """
+    return (
+        Rental.objects.filter(returned_at__isnull=True, cancelled_at__isnull=True)
+        .select_related("equipment", "client")
+        .order_by("end_datetime")
+    )
 
 
 def register_pickup(rental, staff_user) -> Rental:
@@ -65,6 +84,42 @@ def check_can_pick_up(rental, now):
         )
 
 
-def register_return(rental, staff_user, note):
-    """Record that the client returned the unit of the rental."""
-    raise NotImplementedError
+def register_return(rental, staff_user, note) -> Rental:
+    """Record that the unit came back now, how it arrived, and send it to review (C3).
+
+    A rental that was never picked up can still be returned: the client
+    asked for it, and the missing pickup stays visible to the admin.
+    Raises an OperationRejectedError subclass if the return cannot be
+    registered; then nothing changes.
+    """
+    note = note.strip()
+    # The note does not depend on the database, so it is checked before
+    # opening the transaction and locking any row.
+    if not note:
+        raise IncompleteReturnError("Escribe cómo llegó el equipo.")
+    with transaction.atomic():
+        # Lock the rental's row and read it again, so two operators cannot
+        # register the same return twice.
+        locked_rental = Rental.objects.select_for_update().get(pk=rental.pk)
+        check_can_return(locked_rental)
+        locked_rental.returned_at = timezone.now()
+        locked_rental.received_by = staff_user
+        locked_rental.return_note = note
+        locked_rental.save(update_fields=["returned_at", "received_by", "return_note"])
+        history.change_status(
+            locked_rental.equipment, EquipmentStatus.IN_REVIEW, staff_user, comment=note
+        )
+        return locked_rental
+
+
+def check_can_return(rental):
+    """Raise if the rental is cancelled or already returned."""
+    # Same order as Rental.status_at(): a cancellation is final, so it goes first.
+    inventory_id = rental.equipment.inventory_id
+    if rental.cancelled_at is not None:
+        raise RentalCancelledError(f"La renta de {inventory_id} fue cancelada.")
+    if rental.returned_at is not None:
+        returned_at = timezone.localtime(rental.returned_at)
+        raise AlreadyReturnedError(
+            f"La renta de {inventory_id} ya fue devuelta el {returned_at:{DATETIME_FORMAT}}."
+        )

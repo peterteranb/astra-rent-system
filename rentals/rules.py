@@ -11,17 +11,18 @@ converts them before calling these functions.
 """
 from datetime import datetime, time, timedelta
 
-from .statuses import EquipmentStatus
+from .statuses import EquipmentStatus, ReturnResult
 
-# ASSUMPTION: ENT-19 says units are handed over from 18:00 and returned
-# by 09:00. It is still pending whether the client chooses the time
-# (Sesión 07 §7, Sesión 08-09 §2); we let the client choose any time
-# inside this window and reject times outside it.
+# ENT-19 and ENT-52: units are picked up from 18:00 and returned by 09:00.
+# They are "from" and "until" limits, so the client may choose any time
+# inside this window, and times outside it are rejected.
 EARLIEST_PICKUP_TIME = time(18, 0)
-# ASSUMPTION: the 5-minute tolerance of ENT-31 applies when the return
-# is registered (PRE-RF-02), not when the rental is requested, so the
-# requested return time must be 09:00 or earlier.
 LATEST_RETURN_TIME = time(9, 0)
+
+# ENT-63 and ENT-65 (client, 17/10): "tienen q devolver el equipo hasta las 9
+# sin multas"; after 09:00 and until 12:00 a fine is charged, and from 12:01
+# one more day. There is no tolerance: 09:00:01 already has a fine.
+RETURN_FINE_LIMIT = time(12, 0)
 
 # ASSUMPTION: ENT-18 says a rental lasts 5 days by default (2 weeks for
 # frequent clients, who are not defined yet, ENT-20). It is pending
@@ -77,3 +78,16 @@ def is_pickup_expired(start, now) -> bool:
     next_day = start.date() + timedelta(days=1)
     deadline = datetime.combine(next_day, PICKUP_DEADLINE, tzinfo=start.tzinfo)
     return now > deadline
+
+
+def classify_return(returned_at, due_date) -> ReturnResult:
+    """Say whether a return on due_date was on time, with a fine or charged one more day (C4).
+
+    It compares with 09:00 of due_date, not with the return time the client
+    chose, because the client's rule is "hasta las 9 sin multas" (ENT-63).
+    """
+    if returned_at <= datetime.combine(due_date, LATEST_RETURN_TIME, tzinfo=returned_at.tzinfo):
+        return ReturnResult.ON_TIME
+    if returned_at <= datetime.combine(due_date, RETURN_FINE_LIMIT, tzinfo=returned_at.tzinfo):
+        return ReturnResult.WITH_FINE
+    return ReturnResult.EXTRA_DAY

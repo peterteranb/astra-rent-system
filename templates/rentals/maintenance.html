@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+
+{% block title %}Mantenimiento{% endblock %}
+
+{% block content %}
+  <h1 class="page__title">Mantenimiento</h1>
+
+  {% if equipment_list %}
+    <ul class="catalog">
+      {% for equipment in equipment_list %}
+        <li class="catalog__item">
+          <span class="catalog__id">{{ equipment.inventory_id }}</span>
+          <span class="catalog__description">{{ equipment.description }} · {{ equipment.get_status_display }}</span>
+          <form class="form__actions" method="post" action="{% url 'review_unit' equipment.inventory_id %}">
+            {% csrf_token %}
+            <select name="status" aria-label="Nuevo estado de {{ equipment.inventory_id }}">
+              {% for value, label in review_choices %}
+                <option value="{{ value }}">{{ label }}</option>
+              {% endfor %}
+            </select>
+            <input type="text" name="comment" placeholder="Comentario (opcional)" aria-label="Comentario de {{ equipment.inventory_id }}">
+            <button class="button" type="submit">Guardar</button>
+          </form>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p class="catalog__empty">No hay equipos esperando revisión.</p>
+  {% endif %}
+{% endblock %}

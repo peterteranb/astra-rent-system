@@ -1,10 +1,11 @@
-"""Form for the rental request (PRE-CU-01, step 6)."""
+"""Forms for the rental request (PRE-CU-01, step 6) and for the return note (C5)."""
 from datetime import datetime
 
 from django import forms
 from django.utils import timezone
 
 from . import rules
+from .models import Rental
 
 
 def combine_local(day, chosen_time):
@@ -57,3 +58,17 @@ class RentalForm(forms.Form):
                 cleaned_data["end_date"], cleaned_data["end_time"]
             )
         return cleaned_data
+
+
+class ReturnForm(forms.Form):
+    """Note the operator writes about how the unit arrived."""
+
+    # Not required on purpose: register_return checks the note, so the
+    # operator sees its message (PRE-RC-01). max_length matches the model,
+    # so a long note gets a form error instead of a database error.
+    note = forms.CharField(
+        label="Observación",
+        required=False,
+        max_length=Rental._meta.get_field("return_note").max_length,
+        widget=forms.Textarea(attrs={"rows": 3}),
+    )

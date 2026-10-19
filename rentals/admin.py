@@ -3,6 +3,10 @@ from django.contrib import admin
 
 from .models import Equipment, Rental
 
+admin.site.site_header = "SergioCorp · Administración"
+admin.site.site_title = "SergioCorp"
+admin.site.index_title = "Panel del administrador"
+
 
 @admin.register(Equipment)
 class EquipmentAdmin(admin.ModelAdmin):
