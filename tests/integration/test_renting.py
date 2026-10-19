@@ -1,6 +1,6 @@
 """Pruebas de INTEGRACION del servicio que guarda la renta.
 
-Archivo que se prueba: rentals/renting.py -> create_rental()
+Archivo que se prueba: rentals/renting.py -> create_rental(), cancel_rental() y find_clients()
 Tipo de prueba:        integracion (usa una base PostgreSQL de pruebas).
 
 Que hace create_rental():
@@ -24,11 +24,14 @@ pytestmark = pytest.mark.django_db le da permiso de usar la base a todas las
 pruebas de este archivo.
 """
 import pytest
+from django.utils import timezone
 
-from rentals.errors import EquipmentNotAvailableError
+from rentals.errors import EquipmentNotAvailableError, RentalNotCancellableError
+from rentals.handover import register_pickup
 from rentals.models import Equipment, EquipmentStatus, Rental
-from rentals.renting import create_rental
-from tests.helpers import dentro_de
+from rentals.renting import cancel_rental, create_rental, find_clients
+from rentals.statuses import RentalStatus
+from tests.helpers import dentro_de, foto_de_la_base
 
 pytestmark = pytest.mark.django_db
 
@@ -199,3 +202,123 @@ def test_el_estado_se_vuelve_a_leer_de_la_base_al_confirmar(c01, eq01, doc_start
     # Comprobar
     assert "estado: En revisión" in str(error.value)
     assert Rental.objects.count() == 0
+
+
+# ---------- Fechas ocupadas y libres (B1 #47, B2 #48) ----------
+
+def test_si_la_otra_renta_empieza_despues_el_rechazo_dice_hasta_cuando_esta_libre(c01, c02, eq01):
+    """Requisito: B1 (#47), ENT-36 y ENT-64, el rechazo dice cuando esta ocupado y hasta cuando esta libre.
+    Caso:      C-01 tiene EQ-01 del dia 7 al 10 desde hoy; C-02 lo pide del dia 5 al 8.
+    Esperado:  EquipmentNotAvailableError con el periodo ocupado y "libre hasta" el dia 7 a las 09:00; la base queda igual.
+    Ejemplo:   pedido del dia 5 18:00 al 8 09:00 -> "ocupado del dia 7 18:00 al 10 09:00. Esta libre hasta el dia 7 a las 09:00."
+    """
+    # Preparar
+    ocupado_desde = dentro_de(7, 18)
+    ocupado_hasta = dentro_de(10, 9)
+    create_rental(c01, eq01, ocupado_desde, ocupado_hasta)
+    antes = foto_de_la_base()
+
+    # Ejecutar
+    with pytest.raises(EquipmentNotAvailableError) as error:
+        create_rental(c02, eq01, dentro_de(5, 18), dentro_de(8, 9))
+
+    # Comprobar: la respuesta
+    assert str(error.value) == (
+        f"El equipo EQ-01 está ocupado del {ocupado_desde:%d/%m/%Y %H:%M} "
+        f"al {ocupado_hasta:%d/%m/%Y %H:%M}. "
+        f"Está libre hasta el {ocupado_desde:%d/%m/%Y} a las 09:00."
+    )
+
+    # Comprobar: lo guardado
+    assert foto_de_la_base() == antes
+
+
+def test_una_renta_en_las_fechas_de_una_reserva_cancelada_se_acepta(op01, c01, c02, eq01):
+    """Requisito: B2 (#48) y ENT-55, una reserva cancelada deja libres sus fechas.
+    Caso:      OP-01 cancelo la reserva de EQ-01 de C-01; C-02 pide EQ-01 en las mismas fechas.
+    Esperado:  la renta de C-02 se guarda "Reservada"; la de C-01 sigue "Cancelada".
+    Ejemplo:   reserva cancelada del dia 7 al 10 -> C-02 renta EQ-01 del dia 7 al 10.
+    """
+    # Preparar
+    inicio = dentro_de(7, 18)
+    fin = dentro_de(10, 9)
+    cancelada = cancel_rental(create_rental(c01, eq01, inicio, fin), op01)
+
+    # Ejecutar
+    renta_c02 = create_rental(c02, eq01, inicio, fin)
+
+    # Comprobar: la respuesta
+    assert renta_c02.status == RentalStatus.RESERVED
+
+    # Comprobar: lo guardado
+    assert list(Rental.objects.order_by("pk")) == [cancelada, renta_c02]
+    cancelada.refresh_from_db()
+    assert cancelada.status == RentalStatus.CANCELLED
+
+
+# ---------- Cancelar una reserva (B3 #49) ----------
+
+def test_el_operador_cancela_una_reserva_y_guarda_cuando_y_quien(op01, c01, eq01):
+    """Requisito: B3 (#49) y ENT-55, cancelar guarda cuando y quien cancelo.
+    Caso:      OP-01 cancela la reserva de EQ-01 de C-01, que empieza en 7 dias.
+    Esperado:  la renta queda "Cancelada" con cancelled_at y cancelled_by; nada mas cambia.
+    Ejemplo:   reserva sin recojo -> cancelled_at = ahora, cancelled_by = op01.
+    """
+    # Preparar
+    reserva = create_rental(c01, eq01, dentro_de(7, 18), dentro_de(10, 9))
+    rentas, equipos, historial = foto_de_la_base()
+    antes_de_cancelar = timezone.now()
+
+    # Ejecutar
+    renta = cancel_rental(reserva, op01)
+
+    # Comprobar: la respuesta
+    assert renta.status == RentalStatus.CANCELLED
+
+    # Comprobar: lo guardado (solo cambian los dos campos de la cancelacion)
+    reserva.refresh_from_db()
+    assert antes_de_cancelar <= reserva.cancelled_at <= timezone.now()
+    rentas[0].update(cancelled_at=reserva.cancelled_at, cancelled_by_id=op01.pk)
+    assert foto_de_la_base() == (rentas, equipos, historial)
+
+
+def test_una_renta_ya_entregada_no_se_cancela_y_la_base_queda_igual(op01, c01, eq01):
+    """Requisito: B3 (#49), solo se cancela una reserva que todavia no se recogio.
+    Caso:      OP-01 ya entrego a C-01 la reserva de EQ-01 e intenta cancelarla.
+    Esperado:  RentalNotCancellableError con la fecha de la entrega; la base queda igual.
+    Ejemplo:   renta entregada hoy -> "La renta de EQ-01 ya fue entregada el <fecha del recojo>."
+    """
+    # Preparar
+    entregada = register_pickup(create_rental(c01, eq01, dentro_de(1, 18), dentro_de(3, 9)), op01)
+    recojo = timezone.localtime(entregada.picked_up_at)
+    antes = foto_de_la_base()
+
+    # Ejecutar
+    with pytest.raises(RentalNotCancellableError) as error:
+        cancel_rental(entregada, op01)
+
+    # Comprobar: la respuesta
+    assert str(error.value) == f"La renta de EQ-01 ya fue entregada el {recojo:%d/%m/%Y %H:%M}."
+
+    # Comprobar: lo guardado
+    assert foto_de_la_base() == antes
+
+
+# ---------- Buscar al cliente en la tienda (B4 #50) ----------
+
+def test_el_operador_encuentra_al_cliente_por_apellido_y_no_al_personal(c01, c02, op01, mt01):
+    """Requisito: B4 (#50) y ENT-54, el operador busca al cliente por nombre, apellido o correo.
+    Caso:      C-01, OP-01 y MT-01 se apellidan Perez y C-02 Rojas; OP-01 busca "perez".
+    Esperado:  solo aparece C-01: el personal no es cliente.
+    Ejemplo:   find_clients("perez") -> [c01].
+    """
+    # Preparar
+    for usuario, apellido in [(c01, "Perez"), (c02, "Rojas"), (op01, "Perez"), (mt01, "Perez")]:
+        usuario.last_name = apellido
+        usuario.save()
+
+    # Ejecutar
+    encontrados = find_clients("perez")
+
+    # Comprobar
+    assert list(encontrados) == [c01]
