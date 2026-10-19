@@ -10,8 +10,14 @@ from django.db.models import Prefetch
 from django.utils import timezone
 
 from . import rules
-from .errors import EquipmentNotAvailableError, InvalidPeriodError, OutsideRentalHoursError
+from .errors import (
+    EquipmentNotAvailableError,
+    InvalidPeriodError,
+    OutsideRentalHoursError,
+    RentalNotCancellableError,
+)
 from .models import Equipment, EquipmentStatus, Rental
+from .statuses import RentalStatus
 
 DATETIME_FORMAT = "%d/%m/%Y %H:%M"
 
@@ -153,15 +159,44 @@ def busy_message(equipment, rental, start):
 
 
 def cancel_rental(rental, cancelled_by) -> Rental:
-    """Cancel a rental that has not yet been picked up."""
-    if rental.picked_up_at is not None:
-        raise ValueError("No se puede cancelar una reserva que ya ha sido recogida.")
-    if rental.returned_at is not None:
-        raise ValueError("No se puede cancelar una reserva que ya fue devuelta.")
-    if rental.cancelled_at is not None:
-        raise ValueError("La reserva ya se encuentra cancelada.")
+    """Cancel a reservation not picked up yet and record who cancelled it (ENT-55).
 
-    rental.cancelled_at = timezone.now()
-    rental.cancelled_by = cancelled_by
-    rental.save()
-    return rental
+    Its dates are free for others at once, because a cancelled rental no
+    longer occupies the unit. Raises RentalNotCancellableError if the rental
+    is not "reserved"; then nothing changes.
+    """
+    with transaction.atomic():
+        # Lock the rental's row and read it again, so a pickup and a
+        # cancellation clicked at the same time cannot both be saved.
+        locked_rental = Rental.objects.select_for_update().get(pk=rental.pk)
+        now = timezone.now()
+        check_can_cancel(locked_rental, now)
+        locked_rental.cancelled_at = now
+        locked_rental.cancelled_by = cancelled_by
+        locked_rental.save(update_fields=["cancelled_at", "cancelled_by"])
+        return locked_rental
+
+
+def check_can_cancel(rental, now):
+    """Raise RentalNotCancellableError unless the rental is "reserved" at now (#49)."""
+    status = rental.status_at(now)
+    if status == RentalStatus.RESERVED:
+        return
+    raise RentalNotCancellableError(not_cancellable_message(rental, status))
+
+
+def not_cancellable_message(rental, status):
+    """Say why the rental is no longer a reservation, with the moment it stopped being one."""
+    inventory_id = rental.equipment.inventory_id
+    if status == RentalStatus.CANCELLED:
+        return f"La renta de {inventory_id} ya fue cancelada el {local_text(rental.cancelled_at)}."
+    if status == RentalStatus.RETURNED:
+        return f"La renta de {inventory_id} ya fue devuelta el {local_text(rental.returned_at)}."
+    if status == RentalStatus.RENTED:
+        return f"La renta de {inventory_id} ya fue entregada el {local_text(rental.picked_up_at)}."
+    return f"La reserva de {inventory_id} venció a las {rules.PICKUP_DEADLINE:%H:%M}."
+
+
+def local_text(moment):
+    """Write a moment as La Paz date and time, the way the messages show it."""
+    return f"{timezone.localtime(moment):{DATETIME_FORMAT}}"

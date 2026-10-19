@@ -82,21 +82,23 @@ def rental_form_context(equipment, form):
         "max_days": rules.MAX_RENTAL_DURATION.days,
     }
 
-@require_POST
+# role_required goes outside so a visitor is sent to the login before
+# require_POST answers 405 to a GET.
 @role_required(OPERATOR)
+@require_POST
 def cancel_reservation(request, rental_id):
-    """Permite al operador cancelar una reserva que aún no ha sido recogida."""
+    """Cancel one reservation and go back to the list of reservations (#49)."""
     rental = get_object_or_404(Rental, pk=rental_id)
-
     try:
         cancel_rental(rental, request.user)
+    except OperationRejectedError as error:
+        messages.error(request, str(error))
+    else:
         messages.success(
             request,
-            f"La reserva del equipo {rental.equipment.inventory_id} fue cancelada correctamente.",
+            f"Reserva cancelada: {rental.equipment.inventory_id} de {rental.client.username}.",
         )
-    except ValueError as e:
-        messages.error(request, str(e))
-
+    # Redirect after the POST so reloading the page does not send it again.
     return redirect("staff_reservations")
 
 @role_required(OPERATOR)
