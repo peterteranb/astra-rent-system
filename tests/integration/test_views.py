@@ -27,7 +27,7 @@ import pytest
 from pytest_django.asserts import assertContains, assertRedirects, assertTemplateUsed
 
 from rentals.models import Rental
-from rentals.renting import create_rental
+from rentals.renting import cancel_rental, create_rental
 from rentals.statuses import RentalStatus
 from tests.conftest import DEMO_PASSWORD
 from tests.helpers import dentro_de, foto_de_la_base
@@ -160,6 +160,58 @@ def test_el_catalogo_muestra_los_disponibles_y_oculta_los_que_estan_en_revision(
     assert [entrada.equipment for entrada in respuesta.context["catalog_entries"]] == [eq01]
     assertContains(respuesta, "EQ-01")
     assert "EQ-03" not in respuesta.content.decode()
+
+
+def test_el_catalogo_muestra_cuando_esta_ocupado_un_equipo_reservado(client, c01, eq01):
+    """Requisito: B7 (#53), el cliente ve antes de elegir fechas cuando esta ocupado cada equipo.
+    Caso:      C-01 reservo EQ-01 del dia 7 al 10 desde hoy y abre el catalogo.
+    Esperado:  EQ-01 muestra "Ocupado del ... al ..." con esas fechas; abrir la pagina no cambia la base.
+    Ejemplo:   reserva del dia 7 18:00 al 10 09:00 -> "Ocupado del <dia 7> 18:00 al <dia 10> 09:00".
+    """
+    # Preparar
+    inicio = dentro_de(7, 18)
+    fin = dentro_de(10, 9)
+    reserva = create_rental(c01, eq01, inicio, fin)
+    client.force_login(c01)
+    antes = foto_de_la_base()
+
+    # Ejecutar
+    respuesta = client.get("/")
+
+    # Comprobar: la respuesta
+    [entrada] = respuesta.context["catalog_entries"]
+    assert entrada.busy_rentals == [reserva]
+    assertContains(
+        respuesta, f"Ocupado del {inicio:%d/%m/%Y %H:%M} al {fin:%d/%m/%Y %H:%M}"
+    )
+    assert "Libre" not in respuesta.content.decode()
+
+    # Comprobar: lo guardado
+    assert foto_de_la_base() == antes
+
+
+def test_una_reserva_cancelada_no_aparece_en_el_catalogo(client, op01, c01, eq01):
+    """Requisito: B7 (#53) y B2 (#48), una reserva cancelada ya no ocupa fechas.
+    Caso:      OP-01 cancelo la reserva de EQ-01 de C-01 del dia 7 al 10; C-01 abre el catalogo.
+    Esperado:  EQ-01 no muestra ningun periodo ocupado y dice "Libre"; abrir la pagina no cambia la base.
+    Ejemplo:   reserva cancelada del dia 7 al 10 -> "Libre", sin "Ocupado del".
+    """
+    # Preparar
+    cancel_rental(create_rental(c01, eq01, dentro_de(7, 18), dentro_de(10, 9)), op01)
+    client.force_login(c01)
+    antes = foto_de_la_base()
+
+    # Ejecutar
+    respuesta = client.get("/")
+
+    # Comprobar: la respuesta
+    [entrada] = respuesta.context["catalog_entries"]
+    assert entrada.busy_rentals == []
+    assertContains(respuesta, "Libre")
+    assert "Ocupado del" not in respuesta.content.decode()
+
+    # Comprobar: lo guardado
+    assert foto_de_la_base() == antes
 
 
 # ---------- Renta aceptada (PRE-CU-01, pasos 5 a 9) ----------
