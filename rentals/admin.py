@@ -14,6 +14,8 @@ admin.site.index_title = "Panel del administrador"
 
 @admin.register(Equipment)
 class EquipmentAdmin(admin.ModelAdmin):
+    """Lista de equipos con las acciones que corrigen su estado (CU-07)."""
+
     list_display = ["inventory_id", "description", "serial_number", "status"]
     list_filter = ["status"]
     search_fields = ["inventory_id", "serial_number", "description"]
@@ -59,17 +61,25 @@ class EquipmentAdmin(admin.ModelAdmin):
 
 @admin.register(Rental)
 class RentalAdmin(admin.ModelAdmin):
+    """Lista de rentas que el admin solo consulta y cancela (CU-06)."""
+
     list_display = [
         "equipment",
         "client",
         "start_datetime",
         "end_datetime",
         "rental_status",
-        "picked_up_at",
-        "returned_at",
         "registered_by",
     ]
+    list_select_related = ["equipment", "client", "registered_by"]
+    search_fields = [
+        "equipment__inventory_id",
+        "client__first_name",
+        "client__last_name",
+        "client__username",
+    ]
     list_filter = ["equipment"]
+    date_hierarchy = "start_datetime"
     actions = ["cancel_reservations"]
 
     @admin.display(description="Estado")
@@ -114,42 +124,14 @@ class RentalAdmin(admin.ModelAdmin):
 
 @admin.register(StatusChange)
 class StatusChangeAdmin(admin.ModelAdmin):
-    list_display = ["unit", "from_status", "to_status", "author", "moment", "note"]
+    """Historial de cambios de estado, solo para leer (ENT-34)."""
+
+    list_display = ["equipment", "old_status", "new_status", "changed_by", "changed_at", "comment"]
     list_filter = ["equipment"]
     list_select_related = ["equipment", "changed_by"]
     ordering = ["-changed_at"]
 
-    @admin.display(description="Equipo", ordering="equipment")
-    def unit(self, change):
-        """Muestra el equipo que cambió de estado."""
-        return change.equipment.inventory_id
-
-    @admin.display(description="De")
-    def from_status(self, change):
-        """Muestra el estado antes del cambio."""
-        return change.get_old_status_display()
-
-    @admin.display(description="A")
-    def to_status(self, change):
-        """Muestra el estado después del cambio."""
-        return change.get_new_status_display()
-
-    @admin.display(description="Quién", ordering="changed_by")
-    def author(self, change):
-        """Muestra quién hizo el cambio."""
-        return change.changed_by
-
-    @admin.display(description="Cuándo", ordering="changed_at")
-    def moment(self, change):
-        """Muestra cuándo se hizo el cambio."""
-        return change.changed_at
-
-    @admin.display(description="Comentario")
-    def note(self, change):
-        """Muestra el comentario opcional del cambio."""
-        return change.comment
-
-    # El historial es evidencia (ENT-34): el admin solo lo lee.
+    # El historial es evidencia: el admin no lo crea, ni lo edita, ni lo borra.
     def has_add_permission(self, request):
         """No deja crear filas de historial a mano."""
         return False
