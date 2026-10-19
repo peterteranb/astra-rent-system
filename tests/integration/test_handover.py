@@ -9,12 +9,7 @@ import pytest
 from django.utils import timezone
 from pytest_django.asserts import assertContains, assertRedirects
 
-from rentals.errors import (
-    AlreadyPickedUpError,
-    AlreadyReturnedError,
-    IncompleteReturnError,
-    ReservationExpiredError,
-)
+from rentals.errors import IncompleteReturnError, RentalStateError
 from rentals.handover import register_pickup, register_return
 from rentals.models import StatusChange
 from rentals.renting import create_rental
@@ -58,7 +53,7 @@ def test_el_operador_entrega_una_reserva_y_queda_rentada(op01, c01, eq01):
 def test_un_recojo_repetido_se_rechaza_con_la_fecha_del_primero(op01, c01, eq01):
     """Requisito: C1 (#54), una renta se entrega una sola vez.
     Caso:      OP-01 ya entrego la reserva de EQ-01 e intenta entregarla otra vez.
-    Esperado:  AlreadyPickedUpError con la fecha del primer recojo; la base queda igual.
+    Esperado:  RentalStateError con la fecha del primer recojo; la base queda igual.
     """
     # Preparar
     reserva = register_pickup(reserva_de_c01(c01, eq01, dias_desde_hoy=1), op01)
@@ -66,7 +61,7 @@ def test_un_recojo_repetido_se_rechaza_con_la_fecha_del_primero(op01, c01, eq01)
     antes = foto_de_la_base()
 
     # Ejecutar
-    with pytest.raises(AlreadyPickedUpError) as error:
+    with pytest.raises(RentalStateError) as error:
         register_pickup(reserva, op01)
 
     # Comprobar: la respuesta
@@ -81,14 +76,14 @@ def test_un_recojo_repetido_se_rechaza_con_la_fecha_del_primero(op01, c01, eq01)
 def test_una_reserva_vencida_no_se_puede_entregar(op01, c01, eq01):
     """Requisito: C1 (#54) y cliente 17/10, sin recojo hasta las 12:00 del dia siguiente vence.
     Caso:      OP-01 intenta entregar una reserva de EQ-01 que empezo hace 3 dias.
-    Esperado:  ReservationExpiredError con la hora limite; la base queda igual.
+    Esperado:  RentalStateError con la hora limite; la base queda igual.
     """
     # Preparar
     reserva = reserva_de_c01(c01, eq01, dias_desde_hoy=-3)
     antes = foto_de_la_base()
 
     # Ejecutar
-    with pytest.raises(ReservationExpiredError) as error:
+    with pytest.raises(RentalStateError) as error:
         register_pickup(reserva, op01)
 
     # Comprobar: la respuesta
@@ -165,7 +160,7 @@ def test_el_operador_registra_la_devolucion_y_el_equipo_pasa_a_revision(op01, c0
 def test_una_devolucion_repetida_se_rechaza_con_la_fecha_de_la_primera(op01, c01, eq01):
     """Requisito: C3 (#56), una renta se devuelve una sola vez.
     Caso:      OP-01 ya registro la devolucion de EQ-01 e intenta registrarla otra vez.
-    Esperado:  AlreadyReturnedError con la fecha; EQ-01 sigue "En revision" con un solo cambio.
+    Esperado:  RentalStateError con la fecha; EQ-01 sigue "En revision" con un solo cambio.
     """
     # Preparar
     renta = register_pickup(reserva_de_c01(c01, eq01, dias_desde_hoy=0), op01)
@@ -174,7 +169,7 @@ def test_una_devolucion_repetida_se_rechaza_con_la_fecha_de_la_primera(op01, c01
     antes = foto_de_la_base()
 
     # Ejecutar
-    with pytest.raises(AlreadyReturnedError) as error:
+    with pytest.raises(RentalStateError) as error:
         register_return(renta, op01, "Sin danos")
 
     # Comprobar: la respuesta

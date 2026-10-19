@@ -25,7 +25,7 @@ Como se comprueba un error (sin "pytest.raises" vacio):
 """
 import pytest
 
-from rentals.errors import InvalidPeriodError, OperationRejectedError, OutsideRentalHoursError
+from rentals.errors import InvalidPeriodError, OperationRejectedError
 from rentals.renting import check_period
 from tests.helpers import local_datetime
 
@@ -69,13 +69,13 @@ def test_el_periodo_de_los_documentos_es_valido():
         (
             local_datetime(2026, 10, 9, 17, 0),
             DEVOLUCION,
-            OutsideRentalHoursError,
+            InvalidPeriodError,
             "El recojo debe ser desde las 18:00.",
         ),
         (
             RECOJO,
             local_datetime(2026, 10, 12, 10, 0),
-            OutsideRentalHoursError,
+            InvalidPeriodError,
             "La devolución debe ser hasta las 09:00.",
         ),
     ],

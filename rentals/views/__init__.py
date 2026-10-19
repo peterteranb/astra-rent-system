@@ -1,1 +1,1 @@
-"""Views grouped by use case: renting, handover and review, plus the home redirect."""
+"""Vistas agrupadas por caso de uso: renting, handover y review, más la redirección de inicio."""

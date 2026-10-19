@@ -1,12 +1,11 @@
-"""Use case: maintenance reviews a returned unit and sets its new status."""
+"""Caso de uso CU-05: mantenimiento revisa un equipo devuelto y decide su estado nuevo."""
 from .errors import InvalidStatusChangeError
 from .history import change_status
 from .models import Equipment
 from .statuses import EquipmentStatus
 
-# The client agreed (review flow of 17/10): from review or repair a unit goes
-# to available, to repair or to retired, and a retired unit never comes back.
-# Not agreed: whether the source status must be "in review" or "in repair".
+# ENT-49: desde revisión o reparación un equipo pasa a disponible, a
+# reparación o a baja, y la baja es definitiva.
 REVIEW_RESULTS = (
     EquipmentStatus.AVAILABLE,
     EquipmentStatus.IN_REPAIR,
@@ -14,25 +13,33 @@ REVIEW_RESULTS = (
 )
 
 
-def review_equipment(equipment, staff_user, new_status, comment=""):
-    """Set the new status of a reviewed unit, keep the change in its history and return it.
+def equipment_to_review():
+    """Devuelve los equipos que esperan a mantenimiento: en revisión o en reparación."""
+    return Equipment.objects.filter(
+        status__in=[EquipmentStatus.IN_REVIEW, EquipmentStatus.IN_REPAIR]
+    )
 
-    Raises InvalidStatusChangeError if new_status is not a result of a review
-    or the unit is retired; then nothing changes.
+
+def review_choices_for(equipment):
+    """Devuelve las opciones (valor, etiqueta) del formulario de revisión, sin el estado actual."""
+    return [
+        (status.value, status.label) for status in REVIEW_RESULTS if status != equipment.status
+    ]
+
+
+def review_equipment(equipment, staff_user, new_status, comment=""):
+    """Guarda el estado nuevo de un equipo revisado con su fila de historial y la devuelve.
+
+    Lanza InvalidStatusChangeError si new_status no es un resultado de revisión
+    o el equipo no puede cambiar; entonces nada cambia.
     """
     check_review_result(equipment, new_status)
-    return change_status(equipment, new_status, staff_user, comment)
+    return change_status(equipment, new_status, staff_user, comment.strip())
 
 
 def check_review_result(equipment, new_status):
-    """Raise InvalidStatusChangeError if new_status is not available, in repair or retired."""
+    """Lanza InvalidStatusChangeError si new_status no es disponible, en reparación o baja."""
     if new_status not in REVIEW_RESULTS:
         raise InvalidStatusChangeError(
             f"El equipo {equipment.inventory_id} solo puede pasar a disponible, en reparación o baja."
         )
-
-def equipment_to_review():
-    """Return the units waiting for maintenance: in review or in repair."""
-    return Equipment.objects.filter(
-        status__in=[EquipmentStatus.IN_REVIEW, EquipmentStatus.IN_REPAIR]
-    )

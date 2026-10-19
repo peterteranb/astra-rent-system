@@ -1,59 +1,50 @@
-"""Use cases of renting: the catalog, online and store rentals, and cancelling a reservation.
+"""Casos de uso CU-01, CU-02 y CU-06: catálogo, renta en línea y en tienda, y cancelar una reserva.
 
-It covers PRE-CU-01, PRE-CU-02 and PRE-CU-06. The views call this module;
-it applies the rules from rules.py and talks to the database. It knows
-nothing about HTTP.
+Las vistas llaman a este módulo; aplica las reglas de rules.py y habla con la base. No lee la petición ni elige páginas.
 """
 from dataclasses import dataclass
 
 from django.contrib.auth import get_user_model
 from django.db import transaction
 from django.db.models import Prefetch, Q
+from django.shortcuts import get_object_or_404
 from django.utils import timezone
 
 from . import rules
-from .errors import (
-    EquipmentNotAvailableError,
-    InvalidPeriodError,
-    OutsideRentalHoursError,
-    RentalNotCancellableError,
-)
+from .errors import EquipmentNotAvailableError, InvalidPeriodError, RentalStateError
+from .formatting import local_text, rental_state_message
 from .models import Equipment, EquipmentStatus, Rental
 from .roles import MAINTENANCE, OPERATOR
 from .statuses import RentalStatus
 
-DATETIME_FORMAT = "%d/%m/%Y %H:%M"
-
-# #53: the catalog shows at most the next 3 busy periods of each unit.
+# ENT-64: el catálogo dice cuándo está ocupado cada equipo; con 3 periodos basta para elegir fechas.
 MAX_BUSY_PERIODS_SHOWN = 3
 
-# #50: the operator picks the client from a short list, not from every client.
+# RF-06: el operador elige al cliente de una lista corta, no de todos los clientes.
 MAX_CLIENTS_FOUND = 10
 
 
 @dataclass(frozen=True)
 class CatalogEntry:
-    """One unit of the catalog with the rentals that keep it busy from now on."""
+    """Un equipo del catálogo con las rentas que lo ocupan desde ahora."""
 
     equipment: Equipment
     busy_rentals: list[Rental]
 
 
 def list_catalog():
-    """Return the units shown in the catalog (PRE-CU-01, step 4)."""
-    # ASSUMPTION: the catalog shows only "available" units, each with the
-    # dates it is busy, so the client sees what can be rented and until
-    # when (ENT-61, ENT-64). Whether it should also show the units in review
-    # or repair is pending (Sesión 07 §7, PRE-02). Step 7 checks the unit
-    # again anyway, so this is only a convenience.
+    """Devuelve los equipos que muestra el catálogo: solo los «Disponibles».
+
+    ENT-61 y ENT-64: un equipo con rentas futuras sigue disponible y el
+    catálogo dice cuándo está ocupado. create_rental vuelve a revisar el equipo.
+    """
     return Equipment.objects.filter(status=EquipmentStatus.AVAILABLE)
 
 
 def catalog_entries(now) -> list[CatalogEntry]:
-    """Return each catalog unit with its next busy periods at now, soonest first (#53)."""
-    # One extra query for all the units instead of one per unit. Only rentals
-    # that have not ended can be busy from now on; the prefetch keeps
-    # Rental.Meta's order by start.
+    """Devuelve cada equipo del catálogo con sus próximos periodos ocupados en now, el más próximo primero."""
+    # Una sola consulta extra para todos los equipos en vez de una por equipo.
+    # Solo las rentas que no terminaron pueden ocupar el equipo desde ahora.
     upcoming = Prefetch(
         "rentals",
         queryset=Rental.objects.filter(end_datetime__gt=now),
@@ -66,15 +57,13 @@ def catalog_entries(now) -> list[CatalogEntry]:
 
 
 def busy_rentals_at(rentals, now) -> list[Rental]:
-    """Return the first rentals that still hold the unit at now, up to MAX_BUSY_PERIODS_SHOWN."""
-    # Expiry depends on the La Paz clock, so the model rule decides it
-    # instead of repeating the pickup deadline in SQL.
+    """Devuelve las primeras rentas que todavía ocupan el equipo en now, hasta MAX_BUSY_PERIODS_SHOWN."""
     busy = [rental for rental in rentals if rental.occupies_equipment_at(now)]
     return busy[:MAX_BUSY_PERIODS_SHOWN]
 
 
 def client_accounts():
-    """Return the users who are clients: not staff, not superusers and not in a staff role."""
+    """Devuelve los usuarios que son clientes: ni personal, ni superusuarios, ni de un grupo del personal."""
     return (
         get_user_model()
         .objects.filter(is_staff=False, is_superuser=False)
@@ -83,9 +72,9 @@ def client_accounts():
 
 
 def find_clients(text):
-    """Return up to MAX_CLIENTS_FOUND clients whose username, names or email contain text (ENT-54)."""
+    """Devuelve hasta MAX_CLIENTS_FOUND clientes cuyo usuario, nombre, apellido o correo contiene text (ENT-54)."""
     text = text.strip()
-    # An empty search would list every client; the operator must type something.
+    # Una búsqueda vacía listaría a todos los clientes: el operador debe escribir algo.
     if not text:
         return client_accounts().none()
     matches = (
@@ -97,29 +86,35 @@ def find_clients(text):
     return client_accounts().filter(matches).order_by("username")[:MAX_CLIENTS_FOUND]
 
 
+def rentals_of(client):
+    """Devuelve las rentas del cliente, la más reciente primero (HU-08)."""
+    return Rental.objects.filter(client=client).select_related("equipment").order_by("-start_datetime")
+
+
+def visible_rental(user, rental_id) -> Rental:
+    """Devuelve la renta si user es su cliente o quien la registró; si no, responde 404."""
+    # Filtrar por usuario hace que nadie más pueda abrir la renta, ni saber que existe.
+    return get_object_or_404(Rental, Q(client=user) | Q(registered_by=user), pk=rental_id)
+
+
 def create_rental(
     client, equipment, start_datetime, end_datetime, registered_by=None, picked_up_now=False
 ) -> Rental:
-    """Save a confirmed rental of one unit and return it (ENT-16).
+    """Guarda una renta confirmada de un equipo y la devuelve (ENT-16: se confirma al instante).
 
-    registered_by is the staff user who registered it (None when the
-    client rents online). picked_up_now means the client takes the unit
-    at the store right away: the rental is born "rented", handed over by
-    registered_by (ENT-57). Raises an OperationRejectedError subclass if a
-    rule is broken; in that case nothing is saved and no rental or unit is changed.
+    registered_by es el operador que la registró (None si el cliente renta en
+    línea). Con picked_up_now el cliente se lo lleva en la tienda: la renta nace
+    «Rentada» (ENT-57). Lanza un OperationRejectedError si se rompe una regla;
+    entonces no se guarda nada.
     """
-    # The rules compare clock times (18:00, 09:00), so work in local time.
+    # Las reglas comparan horas de reloj (18:00, 09:00): se trabaja en hora local.
     start = timezone.localtime(start_datetime)
     end = timezone.localtime(end_datetime)
-
-    # Period rules do not need the database, so check them first.
+    # El periodo no necesita la base: se revisa antes de bloquear ninguna fila.
     check_period(start, end)
-
     with transaction.atomic():
-        # Lock the unit's row until the transaction ends. If two clients
-        # confirm at the same time, the second one waits here and then
-        # sees the first rental, so the first click wins (ENT-21).
-        # Reading the row again also gets its current status.
+        # Bloquea la fila del equipo hasta el final: si dos clientes confirman a la
+        # vez, el segundo espera aquí y ve la renta del primero (ENT-21: gana el primer clic).
         locked_equipment = Equipment.objects.select_for_update().get(pk=equipment.pk)
         check_equipment_is_free(locked_equipment, start, end)
         rental = Rental(
@@ -130,7 +125,7 @@ def create_rental(
             registered_by=registered_by,
         )
         if picked_up_now:
-            # No client rule yet for taking a unit now with a later start; pending question (ENT-57).
+            # Pendiente con el cliente: qué pasa si se lo lleva ahora y el periodo empieza después (ENT-57).
             rental.picked_up_at = timezone.now()
             rental.handed_over_by = registered_by
         rental.save()
@@ -138,7 +133,7 @@ def create_rental(
 
 
 def check_period(start, end):
-    """Raise if the period itself breaks a rule, whatever the unit."""
+    """Lanza InvalidPeriodError si el periodo mismo rompe una regla, sea cual sea el equipo."""
     if not rules.ends_after_start(start, end):
         raise InvalidPeriodError(
             "La fecha y hora de devolución debe ser posterior a la de recojo."
@@ -148,27 +143,24 @@ def check_period(start, end):
             f"La renta no puede durar más de {rules.MAX_RENTAL_DURATION.days} días."
         )
     if not rules.is_pickup_time_allowed(start):
-        raise OutsideRentalHoursError(
+        raise InvalidPeriodError(
             f"El recojo debe ser desde las {rules.EARLIEST_PICKUP_TIME:%H:%M}."
         )
     if not rules.is_return_time_allowed(end):
-        raise OutsideRentalHoursError(
+        raise InvalidPeriodError(
             f"La devolución debe ser hasta las {rules.LATEST_RETURN_TIME:%H:%M}."
         )
 
 
 def check_equipment_is_free(equipment, start, end):
-    """Raise EquipmentNotAvailableError if the unit cannot be rented then (E1)."""
+    """Lanza EquipmentNotAvailableError si el equipo no se puede rentar en ese periodo (RF-01)."""
     if not rules.is_rentable_status(equipment.status):
         raise EquipmentNotAvailableError(
             f"El equipo {equipment.inventory_id} no está disponible "
             f"(estado: {equipment.get_status_display()})."
         )
-
-    # Compare with every rental of this unit using the same rules the
-    # unit tests check, instead of repeating the conditions in SQL.
-    # Rentals come ordered by start (Rental.Meta), so the first clash is the
-    # one that starts first and the message names the closest busy period.
+    # Las rentas vienen ordenadas por inicio (Rental.Meta): el primer choque es el
+    # más próximo, y el mensaje nombra ese periodo.
     now = timezone.now()
     for rental in equipment.rentals.all():
         if not rental.occupies_equipment_at(now):
@@ -178,15 +170,14 @@ def check_equipment_is_free(equipment, start, end):
 
 
 def busy_message(equipment, rental, start):
-    """Say when the unit is busy and, if that rental starts later, until when it is free (ENT-36, ENT-64)."""
+    """Dice cuándo está ocupado el equipo y, si esa renta empieza después, hasta cuándo está libre (ENT-36, ENT-51)."""
     busy_start = timezone.localtime(rental.start_datetime)
-    busy_end = timezone.localtime(rental.end_datetime)
     message = (
         f"El equipo {equipment.inventory_id} está ocupado "
-        f"del {busy_start:{DATETIME_FORMAT}} al {busy_end:{DATETIME_FORMAT}}."
+        f"del {local_text(rental.start_datetime)} al {local_text(rental.end_datetime)}."
     )
-    # Only a rental that starts after the requested pickup leaves free days
-    # before it, and the unit must be back by 09:00 of its first day (#47).
+    # Solo una renta que empieza después del recojo pedido deja días libres antes,
+    # y el equipo debe volver hasta las 09:00 de su primer día.
     if busy_start > start:
         message += (
             f" Está libre hasta el {busy_start:%d/%m/%Y} a las {rules.LATEST_RETURN_TIME:%H:%M}."
@@ -195,15 +186,13 @@ def busy_message(equipment, rental, start):
 
 
 def cancel_rental(rental, cancelled_by) -> Rental:
-    """Cancel a reservation not picked up yet and record who cancelled it (ENT-55).
+    """Cancela una reserva todavía no recogida y guarda quién la canceló (ENT-55).
 
-    Its dates are free for others at once, because a cancelled rental no
-    longer occupies the unit. Raises RentalNotCancellableError if the rental
-    is not "reserved"; then nothing changes.
+    Sus fechas quedan libres al instante, porque una renta cancelada ya no
+    ocupa el equipo. Lanza RentalStateError si no está «Reservada».
     """
     with transaction.atomic():
-        # Lock the rental's row and read it again, so a pickup and a
-        # cancellation clicked at the same time cannot both be saved.
+        # Bloquea la fila: un recojo y una cancelación a la vez no se guardan los dos.
         locked_rental = Rental.objects.select_for_update().get(pk=rental.pk)
         now = timezone.now()
         check_can_cancel(locked_rental, now)
@@ -214,25 +203,7 @@ def cancel_rental(rental, cancelled_by) -> Rental:
 
 
 def check_can_cancel(rental, now):
-    """Raise RentalNotCancellableError unless the rental is "reserved" at now (#49)."""
+    """Lanza RentalStateError si en now la renta no está «Reservada» (HU-06)."""
     status = rental.status_at(now)
-    if status == RentalStatus.RESERVED:
-        return
-    raise RentalNotCancellableError(not_cancellable_message(rental, status))
-
-
-def not_cancellable_message(rental, status):
-    """Say why the rental is no longer a reservation, with the moment it stopped being one."""
-    inventory_id = rental.equipment.inventory_id
-    if status == RentalStatus.CANCELLED:
-        return f"La renta de {inventory_id} ya fue cancelada el {local_text(rental.cancelled_at)}."
-    if status == RentalStatus.RETURNED:
-        return f"La renta de {inventory_id} ya fue devuelta el {local_text(rental.returned_at)}."
-    if status == RentalStatus.RENTED:
-        return f"La renta de {inventory_id} ya fue entregada el {local_text(rental.picked_up_at)}."
-    return f"La reserva de {inventory_id} venció a las {rules.PICKUP_DEADLINE:%H:%M}."
-
-
-def local_text(moment):
-    """Write a moment as La Paz date and time, the way the messages show it."""
-    return f"{timezone.localtime(moment):{DATETIME_FORMAT}}"
+    if status != RentalStatus.RESERVED:
+        raise RentalStateError(rental_state_message(rental, status))

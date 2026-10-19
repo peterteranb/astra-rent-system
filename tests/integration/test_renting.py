@@ -26,7 +26,7 @@ pruebas de este archivo.
 import pytest
 from django.utils import timezone
 
-from rentals.errors import EquipmentNotAvailableError, RentalNotCancellableError
+from rentals.errors import EquipmentNotAvailableError, RentalStateError
 from rentals.handover import register_pickup
 from rentals.models import Equipment, EquipmentStatus, Rental
 from rentals.renting import cancel_rental, create_rental, find_clients
@@ -285,7 +285,7 @@ def test_el_operador_cancela_una_reserva_y_guarda_cuando_y_quien(op01, c01, eq01
 def test_una_renta_ya_entregada_no_se_cancela_y_la_base_queda_igual(op01, c01, eq01):
     """Requisito: B3 (#49), solo se cancela una reserva que todavia no se recogio.
     Caso:      OP-01 ya entrego a C-01 la reserva de EQ-01 e intenta cancelarla.
-    Esperado:  RentalNotCancellableError con la fecha de la entrega; la base queda igual.
+    Esperado:  RentalStateError con la fecha de la entrega; la base queda igual.
     Ejemplo:   renta entregada hoy -> "La renta de EQ-01 ya fue entregada el <fecha del recojo>."
     """
     # Preparar
@@ -294,7 +294,7 @@ def test_una_renta_ya_entregada_no_se_cancela_y_la_base_queda_igual(op01, c01, e
     antes = foto_de_la_base()
 
     # Ejecutar
-    with pytest.raises(RentalNotCancellableError) as error:
+    with pytest.raises(RentalStateError) as error:
         cancel_rental(entregada, op01)
 
     # Comprobar: la respuesta

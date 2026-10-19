@@ -1,4 +1,4 @@
-"""Client pages (catalog, rental form, confirmation, my rentals) and the staff pages."""
+"""URLs de las páginas del cliente (catálogo, renta, confirmación, «Mis rentas») y del personal."""
 from django.urls import path
 
 from .views import handover, home, renting, review

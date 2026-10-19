@@ -28,11 +28,11 @@ def test_mt01_deja_disponible_a_eq03_y_vuelve_al_catalogo(client, mt01, eq03_in_
     )
 
     # Comprobar: la respuesta
-    assert list(pagina.context["equipment_list"]) == [eq03_in_review]
+    assert [equipo for equipo, _ in pagina.context["entries"]] == [eq03_in_review]
     assertContains(pagina, 'action="/maintenance/EQ-03/"')
     assertRedirects(respuesta, "/maintenance/")
     assertContains(respuesta, "EQ-03 ahora está «Disponible».")
-    assert list(respuesta.context["equipment_list"]) == []
+    assert list(respuesta.context["entries"]) == []
 
     # Comprobar: lo guardado
     eq03_in_review.refresh_from_db()

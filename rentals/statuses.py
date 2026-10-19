@@ -1,9 +1,9 @@
-"""States of an equipment unit, of a rental and of a return, shared by models and rules."""
+"""Estados de un equipo, de una renta y de una devolución, que comparten los modelos y las reglas."""
 from django.db import models
 
 
 class EquipmentStatus(models.TextChoices):
-    """Equipment states agreed with the client (ENT-33); reserved and rented come from rental dates."""
+    """Estados físicos del equipo (ENT-33, ENT-61); «reservado» y «rentado» salen de las fechas de cada renta."""
 
     AVAILABLE = "available", "Disponible"
     IN_REVIEW = "in_review", "En revisión"
@@ -12,7 +12,7 @@ class EquipmentStatus(models.TextChoices):
 
 
 class RentalStatus(models.TextChoices):
-    """Rental states; they are calculated from the rental moments, never stored."""
+    """Estados de la renta: se calculan desde sus momentos y nunca se guardan (RF-07)."""
 
     RESERVED = "reserved", "Reservada"
     RENTED = "rented", "Rentada"
@@ -22,7 +22,7 @@ class RentalStatus(models.TextChoices):
 
 
 class ReturnResult(models.TextChoices):
-    """How a return arrived compared with 09:00 of the return day (ENT-63, ENT-65)."""
+    """Cómo llegó una devolución comparada con las 09:00 del día de vencimiento (ENT-63)."""
 
     ON_TIME = "on_time", "A tiempo"
     WITH_FINE = "with_fine", "Con multa"

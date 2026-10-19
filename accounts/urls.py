@@ -1,4 +1,4 @@
-"""Login and logout pages (PRE-CU-01, steps 1 to 3)."""
+"""Páginas de login y de cierre de sesión."""
 from django.contrib.auth.views import LoginView, LogoutView
 from django.urls import path
 
@@ -10,11 +10,11 @@ urlpatterns = [
         LoginView.as_view(
             template_name="accounts/login.html",
             authentication_form=LoginForm,
-            # A client who is already logged in goes straight to the catalog.
+            # Quien ya tiene sesión va directo a la página de su rol.
             redirect_authenticated_user=True,
         ),
         name="login",
     ),
-    # LogoutView only accepts POST, so the logout button is a small form.
+    # LogoutView solo acepta POST: el botón de cerrar sesión es un formulario.
     path("logout/", LogoutView.as_view(), name="logout"),
 ]
