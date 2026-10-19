@@ -7,8 +7,14 @@ from django.db import transaction
 from django.utils import timezone
 
 from . import rules
-from .errors import EquipmentNotAvailableError, InvalidPeriodError, OutsideRentalHoursError
+from .errors import (
+    EquipmentNotAvailableError,
+    InvalidPeriodError,
+    OperationRejectedError,
+    OutsideRentalHoursError,
+)
 from .models import Equipment, EquipmentStatus, Rental
+from .statuses import RentalStatus
 
 DATETIME_FORMAT = "%d/%m/%Y %H:%M"
 
@@ -113,15 +119,20 @@ def check_equipment_is_free(equipment, start, end):
             )
 
 def cancel_rental(rental, cancelled_by) -> Rental:
-    """Cancel a rental that has not yet been picked up."""
-    if rental.picked_up_at is not None:
-        raise ValueError("No se puede cancelar una reserva que ya ha sido recogida.")
-    if rental.returned_at is not None:
-        raise ValueError("No se puede cancelar una reserva que ya fue devuelta.")
-    if rental.cancelled_at is not None:
-        raise ValueError("La reserva ya se encuentra cancelada.")
+    """Cancel a reservation that was not picked up and return it.
 
-    rental.cancelled_at = timezone.now()
-    rental.cancelled_by = cancelled_by
-    rental.save()
-    return rental
+    Raises OperationRejectedError if the rental is not "reserved" (already
+    picked up, returned, cancelled or not picked up in time); then nothing changes.
+    """
+    with transaction.atomic():
+        # Lock the row and read it again, so a pickup registered at the same
+        # moment cannot be cancelled by mistake.
+        locked_rental = Rental.objects.select_for_update().get(pk=rental.pk)
+        if locked_rental.status != RentalStatus.RESERVED:
+            raise OperationRejectedError(
+                "Solo se puede cancelar una reserva que no se recogió."
+            )
+        locked_rental.cancelled_at = timezone.now()
+        locked_rental.cancelled_by = cancelled_by
+        locked_rental.save(update_fields=["cancelled_at", "cancelled_by"])
+        return locked_rental
