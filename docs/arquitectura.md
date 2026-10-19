@@ -29,32 +29,57 @@ flowchart LR
 
 ```mermaid
 erDiagram
-    USUARIO ||--o{ RENTA : "es cliente de"
-    USUARIO ||--o{ RENTA : "registra / entrega / recibe / cancela"
-    EQUIPO ||--o{ RENTA : "se renta en"
-    EQUIPO ||--o{ CAMBIO_DE_ESTADO : "tiene historial"
-    USUARIO ||--o{ CAMBIO_DE_ESTADO : "hace"
+    USUARIO ||--o{ RENTA : "client (PROTECT)"
+    USUARIO |o--o{ RENTA : "registered_by (PROTECT)"
+    USUARIO |o--o{ RENTA : "handed_over_by (PROTECT)"
+    USUARIO |o--o{ RENTA : "received_by (PROTECT)"
+    USUARIO |o--o{ RENTA : "cancelled_by (PROTECT)"
+    EQUIPO ||--o{ RENTA : "equipment (PROTECT)"
+    EQUIPO ||--o{ CAMBIO_DE_ESTADO : "equipment (PROTECT)"
+    USUARIO ||--o{ CAMBIO_DE_ESTADO : "changed_by (PROTECT)"
     USUARIO }o--o{ GRUPO : "operador / mantenimiento"
 
+    USUARIO {
+        bigint id PK
+        string password "obligatorio"
+        string email "obligatorio"
+        string telefono "obligatorio"
+        string username UK "obligatorio"
+    }
+    GRUPO {
+        int id PK
+        string name UK "operador, mantenimiento"
+    }
     EQUIPO {
-        string inventory_id UK "EQ-01"
+        bigint id PK
+        string inventory_id UK "una fila por unidad: EQ-01"
         string serial_number
         string description
-        string status "disponible, en revisión, en reparación, baja"
+        string status "solo estado físico: available, in_review, in_repair, retired"
     }
     RENTA {
-        datetime start_datetime "puede recoger desde"
-        datetime end_datetime "debe devolver hasta"
-        datetime picked_up_at "vacío = no recogida"
-        datetime returned_at "vacío = no devuelta"
-        datetime cancelled_at "vacío = vigente"
+        bigint id PK
+        bigint client_id FK "obligatorio"
+        bigint equipment_id FK "obligatorio"
+        bigint registered_by_id FK "nulo = renta en línea"
+        bigint handed_over_by_id FK "nulo"
+        bigint received_by_id FK "nulo"
+        bigint cancelled_by_id FK "nulo"
+        datetime start_datetime "recojo desde"
+        datetime end_datetime "CHECK end > start"
+        datetime picked_up_at "nulo = no recogida"
+        datetime returned_at "nulo = no devuelta"
+        datetime cancelled_at "nulo = vigente"
         string return_note
     }
     CAMBIO_DE_ESTADO {
+        bigint id PK
+        bigint equipment_id FK
+        bigint changed_by_id FK
         string old_status
         string new_status
-        datetime changed_at
-        string comment
+        datetime changed_at "quién, cuándo, de qué a qué"
+        string comment "opcional"
     }
 ```
 
