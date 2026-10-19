@@ -130,13 +130,11 @@ def walk_in_rental(request):
 
 
 @login_required
-def client_rentals_view(request):
-    """Muestra al cliente la lista de sus rentas (activas e historial)."""
-    # Obtenemos las rentas del usuario logueado, ordenadas por fecha de inicio
-    rentals = request.user.rentals.all().order_by("-start_datetime")
-
-    return render(
-        request,
-        "rentals/client_rentals.html",
-        {"rentals": rentals}
+def client_rentals(request):
+    """Show the client's rentals, the latest first, each with its status (#51)."""
+    rentals = (
+        Rental.objects.filter(client=request.user)
+        .select_related("equipment")
+        .order_by("-start_datetime")
     )
+    return render(request, "rentals/client_rentals.html", {"rentals": rentals})
