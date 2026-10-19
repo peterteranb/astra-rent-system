@@ -1,4 +1,4 @@
-"""Root URL configuration: admin, login/logout and the rental pages."""
+"""URLs raíz: el admin, el login y el cierre de sesión, y las páginas de renta."""
 from django.contrib import admin
 from django.urls import include, path
 
