@@ -92,8 +92,8 @@ def cancel_reservation(request, rental_id):
             request,
             f"La reserva del equipo {rental.equipment.inventory_id} fue cancelada correctamente.",
         )
-    except ValueError as e:
-        messages.error(request, str(e))
+    except OperationRejectedError as error:
+        messages.error(request, str(error))
 
     return redirect("staff_reservations")
 
@@ -192,4 +192,4 @@ def catalog(request):
             "busy_periods": active_rentals,
         })
 
-    return render(request, "rentals/catalog.html", {"catalog_data": catalog_data})
+    return render(request, "rentals/catalog.html", {"catalog_data": catalog_data, "equipment_list": equipments})
