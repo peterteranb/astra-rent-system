@@ -19,4 +19,5 @@ urlpatterns = [
     path("staff/reservations/<int:rental_id>/cancel/", renting.cancel_reservation, name="cancel_reservation",),
     path("staff/walk-in/", renting.walk_in_rental, name="walk_in_rental"),
     path("my-rentals/", renting.client_rentals_view, name="client_rentals"),
+    path("maintenance/<str:inventory_id>/", review.review_unit, name="review_unit"),
 ]

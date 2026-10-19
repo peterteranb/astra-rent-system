@@ -130,6 +130,15 @@ class Rental(models.Model):
         """Return the status of the rental right now."""
         return self.status_at(timezone.now())
 
+    @property
+    def return_result(self):
+        """Return how the return arrived, or None while the unit is not back (C4)."""
+        if self.returned_at is None:
+            return None
+        # Local time: the limits are La Paz clock times (09:00, 12:00).
+        due_date = timezone.localtime(self.end_datetime).date()
+        return rules.classify_return(timezone.localtime(self.returned_at), due_date)
+
 
 class StatusChange(models.Model):
     """One change of state of a unit: who, when, from which state to which and why (ENT-34)."""

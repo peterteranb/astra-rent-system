@@ -1,4 +1,4 @@
-"""States of an equipment unit and of a rental, shared by models and rules."""
+"""States of an equipment unit, of a rental and of a return, shared by models and rules."""
 from django.db import models
 
 
@@ -19,3 +19,11 @@ class RentalStatus(models.TextChoices):
     NOT_PICKED_UP = "not_picked_up", "No recogida"
     RETURNED = "returned", "Devuelta"
     CANCELLED = "cancelled", "Cancelada"
+
+
+class ReturnResult(models.TextChoices):
+    """How a return arrived compared with 09:00 of the return day (ENT-63, ENT-65)."""
+
+    ON_TIME = "on_time", "A tiempo"
+    WITH_FINE = "with_fine", "Con multa"
+    EXTRA_DAY = "extra_day", "Se cobra un día más"
