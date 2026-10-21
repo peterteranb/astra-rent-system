@@ -20,5 +20,6 @@ Son la evidencia de cada actividad, con la fecha en que se hicieron. Se actualiz
 | 08–09 | [sesion-08-09-plan.md](sesion-08-09-plan.md) |
 | 12 | [sesion-12-arquitectura.md](sesion-12-arquitectura.md) |
 | 13–14 | [sesion-13-14-revision.md](sesion-13-14-revision.md) |
+| 20 | [sesion-20-bocetos.md](sesion-20-bocetos.md) |
 | Plan (Gantt) | [diagramaGantt.png](diagramaGantt.png) |
 | Presentación del 12/10 | [presentacion12-10.md](presentacion12-10.md) |
