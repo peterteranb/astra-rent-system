@@ -13,12 +13,21 @@
     {% if is_operator or is_maintenance %}
       <nav class="site-header__nav">
         {% if is_operator %}
+          <a href="{% url 'walk_in_rental' %}">Renta en tienda</a>
           <a href="{% url 'staff_reservations' %}">Reservas por entregar</a>
           <a href="{% url 'staff_returns' %}">Devoluciones</a>
         {% endif %}
         {% if is_maintenance %}
           <a href="{% url 'maintenance' %}">Mantenimiento</a>
         {% endif %}
+        {% if is_admin %}
+          <a href="{% url 'admin:index' %}">Panel de administración</a>
+        {% endif %}
+      </nav>
+    {% elif user.is_authenticated %}
+      {# Quien tiene sesión y no tiene un rol del personal es un cliente. #}
+      <nav class="site-header__nav">
+        <a href="{% url 'client_rentals' %}">Mis rentas</a>
       </nav>
     {% endif %}
     {% if user.is_authenticated %}
@@ -31,6 +40,8 @@
   </header>
 
   <main class="page">
+    <h1 class="page__title">{% block heading %}{% endblock %}</h1>
+
     {% if messages %}
       <ul class="messages">
         {% for message in messages %}

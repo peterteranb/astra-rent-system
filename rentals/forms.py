@@ -1,34 +1,32 @@
-"""Form for the rental request (PRE-CU-01, step 6)."""
+"""Formularios de la renta en línea (CU-01), la renta en tienda (CU-02) y la observación de la devolución (CU-04)."""
 from datetime import datetime
 
 from django import forms
 from django.utils import timezone
 
 from . import rules
+from .models import Rental
+from .renting import client_accounts, list_catalog
 
 
 def combine_local(day, chosen_time):
-    """Join a date and a time into an aware datetime in local time."""
-    # make_aware uses the project's TIME_ZONE (America/La_Paz).
+    """Junta una fecha y una hora en un momento con la zona de La Paz."""
+    # make_aware usa el TIME_ZONE del proyecto (America/La_Paz).
     return timezone.make_aware(datetime.combine(day, chosen_time))
 
 
 class RentalForm(forms.Form):
-    """Pickup and return date and time chosen by the client.
+    """Fecha y hora de recojo y de devolución que elige el cliente.
 
-    The client may type any minute. The form only checks that real dates
-    and times arrive; the 18:00 / 09:00 window is checked by the service
-    (rules.py), so its message is the one the client sees. clean() leaves
-    start_datetime and end_datetime in cleaned_data, so the view and the
-    service do not change.
+    Solo revisa que lleguen fechas y horas reales; la ventana 18:00 / 09:00 la
+    revisa el caso de uso, así el cliente ve su mensaje con la causa (RC-01).
     """
 
     start_date = forms.DateField(
         label="Fecha de recojo",
         widget=forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"),
     )
-    # No min/max on the input on purpose: the server applies the rule
-    # and explains the cause (PRE-RC-01).
+    # Sin min/max en el campo a propósito: el servidor aplica la regla y explica la causa (RC-01).
     start_time = forms.TimeField(
         label="Hora de recojo",
         help_text=f"Desde las {rules.EARLIEST_PICKUP_TIME:%H:%M}",
@@ -45,9 +43,9 @@ class RentalForm(forms.Form):
     )
 
     def clean(self):
+        """Agrega start_datetime y end_datetime en hora de La Paz cuando la fecha y la hora son válidas."""
         cleaned_data = super().clean()
-        # Combine only when both parts are valid; otherwise the field
-        # errors already tell the client what is missing.
+        # Si falta una parte, el error de su campo ya le dice al cliente qué falta.
         if cleaned_data.get("start_date") and cleaned_data.get("start_time"):
             cleaned_data["start_datetime"] = combine_local(
                 cleaned_data["start_date"], cleaned_data["start_time"]
@@ -57,3 +55,34 @@ class RentalForm(forms.Form):
                 cleaned_data["end_date"], cleaned_data["end_time"]
             )
         return cleaned_data
+
+
+class WalkInRentalForm(RentalForm):
+    """Renta que el operador registra en la tienda para un cliente: agrega cliente, equipo y «Se lo lleva ahora»."""
+
+    # La página muestra solo los resultados de la búsqueda, pero se acepta cualquier
+    # cliente: así el POST no depende de repetir la búsqueda.
+    client = forms.ModelChoiceField(
+        label="Cliente", queryset=client_accounts(), widget=forms.RadioSelect
+    )
+    # create_rental vuelve a revisar el equipo al guardar; la lista solo ayuda a elegir.
+    equipment = forms.ModelChoiceField(
+        label="Equipo",
+        queryset=list_catalog(),
+        to_field_name="inventory_id",
+        empty_label="Elige un equipo",
+    )
+    takes_it_now = forms.BooleanField(label="Se lo lleva ahora", required=False)
+
+
+class ReturnForm(forms.Form):
+    """Observación que escribe el operador sobre cómo llegó el equipo."""
+
+    # No es obligatoria aquí: register_return revisa que haya nota y da su mensaje (RC-01).
+    # max_length es el del modelo, así una nota larga da error de formulario y no de base.
+    note = forms.CharField(
+        label="Observación",
+        required=False,
+        max_length=Rental._meta.get_field("return_note").max_length,
+        widget=forms.Textarea(attrs={"rows": 3}),
+    )

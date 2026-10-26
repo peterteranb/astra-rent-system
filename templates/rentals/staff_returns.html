@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block title %}Devoluciones pendientes{% endblock %}
+{% block heading %}Devoluciones pendientes{% endblock %}
+
+{% block content %}
+  {% if rentals %}
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Equipo</th>
+          <th>Cliente</th>
+          <th>Estado</th>
+          <th>Vence</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for rental in rentals %}
+          {% with status=rental.status %}
+            <tr>
+              <td data-label="Equipo">{{ rental.equipment.inventory_id }} · {{ rental.equipment.description }}</td>
+              <td data-label="Cliente">{{ rental.client.get_full_name|default:rental.client.username }}</td>
+              <td data-label="Estado"><span class="badge badge--{{ status }}">{{ status.label }}</span></td>
+              <td data-label="Vence">{{ rental.end_datetime|date:"d/m/Y H:i" }}</td>
+              <td class="table__actions"><a class="button" href="{% url 'return_rental' rental.pk %}">Registrar devolución</a></td>
+            </tr>
+          {% endwith %}
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p class="empty">No hay devoluciones pendientes.</p>
+  {% endif %}
+{% endblock %}

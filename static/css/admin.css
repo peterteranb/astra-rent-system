@@ -1,0 +1,84 @@
+/* Colores de SergioCorp en el admin de Django (ENT-50: «traten de personalizarlo»).
+   Usa los mismos selectores que base.css y dark_mode.css del admin para ganarles en cada tema. */
+
+html[data-theme="light"],
+:root {
+  --primary: #2f6fde;
+  --secondary: #1f4fa8;
+  --accent: #ffffff;
+  --primary-fg: #ffffff;
+
+  --body-fg: #1f2933;
+  --body-quiet-color: #616e7c;
+
+  --header-color: #e8f0fd;
+  --header-branding-color: #ffffff;
+  --header-bg: var(--secondary);
+  --header-link-color: #ffffff;
+
+  --breadcrumbs-fg: #e8f0fd;
+  --breadcrumbs-link-fg: #ffffff;
+  --breadcrumbs-bg: var(--primary);
+
+  --link-fg: #2f6fde;
+  --link-hover-color: #1f4fa8;
+  --link-selected-fg: #1f4fa8;
+
+  --hairline-color: #d9e2ec;
+  --border-color: #d9e2ec;
+  --darkened-bg: #f5f7fa;
+  --selected-row: #e8f0fd;
+
+  --error-fg: #b42318;
+  --message-success-bg: #e6f4ea;
+  --message-warning-bg: #fff4e0;
+  --message-error-bg: #fdecea;
+  --message-info-bg: #e8f0fd;
+
+  --button-bg: #2f6fde;
+  --button-hover-bg: #1f4fa8;
+  --default-button-bg: #1f4fa8;
+  --default-button-hover-bg: #2f6fde;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --primary: #1f4fa8;
+    --header-bg: #1f2933;
+    --breadcrumbs-bg: var(--primary);
+    --link-fg: #8fb4f5;
+    --link-hover-color: #b9d0fa;
+    --link-selected-fg: #8fb4f5;
+    --hairline-color: #272727;
+    --border-color: #353535;
+    --darkened-bg: #212121;
+    --selected-row: #1b2b4a;
+    --error-fg: #e35f5f;
+    --message-success-bg: #006b1b;
+    --message-warning-bg: #583305;
+    --message-error-bg: #570808;
+    --message-info-bg: #265895;
+  }
+}
+
+html[data-theme="dark"] {
+  --primary: #1f4fa8;
+  --header-bg: #1f2933;
+  --breadcrumbs-bg: var(--primary);
+  --link-fg: #8fb4f5;
+  --link-hover-color: #b9d0fa;
+  --link-selected-fg: #8fb4f5;
+  --hairline-color: #272727;
+  --border-color: #353535;
+  --darkened-bg: #212121;
+  --selected-row: #1b2b4a;
+  --error-fg: #e35f5f;
+  --message-success-bg: #006b1b;
+  --message-warning-bg: #583305;
+  --message-error-bg: #570808;
+  --message-info-bg: #265895;
+}
+
+#site-name img {
+  vertical-align: middle;
+}

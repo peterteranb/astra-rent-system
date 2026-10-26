@@ -1,12 +1,11 @@
 {% extends "base.html" %}
 
 {% block title %}Reservas por entregar{% endblock %}
+{% block heading %}Reservas por entregar{% endblock %}
 
 {% block content %}
-  <h1 class="page__title">Reservas por entregar</h1>
-
   {% if reservations %}
-    <table>
+    <table class="table">
       <thead>
         <tr>
           <th>Equipo</th>
@@ -19,21 +18,27 @@
       <tbody>
         {% for rental in reservations %}
           <tr>
-            <td>{{ rental.equipment.inventory_id }} · {{ rental.equipment.description }}</td>
-            <td>{{ rental.client.username }}</td>
-            <td>{{ rental.start_datetime|date:"d/m/Y H:i" }}</td>
-            <td>{{ rental.end_datetime|date:"d/m/Y H:i" }}</td>
-            <td>
-              <form method="post" action="{% url 'register_pickup' rental.pk %}">
-                {% csrf_token %}
-                <button class="button" type="submit">Registrar recojo</button>
-              </form>
+            <td data-label="Equipo">{{ rental.equipment.inventory_id }} · {{ rental.equipment.description }}</td>
+            <td data-label="Cliente">{{ rental.client.get_full_name|default:rental.client.username }}</td>
+            <td data-label="Desde">{{ rental.start_datetime|date:"d/m/Y H:i" }}</td>
+            <td data-label="Hasta">{{ rental.end_datetime|date:"d/m/Y H:i" }}</td>
+            <td class="table__actions">
+              <div class="form__actions">
+                <form method="post" action="{% url 'register_pickup' rental.pk %}">
+                  {% csrf_token %}
+                  <button class="button" type="submit">Registrar recojo</button>
+                </form>
+                <form method="post" action="{% url 'cancel_reservation' rental.pk %}">
+                  {% csrf_token %}
+                  <button class="button button--secondary" type="submit">Cancelar</button>
+                </form>
+              </div>
             </td>
           </tr>
         {% endfor %}
       </tbody>
     </table>
   {% else %}
-    <p class="catalog__empty">No hay reservas por entregar.</p>
+    <p class="empty">No hay reservas por entregar.</p>
   {% endif %}
 {% endblock %}

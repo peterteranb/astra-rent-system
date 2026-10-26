@@ -1,21 +1,29 @@
 {% extends "base.html" %}
 
 {% block title %}Catálogo{% endblock %}
+{% block heading %}Catálogo de equipos disponibles{% endblock %}
 
 {% block content %}
-  <h1 class="page__title">Catálogo de equipos disponibles</h1>
-
-  {% if equipment_list %}
-    <ul class="catalog">
-      {% for equipment in equipment_list %}
-        <li class="catalog__item">
-          <span class="catalog__id">{{ equipment.inventory_id }}</span>
-          <span class="catalog__description">{{ equipment.description }}</span>
-          <a class="button" href="{% url 'rent_equipment' equipment.inventory_id %}">Rentar</a>
+  {% if catalog_entries %}
+    <ul class="list">
+      {% for entry in catalog_entries %}
+        <li class="list__item">
+          <span class="list__id">{{ entry.equipment.inventory_id }}</span>
+          <span class="list__description">{{ entry.equipment.description }}</span>
+          <a class="button" href="{% url 'rent_equipment' entry.equipment.inventory_id %}">Rentar</a>
+          {% if entry.busy_rentals %}
+            <ul class="list__detail">
+              {% for rental in entry.busy_rentals %}
+                <li>Ocupado del {{ rental.start_datetime|date:"d/m/Y H:i" }} al {{ rental.end_datetime|date:"d/m/Y H:i" }}</li>
+              {% endfor %}
+            </ul>
+          {% else %}
+            <p class="list__detail"><span class="badge badge--available">Libre</span></p>
+          {% endif %}
         </li>
       {% endfor %}
     </ul>
   {% else %}
-    <p class="catalog__empty">No hay equipos disponibles por ahora.</p>
+    <p class="empty">No hay equipos disponibles por ahora.</p>
   {% endif %}
 {% endblock %}

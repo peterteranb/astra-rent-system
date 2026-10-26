@@ -1,45 +1,25 @@
-"""Domain errors raised when an operation is rejected.
-
-The message of each error is written for the user, in Spanish, and
-names the cause of the rejection (PRE-RC-01).
-"""
+"""Errores que se lanzan cuando una operación se rechaza; su mensaje es la causa para el usuario (RC-01)."""
 
 
 class OperationRejectedError(Exception):
-    """Base class: the operation was not saved. The views catch this one."""
-
-
-class EquipmentNotAvailableError(OperationRejectedError):
-    """The unit is not "available" or already has an overlapping rental (E1)."""
+    """Base de todos los rechazos: la operación no guardó nada. Las vistas atrapan esta."""
 
 
 class InvalidPeriodError(OperationRejectedError):
-    """The return is not after the pickup, or the rental is too long."""
+    """Las fechas, los horarios o la duración del periodo pedido rompen una regla."""
 
 
-class OutsideRentalHoursError(OperationRejectedError):
-    """The pickup or return time is outside the allowed window (ENT-19)."""
+class EquipmentNotAvailableError(OperationRejectedError):
+    """El equipo no está «Disponible» o ya tiene otra renta en esas fechas (RF-01)."""
 
 
-class AlreadyPickedUpError(OperationRejectedError):
-    """The unit of the rental was already picked up."""
-
-
-class ReservationExpiredError(OperationRejectedError):
-    """The reservation was not picked up before the pickup deadline."""
-
-
-class AlreadyReturnedError(OperationRejectedError):
-    """The unit of the rental was already returned."""
+class RentalStateError(OperationRejectedError):
+    """La renta no está en el estado que pide la operación: cancelada, entregada, vencida o devuelta."""
 
 
 class IncompleteReturnError(OperationRejectedError):
-    """The return lacks something needed to register it."""
-
-
-class RentalCancelledError(OperationRejectedError):
-    """The rental was cancelled."""
+    """A la devolución le falta la observación de cómo llegó el equipo (RF-08)."""
 
 
 class InvalidStatusChangeError(OperationRejectedError):
-    """The unit is retired, and a retirement is final."""
+    """El cambio de estado del equipo no se permite: está de baja, ya tiene ese estado o no es un resultado de revisión."""

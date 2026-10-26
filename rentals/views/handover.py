@@ -1,32 +1,36 @@
-"""Operator pages to hand over reserved units and receive them back.
+"""Páginas del operador para CU-03 y CU-04: entregar los equipos reservados y recibirlos de vuelta.
 
-They read the request, call handover.py and choose a template; the
-business rules live in handover.py and rules.py.
+Leen la petición, llaman a handover.py y eligen la plantilla; las reglas están en handover.py y rules.py.
 """
 from django.contrib import messages
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
 from ..errors import OperationRejectedError
-from ..handover import register_pickup, reservations_to_hand_over
+from ..forms import ReturnForm
+from ..handover import (
+    register_pickup,
+    register_return,
+    rentals_to_receive,
+    reservations_to_hand_over,
+)
 from ..models import Rental
 from ..roles import OPERATOR, role_required
 
 
 @role_required(OPERATOR)
 def staff_reservations(request):
-    """Show the reservations the operator can hand over (C2)."""
+    """Muestra las reservas que el operador puede entregar."""
     return render(
         request, "rentals/staff_reservations.html", {"reservations": reservations_to_hand_over()}
     )
 
 
-# role_required goes outside so a visitor is sent to the login before
-# require_POST answers 405 to a GET.
+# role_required va afuera: un visitante va al login antes de que require_POST responda 405.
 @role_required(OPERATOR)
 @require_POST
 def pickup_reservation(request, rental_id):
-    """Register the pickup of one reservation and go back to the list (C2)."""
+    """Registra el recojo de una reserva y vuelve a la lista (CU-03)."""
     rental = get_object_or_404(Rental, pk=rental_id)
     try:
         register_pickup(rental, request.user)
@@ -37,11 +41,36 @@ def pickup_reservation(request, rental_id):
             request,
             f"Recojo registrado: {rental.equipment.inventory_id} entregado a {rental.client.username}.",
         )
-    # Redirect after the POST so reloading the page does not send it again.
+    # Redirige después del POST: recargar la página no lo envía otra vez.
     return redirect("staff_reservations")
 
 
 @role_required(OPERATOR)
 def staff_returns(request):
-    """Operator page to register returns (under construction)."""
-    return render(request, "rentals/under_construction.html", {"page_title": "Devoluciones"})
+    """Muestra las rentas que faltan devolver, con su estado."""
+    return render(request, "rentals/staff_returns.html", {"rentals": rentals_to_receive()})
+
+
+@role_required(OPERATOR)
+def return_rental(request, rental_id):
+    """Muestra el formulario de la observación de una renta y registra la devolución (CU-04)."""
+    rental = get_object_or_404(Rental, pk=rental_id)
+    form = ReturnForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        try:
+            returned = register_return(rental, request.user, form.cleaned_data["note"])
+        except OperationRejectedError as error:
+            # Se queda en el formulario para que el operador corrija la observación.
+            form.add_error(None, str(error))
+        else:
+            messages.success(request, return_message(returned))
+            return redirect("staff_returns")
+    return render(request, "rentals/return_form.html", {"rental": rental, "form": form})
+
+
+def return_message(rental):
+    """Mensaje de éxito de una devolución, que termina con cómo llegó (RF-02)."""
+    return (
+        f"Devolución registrada: {rental.equipment.inventory_id} recibido de "
+        f"{rental.client.username}. {rental.return_result.label}."
+    )

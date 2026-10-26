@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block title %}Renta en tienda{% endblock %}
+{% block heading %}Renta en tienda{% endblock %}
+
+{% block content %}
+  <section class="card">
+    <form class="form" method="get" action="{% url 'walk_in_rental' %}">
+      <div class="form__field">
+        <label for="client-search">Buscar cliente</label>
+        <input type="search" id="client-search" name="q" value="{{ query }}" placeholder="Usuario, nombre, apellido o correo" required>
+      </div>
+      <div class="form__actions">
+        <button class="button" type="submit">Buscar</button>
+      </div>
+    </form>
+  </section>
+
+  {% if query %}
+    <section class="card">
+      {% include "includes/form_errors.html" %}
+
+      {% if clients %}
+        <form class="form" method="post" action="{% url 'walk_in_rental' %}?q={{ query|urlencode }}">
+          {% csrf_token %}
+          <fieldset class="form__group">
+            <legend class="form__legend">Cliente</legend>
+            {% for found in clients %}
+              <label class="form__choice">
+                <input type="radio" name="client" value="{{ found.pk }}" required{% if form.client.value|stringformat:"s" == found.pk|stringformat:"s" %} checked{% endif %}>
+                {{ found.username }} · {{ found.get_full_name|default:"sin nombre" }}{% if found.email %} · {{ found.email }}{% endif %}
+              </label>
+            {% endfor %}
+            {{ form.client.errors }}
+          </fieldset>
+
+          <div class="form__field">
+            {{ form.equipment.label_tag }}
+            {{ form.equipment }}
+            {{ form.equipment.errors }}
+          </div>
+
+          {% include "includes/period_fields.html" %}
+
+          <label class="form__choice">
+            {{ form.takes_it_now }}
+            {{ form.takes_it_now.label }}
+          </label>
+
+          <div class="form__actions">
+            <button class="button" type="submit">Registrar renta</button>
+          </div>
+        </form>
+      {% else %}
+        <p class="empty">No se encontró ningún cliente con «{{ query }}».</p>
+      {% endif %}
+    </section>
+  {% endif %}
+{% endblock %}

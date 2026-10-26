@@ -1,79 +1,73 @@
-"""Business rules for renting one unit (PRE-CU-01, step 7).
+"""Reglas puras de la renta: solo comparan los valores que reciben y nunca tocan la base.
 
-Pure functions: they only compare the values they receive and never
-read or write the database, so they can be tested without it.
-All datetimes must be in local time (America/La_Paz); the service
-converts them before calling these functions.
-
-# ASSUMPTION: no rule rejects dates in the past. ENT-17 says there is no
-# limit on how far in advance a rental can be made ("puede ser al
-# instante"), and no document asks to reject past dates.
+Todas las fechas llegan en hora local (America/La_Paz); el caso de uso las convierte antes.
+No se rechazan fechas pasadas: ENT-17 dice que no hay límite de anticipación («puede ser al instante»).
 """
 from datetime import datetime, time, timedelta
 
-from .statuses import EquipmentStatus
+from .statuses import EquipmentStatus, ReturnResult
 
-# ASSUMPTION: ENT-19 says units are handed over from 18:00 and returned
-# by 09:00. It is still pending whether the client chooses the time
-# (Sesión 07 §7, Sesión 08-09 §2); we let the client choose any time
-# inside this window and reject times outside it.
+# ENT-19 y ENT-52: se recoge desde las 18:00 y se devuelve hasta las 09:00.
+# Son límites «desde» y «hasta»: el cliente elige cualquier hora dentro.
 EARLIEST_PICKUP_TIME = time(18, 0)
-# ASSUMPTION: the 5-minute tolerance of ENT-31 applies when the return
-# is registered (PRE-RF-02), not when the rental is requested, so the
-# requested return time must be 09:00 or earlier.
 LATEST_RETURN_TIME = time(9, 0)
 
-# ASSUMPTION: ENT-18 says a rental lasts 5 days by default (2 weeks for
-# frequent clients, who are not defined yet, ENT-20). It is pending
-# whether a longer rental is rejected (Sesión 07 §7); we reject it.
+# ENT-63: hasta las 09:00 sin multa, hasta las 12:00 con multa y desde las 12:01 un día más.
+RETURN_FINE_LIMIT = time(12, 0)
+
+# ENT-18: una renta dura como máximo 5 días (las 2 semanas del cliente frecuente siguen pendientes, ENT-20).
 MAX_RENTAL_DURATION = timedelta(days=5)
 
-# Client, 17/10: "Si el equipo no es recogido hasta las doce del dia queda
-# disponible para ser rentado por otros"; "el sistema detecta por la hora
-# que sigue en reserva y lo cambia a las 12:01". So 12:00 is still on time.
+# ENT-59: una reserva no recogida hasta las 12:00 del día siguiente queda libre a las 12:01.
 PICKUP_DEADLINE = time(12, 0)
 
 
 def periods_overlap(new_start, new_end, existing_start, existing_end) -> bool:
-    """Return True if the new period overlaps an existing one (PRE-RF-01).
-
-    A period that starts exactly when the other ends does not overlap.
-    """
-    # Strict "<" and ">" so that touching edges (end == start) are allowed.
+    """Devuelve True si el periodo nuevo se cruza con otro (RF-01)."""
+    # «<» y «>» estrictos: un periodo que empieza justo cuando el otro termina no se cruza.
     return new_start < existing_end and new_end > existing_start
 
 
 def is_rentable_status(status: str) -> bool:
-    """Return True if a unit with this status can be rented (PRE-RF-04).
-
-    Only "available" units can be rented; "in review", "in repair"
-    and "retired" units cannot (ENT-33).
-    """
+    """Devuelve True si un equipo con este estado se puede rentar: solo «Disponible» (ENT-03, ENT-33)."""
     return status == EquipmentStatus.AVAILABLE
 
 
 def ends_after_start(start, end) -> bool:
-    """Return True if the period ends strictly after it starts."""
+    """Devuelve True si el periodo termina después de empezar."""
     return end > start
 
 
 def is_within_max_duration(start, end) -> bool:
-    """Return True if the period lasts at most MAX_RENTAL_DURATION (ENT-18)."""
+    """Devuelve True si el periodo dura como máximo MAX_RENTAL_DURATION (ENT-18)."""
     return end - start <= MAX_RENTAL_DURATION
 
 
 def is_pickup_time_allowed(start) -> bool:
-    """Return True if the pickup time is at or after EARLIEST_PICKUP_TIME (ENT-19)."""
+    """Devuelve True si el recojo es desde EARLIEST_PICKUP_TIME (ENT-19)."""
     return start.time() >= EARLIEST_PICKUP_TIME
 
 
 def is_return_time_allowed(end) -> bool:
-    """Return True if the return time is at or before LATEST_RETURN_TIME (ENT-19)."""
+    """Devuelve True si la devolución es hasta LATEST_RETURN_TIME (ENT-19)."""
     return end.time() <= LATEST_RETURN_TIME
 
 
 def is_pickup_expired(start, now) -> bool:
-    """Return True if now is past PICKUP_DEADLINE of the day after start."""
+    """Devuelve True si now pasó las PICKUP_DEADLINE del día siguiente al inicio (RF-03)."""
     next_day = start.date() + timedelta(days=1)
     deadline = datetime.combine(next_day, PICKUP_DEADLINE, tzinfo=start.tzinfo)
     return now > deadline
+
+
+def classify_return(returned_at, due_date) -> ReturnResult:
+    """Dice si una devolución del día due_date llegó a tiempo, con multa o con un día más (RF-02).
+
+    Compara con las 09:00 de due_date y no con la hora que eligió el cliente,
+    porque la regla es «hasta las 9 sin multas» (ENT-63, ENT-65).
+    """
+    if returned_at <= datetime.combine(due_date, LATEST_RETURN_TIME, tzinfo=returned_at.tzinfo):
+        return ReturnResult.ON_TIME
+    if returned_at <= datetime.combine(due_date, RETURN_FINE_LIMIT, tzinfo=returned_at.tzinfo):
+        return ReturnResult.WITH_FINE
+    return ReturnResult.EXTRA_DAY

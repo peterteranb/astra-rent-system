@@ -1,4 +1,4 @@
-"""Database models for equipment and rentals (PRE-CU-01)."""
+"""Tablas de la base: equipos, rentas e historial de estados."""
 from django.conf import settings
 from django.db import models
 from django.utils import timezone
@@ -8,13 +8,13 @@ from .statuses import EquipmentStatus, RentalStatus
 
 
 class Equipment(models.Model):
-    """One physical unit of the inventory (ENT-09), e.g. a single table."""
+    """Una unidad física del inventario, por ejemplo una sola mesa (ENT-09, RF-05)."""
 
-    # The system identifies a unit by its inventory number (Sesión 04).
-    inventory_id = models.CharField(max_length=20, unique=True)
-    serial_number = models.CharField(max_length=50)
-    description = models.CharField(max_length=200)
+    inventory_id = models.CharField(verbose_name="Código", max_length=20, unique=True)
+    serial_number = models.CharField(verbose_name="Número de serie", max_length=50)
+    description = models.CharField(verbose_name="Descripción", max_length=200)
     status = models.CharField(
+        verbose_name="Estado",
         max_length=20,
         choices=EquipmentStatus.choices,
         default=EquipmentStatus.AVAILABLE,
@@ -22,38 +22,39 @@ class Equipment(models.Model):
 
     class Meta:
         ordering = ["inventory_id"]
+        verbose_name = "Equipo"
+        verbose_name_plural = "Equipos"
 
     def __str__(self):
+        """Muestra el código y la descripción, por ejemplo «EQ-01 - Mesa plegable 1,80 m»."""
         return f"{self.inventory_id} - {self.description}"
 
 
 class Rental(models.Model):
-    """A confirmed rental of one unit for one period.
+    """Una renta confirmada de un equipo para un periodo.
 
-    A rental is confirmed the moment it is saved (ENT-16), and a rejected
-    request is never saved. Its status is not stored: status_at()
-    calculates it from the pickup, return and cancellation moments.
+    Se confirma al guardarse (ENT-16) y un pedido rechazado nunca se guarda.
+    Su estado no se guarda: status_at() lo calcula desde sus momentos (RF-07).
     """
 
-    # PROTECT: deleting a user or a unit must not silently erase rental
-    # history (P01 asks to keep history, see Sesión 04).
+    # PROTECT: borrar un usuario o un equipo no puede borrar en silencio la
+    # historia de sus rentas.
     client = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,
         related_name="rentals",
+        verbose_name="Cliente",
     )
     equipment = models.ForeignKey(
         Equipment,
         on_delete=models.PROTECT,
         related_name="rentals",
+        verbose_name="Equipo",
     )
-    # The client may pick up the unit from this moment.
-    start_datetime = models.DateTimeField()
-    # The client must return the unit by this moment.
-    end_datetime = models.DateTimeField()
-    # When the client took the unit away; the operator registers it.
+    start_datetime = models.DateTimeField(verbose_name="Recojo desde")
+    end_datetime = models.DateTimeField(verbose_name="Devolución hasta")
     picked_up_at = models.DateTimeField(verbose_name="Recogido el", null=True, blank=True)
-    # Operator who handed the unit over to the client (client: "tiene que estar todo inventariado").
+    # ENT-56: se registra quién entregó «porque tiene q estar todo inventariado».
     handed_over_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,
@@ -62,9 +63,7 @@ class Rental(models.Model):
         related_name="handed_over_rentals",
         verbose_name="Entregado por",
     )
-    # When the client brought the unit back; the operator registers it.
     returned_at = models.DateTimeField(verbose_name="Devuelto el", null=True, blank=True)
-    # Operator who received the unit back from the client.
     received_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,
@@ -73,9 +72,8 @@ class Rental(models.Model):
         related_name="received_rentals",
         verbose_name="Recibido por",
     )
-    # When the rental was cancelled; the operator (or the admin) registers it.
     cancelled_at = models.DateTimeField(verbose_name="Cancelado el", null=True, blank=True)
-    # Operator or admin who cancelled the rental; clients cannot cancel in the MVP.
+    # ENT-55: cancela el operador o el admin; el cliente no cancela en el MVP.
     cancelled_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,
@@ -84,11 +82,10 @@ class Rental(models.Model):
         related_name="cancelled_rentals",
         verbose_name="Cancelado por",
     )
-    # What the operator noticed when receiving the unit back.
     return_note = models.CharField(
         verbose_name="Observación de la devolución", max_length=200, blank=True
     )
-    # Empty when the client registered the rental online.
+    # Vacío cuando el cliente rentó en línea.
     registered_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,
@@ -100,9 +97,11 @@ class Rental(models.Model):
 
     class Meta:
         ordering = ["start_datetime"]
+        verbose_name = "Renta"
+        verbose_name_plural = "Rentas"
         constraints = [
-            # Last line of defence: the database itself refuses a period
-            # that ends before it starts, even if the service is bypassed.
+            # Última defensa: la base misma rechaza un periodo que termina antes
+            # de empezar, aunque alguien se salte el caso de uso.
             models.CheckConstraint(
                 condition=models.Q(end_datetime__gt=models.F("start_datetime")),
                 name="rental_end_after_start",
@@ -110,10 +109,11 @@ class Rental(models.Model):
         ]
 
     def __str__(self):
+        """Muestra el equipo y el cliente, por ejemplo «EQ-01 -> cl01»."""
         return f"{self.equipment.inventory_id} -> {self.client.username}"
 
     def status_at(self, now):
-        """Return the status of the rental at the moment now."""
+        """Devuelve el estado de la renta en el momento now (RF-07)."""
         if self.cancelled_at is not None:
             return RentalStatus.CANCELLED
         if self.returned_at is not None:
@@ -125,32 +125,58 @@ class Rental(models.Model):
             return RentalStatus.NOT_PICKED_UP
         return RentalStatus.RESERVED
 
+    def occupies_equipment_at(self, now):
+        """Devuelve True si en now la renta todavía ocupa las fechas de su equipo.
+
+        Solo las «Reservadas» y «Rentadas»: las canceladas, devueltas y no
+        recogidas dejan las fechas libres para otros (ENT-55, ENT-59).
+        """
+        return self.status_at(now) in (RentalStatus.RESERVED, RentalStatus.RENTED)
+
     @property
     def status(self):
-        """Return the status of the rental right now."""
+        """Devuelve el estado de la renta en este momento."""
         return self.status_at(timezone.now())
+
+    @property
+    def return_result(self):
+        """Devuelve cómo llegó la devolución, o None mientras el equipo no vuelve (RF-02)."""
+        if self.returned_at is None:
+            return None
+        # Hora local: los límites son horas de reloj de La Paz (09:00, 12:00).
+        due_date = timezone.localtime(self.end_datetime).date()
+        return rules.classify_return(timezone.localtime(self.returned_at), due_date)
 
 
 class StatusChange(models.Model):
-    """One change of state of a unit: who, when, from which state to which and why (ENT-34)."""
+    """Un cambio de estado de un equipo: quién, cuándo, de cuál a cuál y por qué (ENT-34)."""
 
     equipment = models.ForeignKey(
         Equipment,
         on_delete=models.PROTECT,
         related_name="status_changes",
+        verbose_name="Equipo",
     )
-    old_status = models.CharField(max_length=20, choices=EquipmentStatus.choices)
-    new_status = models.CharField(max_length=20, choices=EquipmentStatus.choices)
+    old_status = models.CharField(
+        verbose_name="Estado anterior", max_length=20, choices=EquipmentStatus.choices
+    )
+    new_status = models.CharField(
+        verbose_name="Estado nuevo", max_length=20, choices=EquipmentStatus.choices
+    )
     changed_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,
         related_name="status_changes",
+        verbose_name="Cambiado por",
     )
-    changed_at = models.DateTimeField(auto_now_add=True)
-    comment = models.TextField(blank=True)
+    changed_at = models.DateTimeField(verbose_name="Fecha", auto_now_add=True)
+    comment = models.TextField(verbose_name="Comentario", blank=True)
 
     class Meta:
         ordering = ["changed_at"]
+        verbose_name = "Cambio de estado"
+        verbose_name_plural = "Cambios de estado"
 
     def __str__(self):
+        """Muestra el equipo y el cambio, por ejemplo «EQ-01: in_review -> available»."""
         return f"{self.equipment.inventory_id}: {self.old_status} -> {self.new_status}"
