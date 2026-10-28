@@ -6,7 +6,7 @@ import pytest
 
 from rentals.errors import EquipmentNotAvailableError
 from rentals.models import Equipment, Rental
-from rentals.statuses import RentalStatus
+from rentals.statuses import PaymentMethod, RentalStatus
 from rentals.use_cases.renting import cancel_rental, create_rental, find_clients
 from tests.helpers import dentro_de, foto_de_la_base
 
@@ -56,16 +56,14 @@ def test_las_fechas_de_una_reserva_cancelada_se_pueden_rentar(cl01, cl02, op01, 
     assert Rental.objects.count() == 2
 
 
-def test_se_lo_lleva_ahora_nace_rentada_con_el_operador_que_entrego(cl02, op01, mes01):
-    # op01 registra en tienda una renta de cl02 y marca «Se lo lleva ahora» -> nace «Rentada» (ENT-57)
-    renta = create_rental(
-        cl02, mes01, dentro_de(0, 18), dentro_de(2, 9), registered_by=op01, picked_up_now=True
-    )
+def test_la_renta_en_tienda_nace_reservada_y_pagada_en_efectivo(cl02, op01, mes01):
+    # op01 registra en tienda una renta de cl02 para hoy -> nace «Reservada», pagada en efectivo y sin recojo (ENT-91)
+    renta = create_rental(cl02, mes01, dentro_de(0, 18), dentro_de(2, 9), registered_by=op01)
     guardada = Rental.objects.get(pk=renta.pk)
-    # Comprueba que está rentada
-    assert guardada.status == RentalStatus.RENTED
-    # Comprueba quién la registró y quién la entregó
-    assert (guardada.registered_by, guardada.handed_over_by) == (op01, op01)
+    # Comprueba que está reservada y que nadie la entregó todavía
+    assert (guardada.status, guardada.handed_over_by) == (RentalStatus.RESERVED, None)
+    # Comprueba quién la registró y la forma de pago
+    assert (guardada.registered_by, guardada.payment_method) == (op01, PaymentMethod.CASH)
 
 
 def test_find_clients_encuentra_por_apellido_y_no_devuelve_personal(cl01, cl02, op01):

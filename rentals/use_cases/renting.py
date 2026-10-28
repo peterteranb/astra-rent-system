@@ -88,16 +88,14 @@ def rentals_visible_to(user):
 
 
 @logs_rejection("RENTAL_REJECTED")
-def create_rental(
-    client, equipment, start_datetime, end_datetime, registered_by=None, picked_up_now=False
-) -> Rental:
+def create_rental(client, equipment, start_datetime, end_datetime, registered_by=None) -> Rental:
     """Guarda una renta confirmada de un equipo y la devuelve (ENT-16: se confirma al instante).
 
     registered_by es el operador que la registró en la tienda, donde se paga en
     efectivo (ENT-70); es None si el cliente renta en línea y paga con el QR después.
-    Con picked_up_now el cliente se lo lleva en la tienda: la renta nace «Rentada»
-    (ENT-57). Lanza un OperationRejectedError si se rompe una regla; entonces no se
-    guarda nada.
+    Siempre nace «Reservada»; si el cliente se la lleva al momento, el operador
+    registra el recojo (ENT-91). Lanza un OperationRejectedError si se rompe una
+    regla; entonces no se guarda nada.
     """
     # Las reglas comparan horas de reloj (18:00, 09:00): se trabaja en hora local.
     start = timezone.localtime(start_datetime)
@@ -110,13 +108,13 @@ def create_rental(
         # vez, el segundo espera aquí y ve la renta del primero (ENT-21: gana el primer clic).
         locked_equipment = Equipment.objects.select_for_update().get(pk=equipment.pk)
         check_equipment_is_free(locked_equipment, start, end)
-        rental = new_rental(client, locked_equipment, start, end, registered_by, picked_up_now)
+        rental = new_rental(client, locked_equipment, start, end, registered_by)
         rental.save()
     log_rental_created(rental)
     return rental
 
 
-def new_rental(client, equipment, start, end, registered_by, picked_up_now) -> Rental:
+def new_rental(client, equipment, start, end, registered_by) -> Rental:
     """Arma la renta sin guardarla, con el precio de hoy; en la tienda nace pagada en efectivo (ENT-70, ENT-71)."""
     now = timezone.now()
     rental = Rental(
@@ -130,10 +128,6 @@ def new_rental(client, equipment, start, end, registered_by, picked_up_now) -> R
     if registered_by is not None:
         rental.paid_at = now
         rental.payment_method = PaymentMethod.CASH
-    if picked_up_now:
-        # D-20: si el periodo empieza después, igual queda «Rentada» desde ahora (ENT-57).
-        rental.picked_up_at = now
-        rental.handed_over_by = registered_by
     return rental
 
 

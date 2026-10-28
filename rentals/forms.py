@@ -97,7 +97,7 @@ class OnlineRentalForm(RentalForm):
 
 
 class WalkInRentalForm(RentalForm):
-    """Renta que el operador registra en la tienda para un cliente: agrega cliente, equipo y «Se lo lleva ahora»."""
+    """Renta que el operador registra en la tienda para un cliente: agrega el cliente y el equipo."""
 
     # La página muestra solo los resultados de la búsqueda, pero se acepta cualquier
     # cliente: así el POST no depende de repetir la búsqueda.
@@ -111,7 +111,6 @@ class WalkInRentalForm(RentalForm):
         to_field_name="inventory_id",
         empty_label="Elige un equipo",
     )
-    takes_it_now = forms.BooleanField(label="Se lo lleva ahora", required=False)
 
 
 class ReturnForm(forms.Form):

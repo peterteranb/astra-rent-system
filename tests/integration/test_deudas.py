@@ -11,7 +11,7 @@ from rentals.use_cases.handover import register_return
 from rentals.use_cases.payments import pay_debt
 from rentals.use_cases.renting import create_rental
 from rentals.use_cases.review import review_equipment
-from tests.helpers import con_la_hora, dentro_de, foto_de_la_base, local_datetime
+from tests.helpers import con_la_hora, dentro_de, foto_de_la_base, local_datetime, renta_entregada
 
 INICIO = local_datetime(2026, 10, 1, 18, 0)
 VENCE = local_datetime(2026, 10, 3, 9, 0)
@@ -19,7 +19,7 @@ VENCE = local_datetime(2026, 10, 3, 9, 0)
 
 def renta_recogida(cliente, operador, equipo):
     """Renta en tienda del 01/10 18:00 al 03/10 09:00, ya recogida; MES-00001 cuesta 20 Bs por día."""
-    return create_rental(cliente, equipo, INICIO, VENCE, registered_by=operador, picked_up_now=True)
+    return renta_entregada(cliente, equipo, INICIO, VENCE, operador)
 
 
 def devolver_a_las(renta, operador, momento):

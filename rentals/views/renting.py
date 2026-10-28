@@ -186,7 +186,6 @@ def walk_in_rental(request):
                 form.cleaned_data["start_datetime"],
                 form.cleaned_data["end_datetime"],
                 registered_by=request.user,
-                picked_up_now=form.cleaned_data["takes_it_now"],
             )
         except OperationRejectedError as error:
             form.add_error(None, str(error))

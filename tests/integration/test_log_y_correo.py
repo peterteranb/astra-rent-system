@@ -18,7 +18,7 @@ from rentals.use_cases.handover import register_return
 from rentals.use_cases.payments import pay_with_qr
 from rentals.use_cases.renting import create_rental
 from rentals.use_cases.review import review_equipment
-from tests.helpers import con_la_hora, dentro_de, local_datetime
+from tests.helpers import con_la_hora, dentro_de, local_datetime, renta_entregada
 
 DATOS = SignUpData("Lucía", "Quispe", "lucia@correo.com", "71234567", "cl03", "Montaña2026", "Montaña2026")
 
@@ -77,9 +77,7 @@ def test_el_pago_qr_manda_la_confirmacion_al_cliente(cl01, mes01, django_capture
 
 def test_la_devolucion_tardia_manda_el_correo_de_la_deuda(cl01, op01, mes01, django_capture_on_commit_callbacks):
     # MES-00001 vence el 03/10 y vuelve a las 12:01 -> cl01 recibe el aviso de su deuda de 20 Bs
-    renta = create_rental(
-        cl01, mes01, local_datetime(2026, 10, 1, 18), local_datetime(2026, 10, 3, 9), registered_by=op01, picked_up_now=True
-    )
+    renta = renta_entregada(cl01, mes01, local_datetime(2026, 10, 1, 18), local_datetime(2026, 10, 3, 9), op01)
     mail.outbox.clear()
     with django_capture_on_commit_callbacks(execute=True), con_la_hora(local_datetime(2026, 10, 3, 12, 1)):
         register_return(renta, op01, "Llegó bien")

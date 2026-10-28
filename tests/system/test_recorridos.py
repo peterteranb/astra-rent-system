@@ -8,7 +8,7 @@ from rentals.models import Debt, Equipment, Rental, StatusChange
 from rentals.statuses import DebtReason, EquipmentStatus, RentalStatus
 from rentals.use_cases.handover import register_pickup, register_return
 from rentals.use_cases.renting import create_rental
-from tests.helpers import dentro_de, foto_de_la_base
+from tests.helpers import dentro_de, foto_de_la_base, renta_entregada
 
 
 def periodo(inicio, fin):
@@ -79,7 +79,7 @@ def test_el_cliente_cancela_desde_mis_rentas_y_no_puede_cancelar_la_de_otro(clie
 
 def test_el_cliente_con_deuda_la_ve_en_mis_rentas_y_no_puede_rentar(client, cl02, op01, mes01, mes02):
     # cl02 debe 20 Bs -> «Mis rentas» muestra la deuda y al rentar ve el mismo aviso (ENT-77)
-    renta = create_rental(cl02, mes01, dentro_de(-3, 18), dentro_de(-1, 9), registered_by=op01, picked_up_now=True)
+    renta = renta_entregada(cl02, mes01, dentro_de(-3, 18), dentro_de(-1, 9), op01)
     Debt.objects.create(rental=renta, reason=DebtReason.LATE_RETURN, amount=Decimal("20.00"))
     client.force_login(cl02)
     mis_rentas = client.get("/my-rentals/")
@@ -121,11 +121,11 @@ def test_un_rechazo_por_fechas_ocupadas_se_ve_en_el_catalogo(client, cl01, cl02,
     assert foto_de_la_base() == antes
 
 
-def test_renta_en_tienda_de_un_cliente_que_se_lo_lleva_ahora(client, cl02, op01, mes01):
-    # op01 busca «rojas», elige a Diego Rojas y marca «Se lo lleva ahora» -> ve «Registrada por» y la renta nace rentada
+def test_renta_en_tienda_de_un_cliente_buscado_por_su_apellido(client, cl02, op01, mes01):
+    # op01 busca «rojas» y elige a Diego Rojas -> ve «Registrada por» y la renta nace reservada (ENT-91)
     client.force_login(op01)
     busqueda = client.get("/staff/walk-in/?q=rojas")
-    datos = {"client": cl02.pk, "equipment": "MES-00001", "takes_it_now": "on", **periodo(dentro_de(0, 18), dentro_de(2, 9))}
+    datos = {"client": cl02.pk, "equipment": "MES-00001", **periodo(dentro_de(0, 18), dentro_de(2, 9))}
     respuesta = client.post("/staff/walk-in/?q=rojas", datos, follow=True)
     renta = Rental.objects.get()
     # Comprueba que la búsqueda encontró al cliente por su apellido
@@ -134,8 +134,8 @@ def test_renta_en_tienda_de_un_cliente_que_se_lo_lleva_ahora(client, cl02, op01,
     assertContains(respuesta, "Registrada por")
     # Comprueba que el operador puede volver a registrar otra renta en tienda
     assertContains(respuesta, "Nueva renta en tienda")
-    # Comprueba que se guardó rentada a nombre de cl02 y registrada por op01
-    assert (renta.status, renta.client, renta.registered_by) == (RentalStatus.RENTED, cl02, op01)
+    # Comprueba que se guardó reservada a nombre de cl02 y registrada por op01
+    assert (renta.status, renta.client, renta.registered_by) == (RentalStatus.RESERVED, cl02, op01)
 
 
 def test_el_admin_cancela_manda_a_reparacion_y_no_agrega_rentas(client, ad01, cl01, mes01, mes02):

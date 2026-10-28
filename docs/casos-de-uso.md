@@ -65,7 +65,7 @@ Las funciones de «Dónde se cumple» están en `rentals/use_cases/` (por ejempl
 | RF-02 | Recojo desde las 18:00, devolución hasta las 09:00, máximo 5 días. | ENT-18, ENT-19, ENT-52, ENT-72 | `renting.check_period`, `rules.py` | `unit/test_horarios_y_duracion.py`, `unit/test_validar_periodo.py` |
 | RF-03 | El precio diario es el 5 % del valor del equipo, se fija al crear la renta y no cambia. Total = días × precio diario; los días son los que hay entre la fecha de recojo y la de devolución. | ENT-71, ENT-72 | `rules.daily_price_for`, `rules.rental_days`, `Rental.total_price` | `unit/test_precio_y_plazos.py`, `unit/test_horarios_y_duracion.py`, `integration/test_rentar.py` (el precio no cambia con el valor) |
 | RF-04 | La renta en línea se paga con un QR simulado. Si el pago falla, la reserva queda hecha con el pago pendiente. | ENT-66, ENT-67 | `payments.pay_with_qr` | `integration/test_pagar.py`, `system/test_recorridos.py` (pago fallido) |
-| RF-05 | La renta en tienda se paga en efectivo al registrarla; si el cliente se lo lleva en ese momento, nace «Rentada». | ENT-57, ENT-70, PRE-03 | `renting.create_rental` | `integration/test_pagar.py`, `integration/test_rentar.py`, `system/test_recorridos.py` (renta en tienda) |
+| RF-05 | La renta en tienda se paga en efectivo al registrarla y nace «Reservada»; si el cliente se la lleva al momento, el operador registra el recojo (CU-08). | ENT-70, ENT-91, PRE-03 | `renting.create_rental` | `integration/test_pagar.py`, `integration/test_rentar.py`, `system/test_recorridos.py` (renta en tienda) |
 | RF-06 | No se entrega un equipo sin pagar: el operador cobra en efectivo o cancela la reserva. | ENT-68 | `handover.register_pickup` | `integration/test_entregar_y_devolver.py` |
 | RF-07 | Una reserva no recogida hasta la medianoche de su día de inicio pasa sola a «No recogida» y libera el equipo. | ENT-69 | `rules.is_pickup_expired`, `Rental.status_at` | `unit/test_reserva_vencida.py`, `unit/test_estado_de_la_renta.py`, `unit/test_reglas_de_entrega.py` |
 | RF-08 | El estado de la renta se calcula, no se guarda: Cancelada > Devuelta > Rentada > No recogida > Reservada. | ENT-57, ENT-61 | `Rental.status_at` | `unit/test_estado_de_la_renta.py` |
@@ -104,7 +104,7 @@ Las funciones de «Dónde se cumple» están en `rentals/use_cases/` (por ejempl
 | HU-02 | Como **operador**, quiero crear la cuenta de un cliente en la tienda para rentarle aunque no tenga cuenta. | El cliente no tiene cuenta | Lleno sus datos | La cuenta queda creada con las mismas reglas que en la web y puedo rentarle de inmediato. |
 | HU-03 | Como **cliente**, quiero buscar equipos libres en mis fechas para elegir uno que sí pueda rentar. | Hay 1000 equipos | Escribo «silla» y elijo dos fechas | Veo solo las sillas libres en esas fechas, de 20 en 20. |
 | HU-04 | Como **cliente**, quiero rentar y pagar en línea para asegurar el equipo sin ir a la tienda. | Las fechas están libres y no debo nada | Confirmo y pago con el QR | La renta queda «Reservada» y pagada; si el pago falla, queda reservada con el pago pendiente. |
-| HU-05 | Como **operador**, quiero rentar a un cliente en la tienda para atender a quien llega sin reserva. | El cliente paga en efectivo | Registro la renta | Queda pagada en efectivo; si se lo lleva ahora, nace «Rentada». |
+| HU-05 | Como **operador**, quiero rentar a un cliente en la tienda para atender a quien llega sin reserva. | El cliente paga en efectivo | Registro la renta | Queda pagada en efectivo y «Reservada»; se entrega con «Registrar recojo». |
 | HU-06 | Como **cliente**, quiero cambiar las fechas de mi reserva para ajustarla si cambia mi evento. | Faltan más de 24 h para el recojo | Elijo otras fechas con los mismos días | La reserva cambia de fechas y el precio no cambia. |
 | HU-07 | Como **cliente**, quiero cancelar mi reserva para liberar las fechas si ya no la necesito. | Faltan más de 24 h | Presiono «Cancelar» | La reserva queda «Cancelada», recibo un correo y las fechas quedan libres. |
 | HU-08 | Como **operador**, quiero entregar el equipo solo si está pagado para no perder el cobro. | La reserva tiene el pago pendiente | El cliente paga en efectivo | Se registra el pago y el recojo; si no paga, cancelo la reserva. |
@@ -310,13 +310,13 @@ sequenceDiagram
 |---|---|
 | **Actor** | Operador (`op01`) |
 | **Precondición** | El cliente tiene cuenta (si no, CU-02) y paga en efectivo. |
-| **Flujo normal** | 1. Abre «Renta en tienda» y busca al cliente («rojas»). 2. Lo elige, elige el equipo y las fechas, y marca «Se lo lleva ahora» si corresponde. 3. Cobra en efectivo y presiona «Registrar renta». 4. Ve la renta con «Registrada por op01» y «Pagado (efectivo)». |
+| **Flujo normal** | 1. Abre «Renta en tienda» y busca al cliente («rojas»). 2. Lo elige y elige el equipo y las fechas. 3. Cobra en efectivo y presiona «Registrar renta». 4. Ve la renta con «Registrada por op01» y «Pagado (efectivo)». 5. Si el cliente se la lleva al momento, registra el recojo como cualquier otro (CU-08). |
 | **Flujos alternativos** | 1a. La búsqueda no encuentra a nadie: «No se encontró ningún cliente con «rojas».»; si no tiene cuenta, CU-02. · 3a. El cliente debe dinero: «El cliente cl02 tiene una deuda pendiente de 40,00 Bs. Cóbrala antes de registrar otra renta.» · 3b. Horario, duración o fechas ocupadas: los mensajes de CU-04, pero se queda en el formulario. La lista de equipos solo ofrece los «Disponibles». |
-| **Postcondición** | La renta queda pagada en efectivo, «Reservada» o, con «Se lo lleva ahora», «Rentada». |
-| **Guarda** | Una fila en `rentals_rental` con `daily_price`, `paid_at`, `payment_method = cash` y `registered_by`; con «Se lo lleva ahora», también `picked_up_at` y `handed_over_by`. |
+| **Postcondición** | La renta queda «Reservada» y pagada en efectivo (ENT-91). |
+| **Guarda** | Una fila en `rentals_rental` con `daily_price`, `paid_at`, `payment_method = cash` y `registered_by`. |
 | **Log** | `RENTAL_CREATED id=13 equipment=MES-00008 client=cl02 paid=yes registered_by=op01` · `PAYMENT_CASH rental=13 amount=40.00 received_by=op01` · `RENTAL_REJECTED reason="…"` |
 | **Correo** | Renta confirmada (pagada). |
-| **Origen** | ENT-54, ENT-57, ENT-70, ENT-77, PRE-03 |
+| **Origen** | ENT-54, ENT-70, ENT-77, ENT-91, PRE-03 |
 
 ```mermaid
 sequenceDiagram
@@ -332,8 +332,8 @@ sequenceDiagram
     else hay clientes
         V-->>O: la lista de clientes y el formulario
     end
-    O->>V: POST /staff/walk-in/?q=rojas (cl02, MES-00008, fechas, «Se lo lleva ahora»)
-    V->>U: create_rental(cl02, MES-00008, inicio, fin, registered_by=op01, picked_up_now)
+    O->>V: POST /staff/walk-in/?q=rojas (cl02, MES-00008, fechas)
+    V->>U: create_rental(cl02, MES-00008, inicio, fin, registered_by=op01)
     U->>U: check_period
     U->>BD: check_client_has_no_debt
     U->>BD: bloquea el equipo y lee sus rentas (check_equipment_is_free)
@@ -347,7 +347,7 @@ sequenceDiagram
         U-->>V: EquipmentNotAvailableError
         V-->>O: el formulario con el mensaje
     else libre
-        U->>BD: guarda la renta pagada en efectivo (y el recojo si se lo lleva ahora)
+        U->>BD: guarda la renta «Reservada» y pagada en efectivo
         U-->>V: la renta (PAYMENT_CASH en el log y el correo de confirmación)
         V-->>O: redirige a la renta: «Registrada por op01» y «Pagado (efectivo)»
     end

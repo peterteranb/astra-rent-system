@@ -9,7 +9,7 @@ from rentals.use_cases.handover import register_pickup, register_return
 from rentals.use_cases.history import change_status
 from rentals.use_cases.payments import pay_with_qr
 from rentals.use_cases.renting import create_rental
-from tests.helpers import dentro_de, foto_de_la_base
+from tests.helpers import dentro_de, foto_de_la_base, renta_entregada
 
 
 def test_register_pickup_guarda_la_hora_y_el_operador(cl01, op01, mes01):
@@ -52,7 +52,7 @@ def test_entregar_cobrando_en_efectivo_guarda_el_pago_y_el_recojo(cl01, op01, me
 
 def test_register_return_deja_la_renta_devuelta_y_el_equipo_en_revision(cl01, op01, mes01):
     # op01 recibe MES-00001 con la nota «Pata floja» -> renta devuelta, equipo en revisión y una fila de historial
-    renta = create_rental(cl01, mes01, dentro_de(0, 18), dentro_de(1, 9), registered_by=op01, picked_up_now=True)
+    renta = renta_entregada(cl01, mes01, dentro_de(0, 18), dentro_de(1, 9), op01)
     register_return(renta, op01, "  Pata floja  ")
     guardada = Rental.objects.get(pk=renta.pk)
     cambio = StatusChange.objects.get()
@@ -71,7 +71,7 @@ def test_register_return_deja_la_renta_devuelta_y_el_equipo_en_revision(cl01, op
 
 def test_una_devolucion_sin_nota_se_rechaza_y_la_base_no_cambia(cl01, op01, mes01):
     # op01 deja la observación en blanco -> rechazado con la causa y no se guarda nada
-    renta = create_rental(cl01, mes01, dentro_de(0, 18), dentro_de(1, 9), registered_by=op01, picked_up_now=True)
+    renta = renta_entregada(cl01, mes01, dentro_de(0, 18), dentro_de(1, 9), op01)
     antes = foto_de_la_base()
     with pytest.raises(IncompleteReturnError) as error:
         register_return(renta, op01, "   ")
