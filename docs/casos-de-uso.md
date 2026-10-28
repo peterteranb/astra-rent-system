@@ -77,7 +77,7 @@ flowchart LR
 | RF-16 | Solo el admin registra equipos, a mano: código `AAA-00000` único, número de serie único, nombre y valor mayor que 0. | ENT-14, ENT-83, PRE-01 | `inventory.register_equipment`, `Equipment` |
 | RF-17 | El catálogo se pagina de 20 en 20 y se filtra por código o nombre, por fechas libres y, para el personal, por estado. | ENT-86, PRE-02 | `renting.search_catalog`, `renting.catalog_page` |
 | RF-18 | El responsable ve en una página las rentas activas, vencidas, reservas de hoy, pagos pendientes, equipos en revisión o reparación y deudas pendientes. | ENT-87, PRE-06, PRE-08 | `dashboard.manager_summary` |
-| RF-19 | Cada rol ve solo lo suyo y el admin ve todo. Solo el admin bloquea a un usuario (`is_active = False`). | ENT-53, ENT-55, ENT-79 | `roles.role_required`, `templates/base.html` |
+| RF-19 | Cada rol ve solo lo suyo y el admin ve todo. Solo el admin bloquea a un usuario desmarcando «Activo»: con su contraseña correcta ve «Tu cuenta está desactivada. Comunícate con la tienda.», su sesión abierta deja de valer y la tienda ya no lo encuentra para rentarle. | ENT-53, ENT-55, ENT-79 | `roles.role_required`, `LoginForm.confirm_login_allowed`, `AUTHENTICATION_BACKENDS` |
 | RF-20 | El cliente recibe un correo al crear su cuenta, al confirmar o cancelar una renta y al crearse una deuda. Si el correo falla, la operación sigue. | ENT-85 | `notifications.py` |
 | RF-21 | El admin corrige el estado de un equipo desde el admin de Django, con historial y sin crear deudas. | ENT-40, ENT-75, PRE-07 | `rentals/admin.py`, `history.change_status` |
 
@@ -118,6 +118,8 @@ flowchart LR
 ## 5. Casos de uso
 
 **Cómo leer los diagramas:** la flecha continua es una llamada y la punteada, la respuesta. En `alt`, el rechazo va primero y **no guarda nada**. «Bloquea la fila» es `SELECT … FOR UPDATE`: si dos personas hacen clic a la vez, la segunda espera y ve lo que guardó la primera. Antes de cada vista, el middleware de Django carga la sesión, revisa el token CSRF e identifica al usuario.
+
+**Iniciar sesión:** con un usuario o una contraseña incorrectos se ve «Usuario o contraseña incorrectos.». Una cuenta desactivada por el admin ve «Tu cuenta está desactivada. Comunícate con la tienda.» solo si escribió su contraseña correcta, así el mensaje no da pistas a quien adivina cuentas; el log escribe `LOGIN_REJECTED reason=inactive user=cl01`. Si se desactiva con la sesión abierta, en su siguiente clic vuelve al login (ENT-79).
 
 **Log:** cada operación escribe una línea en `logs/negocio.log` con el formato `2026-10-29 10:15:02 | INFO    | RENTAL_CREATED id=12 equipment=SIL-00001 client=cl01 paid=no`. Cada rechazo escribe `<ACCIÓN>_REJECTED reason="…"` con nivel `WARNING`. Nunca se escribe una contraseña.
 
@@ -662,6 +664,7 @@ sequenceDiagram
 | Registrar pago (deuda) | `payments.pay_debt` | `paid_at`, `paid_received_by` |
 | Registrar equipo | `inventory.register_equipment` | Una fila en `rentals_equipment` |
 | Acciones del admin | `history.change_status`, `renting.cancel_rental`, `payments.pay_debt` | Lo mismo que arriba |
+| Guardar (admin de usuarios, «Activo») | `UserAdmin.save_model` | `is_active`; el log escribe `ACCOUNT_DEACTIVATED user=cl01 by=ad01` o `ACCOUNT_REACTIVATED` |
 
 ## 7. Fuera de alcance
 

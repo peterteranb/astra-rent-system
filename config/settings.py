@@ -114,6 +114,12 @@ STORAGES = {
 }
 
 AUTH_USER_MODEL = "accounts.User"
+# ModelBackend va primero: con él entran las cuentas activas y su sesión deja de valer si se desactivan.
+# El segundo solo reconoce una cuenta desactivada con su contraseña correcta, para decirle por qué no entra (ENT-79).
+AUTHENTICATION_BACKENDS = [
+    "django.contrib.auth.backends.ModelBackend",
+    "django.contrib.auth.backends.AllowAllUsersModelBackend",
+]
 
 # Reglas del negocio que el cliente puede cambiar sin tocar el código.
 # ENT-71: el precio por día es el 5 % del valor del equipo.

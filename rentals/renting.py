@@ -115,8 +115,8 @@ def busy_rentals_at(rentals, now) -> list[Rental]:
 
 
 def client_accounts():
-    """Devuelve los usuarios con el rol cliente."""
-    return get_user_model().objects.filter(role__code=CLIENT)
+    """Devuelve los clientes con la cuenta activa: a un cliente bloqueado no se le renta en la tienda (ENT-79)."""
+    return get_user_model().objects.filter(role__code=CLIENT, is_active=True)
 
 
 def find_clients(text):

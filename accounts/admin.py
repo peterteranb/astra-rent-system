@@ -3,6 +3,8 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as DjangoUserAdmin
 from django.db.models import Q, Sum
 
+from rentals.events import log_event
+
 from .forms import UserChangeAdminForm, UserCreationAdminForm
 from .models import Role, User
 
@@ -55,6 +57,13 @@ class UserAdmin(DjangoUserAdmin):
         return super().get_queryset(request).annotate(
             pending_debt_total=Sum("rentals__debts__amount", filter=pending)
         )
+
+    def save_model(self, request, obj, form, change):
+        """Guarda el usuario y, si cambió «Activo», escribe en el log quién lo bloqueó o lo desbloqueó (ENT-79)."""
+        super().save_model(request, obj, form, change)
+        if change and "is_active" in form.changed_data:
+            event = "ACCOUNT_REACTIVATED" if obj.is_active else "ACCOUNT_DEACTIVATED"
+            log_event(event, user=obj.username, by=request.user.username)
 
     @admin.display(description="Deuda pendiente (Bs)", ordering="pending_debt_total")
     def pending_debt(self, user):

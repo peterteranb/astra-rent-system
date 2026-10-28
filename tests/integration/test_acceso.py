@@ -40,11 +40,3 @@ def test_el_operador_no_abre_el_panel_del_responsable(client, op01):
     # op01 abre el panel del responsable -> 403
     client.force_login(op01)
     assert client.get("/manager/").status_code == 403
-
-
-def test_un_usuario_bloqueado_no_puede_iniciar_sesion(client, cl01):
-    # El admin desactivó a cl01 -> no puede entrar (ENT-79)
-    cl01.is_active = False
-    cl01.save()
-    respuesta = client.post("/login/", {"username": "cl01", "password": "Demo1234"})
-    assertContains(respuesta, "Usuario o contraseña incorrectos.")

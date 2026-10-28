@@ -1,18 +1,32 @@
-"""Formularios de cuentas: el registro de clientes, el login con nuestro mensaje (RC-04) y los del admin de usuarios."""
+"""Formularios de cuentas: el registro de clientes, el login con nuestros mensajes (RC-04) y los del admin de usuarios."""
+import logging
+
 from django import forms
 from django.contrib.auth.forms import AdminUserCreationForm, AuthenticationForm, UserChangeForm
+
+from rentals.events import log_event
 
 from .registration import normalize_phone
 
 
 class LoginForm(AuthenticationForm):
-    """El login de Django, solo con nuestro texto para credenciales incorrectas."""
+    """El login de Django con nuestros textos para credenciales incorrectas y para la cuenta desactivada."""
 
-    # Copia los mensajes de Django y cambia solo el de credenciales incorrectas.
     error_messages = {
         **AuthenticationForm.error_messages,
         "invalid_login": "Usuario o contraseña incorrectos.",
+        "inactive": "Tu cuenta está desactivada. Comunícate con la tienda.",
     }
+
+    def confirm_login_allowed(self, user):
+        """Rechaza la cuenta desactivada y lo escribe en el log (ENT-79).
+
+        Solo se llega aquí con la contraseña correcta: con una incorrecta se ve el mensaje general,
+        así no se da pistas a quien adivina cuentas.
+        """
+        if not user.is_active:
+            log_event("LOGIN_REJECTED", logging.WARNING, reason="inactive", user=user.username)
+        super().confirm_login_allowed(user)
 
 
 class SignUpForm(forms.Form):
