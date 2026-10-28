@@ -40,6 +40,11 @@ def equipment_to_review():
     )
 
 
+def review_queue():
+    """Devuelve los equipos que esperan a mantenimiento, cada uno con las opciones que puede elegir (CU-10)."""
+    return [(equipment, review_choices_for(equipment)) for equipment in equipment_to_review()]
+
+
 def review_choices_for(equipment):
     """Devuelve las opciones (valor, etiqueta) del formulario de revisión, sin el estado actual."""
     return [

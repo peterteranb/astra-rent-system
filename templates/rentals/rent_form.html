@@ -5,7 +5,7 @@
 
 {% block content %}
   <section class="card">
-    <p>{{ equipment.name }} · {{ equipment_daily_price|floatformat:"2g" }} Bs por día</p>
+    <p>{{ equipment.name }} · {{ equipment.daily_price|floatformat:"2g" }} Bs por día</p>
     <p class="hint">
       Recojo desde las {{ earliest_pickup_time|time:"H:i" }}.
       Devolución hasta las {{ latest_return_time|time:"H:i" }}.

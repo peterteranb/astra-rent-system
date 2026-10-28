@@ -1,14 +1,14 @@
-"""Casos de uso CU-03 a CU-07: catálogo, renta en línea y en tienda, modificar y cancelar una reserva.
+"""Casos de uso CU-03 a CU-07 y CU-16: catálogo, renta en línea y en tienda, modificar y cancelar una reserva, y «Mis rentas».
 
 Las vistas llaman a este módulo; aplica las reglas de rules.py y habla con la base. No lee la petición ni elige páginas.
 """
 from dataclasses import dataclass
+from decimal import Decimal
 
 from django.contrib.auth import get_user_model
 from django.core.paginator import Paginator
 from django.db import transaction
 from django.db.models import Prefetch, Q
-from django.shortcuts import get_object_or_404
 from django.utils import timezone
 
 from . import rules
@@ -22,10 +22,10 @@ from .errors import (
 )
 from .events import log_event, logs_rejection
 from .formatting import local_text, money_text, rental_state_message
-from .models import Equipment, EquipmentStatus, Rental
+from .models import Debt, Equipment, EquipmentStatus, Rental
 from .notifications import send_rental_cancelled, send_rental_confirmed
-from .payments import debt_total_of
-from .roles import CLIENT, OPERATOR, has_role
+from .payments import debt_total_of, pending_debts_of
+from .roles import CLIENT, OPERATOR, has_role, is_store_staff
 from .statuses import PaymentMethod, RentalStatus
 
 # ENT-64: el catálogo dice cuándo está ocupado cada equipo; con 3 periodos basta para elegir fechas.
@@ -56,6 +56,15 @@ class CatalogEntry:
     busy_rentals: list[Rental]
 
 
+@dataclass(frozen=True)
+class ClientRentals:
+    """Lo que ve el cliente en «Mis rentas»: sus rentas, sus deudas sin pagar y cuánto debe (CU-16)."""
+
+    rentals: list[Rental]
+    debts: list[Debt]
+    debt_total: Decimal
+
+
 def list_catalog():
     """Devuelve los equipos que muestra el catálogo: solo los «Disponibles».
 
@@ -63,6 +72,26 @@ def list_catalog():
     catálogo dice cuándo está ocupado. create_rental vuelve a revisar el equipo.
     """
     return Equipment.objects.filter(status=EquipmentStatus.AVAILABLE)
+
+
+def catalog_filters(text, free_from, free_to, status):
+    """Arma los filtros del catálogo con lo que escribió la persona.
+
+    Las dos fechas se buscan como una renta: desde las 18:00 del primer día
+    hasta las 09:00 del último (D-13), así lo que se ve libre se puede rentar.
+    """
+    return CatalogFilters(
+        text=text.strip(),
+        free_start=free_from and rules.combine_local(free_from, rules.EARLIEST_PICKUP_TIME),
+        free_end=free_to and rules.combine_local(free_to, rules.LATEST_RETURN_TIME),
+        status=status,
+    )
+
+
+def browse_catalog(user, filters, page_number, now):
+    """Devuelve la página del catálogo que ve user con esos filtros (CU-03)."""
+    equipment = search_catalog(filters, now, staff=is_store_staff(user))
+    return catalog_page(equipment, page_number, now)
 
 
 def search_catalog(filters, now, staff=False):
@@ -139,12 +168,20 @@ def rentals_of(client):
     return Rental.objects.filter(client=client).select_related("equipment").order_by("-start_datetime")
 
 
-def visible_rental(user, rental_id) -> Rental:
-    """Devuelve la renta si user es del personal de la tienda, su cliente o quien la registró; si no, responde 404."""
+def my_rentals(client) -> ClientRentals:
+    """Devuelve las rentas del cliente con su estado y su pago, y lo que debe (CU-16, ENT-77)."""
+    return ClientRentals(
+        rentals=list(rentals_of(client)),
+        debts=list(pending_debts_of(client)),
+        debt_total=debt_total_of(client),
+    )
+
+
+def rentals_visible_to(user):
+    """Devuelve las rentas que user puede abrir: el operador, todas; los demás, las suyas o las que registraron."""
     if has_role(user, OPERATOR):
-        return get_object_or_404(Rental, pk=rental_id)
-    # Filtrar por usuario hace que nadie más pueda abrir la renta, ni saber que existe.
-    return get_object_or_404(Rental, Q(client=user) | Q(registered_by=user), pk=rental_id)
+        return Rental.objects.all()
+    return Rental.objects.filter(Q(client=user) | Q(registered_by=user))
 
 
 @logs_rejection("RENTAL_REJECTED")

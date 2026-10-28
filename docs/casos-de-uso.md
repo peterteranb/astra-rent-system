@@ -75,7 +75,7 @@ flowchart LR
 | RF-14 | Solo una renta «Reservada» se cancela o modifica. El cliente, hasta 24 h antes del inicio; el operador o el admin, en cualquier momento antes del recojo. Modificar es cambiar las fechas con la misma cantidad de días. | ENT-80, ENT-81, ENT-82 | `renting.cancel_rental`, `renting.modify_rental` |
 | RF-15 | El cliente crea su cuenta en la web o el operador en la tienda, con la misma función y las mismas reglas: correo y teléfono únicos, contraseña con al menos 8 caracteres, una mayúscula y un número. | ENT-15, ENT-54, ENT-84 | `accounts.registration.register_client` |
 | RF-16 | Solo el admin registra equipos, a mano: código `AAA-00000` único, número de serie único, nombre y valor mayor que 0. | ENT-14, ENT-83, PRE-01 | `inventory.register_equipment`, `Equipment` |
-| RF-17 | El catálogo se pagina de 20 en 20 y se filtra por código o nombre, por fechas libres y, para el personal, por estado. | ENT-86, PRE-02 | `renting.search_catalog`, `renting.catalog_page` |
+| RF-17 | El catálogo se pagina de 20 en 20 y se filtra por código o nombre, por fechas libres y, para el personal, por estado. | ENT-86, PRE-02 | `renting.browse_catalog` (con `search_catalog` y `catalog_page`) |
 | RF-18 | El responsable ve en una página las rentas activas, vencidas, reservas de hoy, pagos pendientes, equipos en revisión o reparación y deudas pendientes. | ENT-87, PRE-06, PRE-08 | `dashboard.manager_summary` |
 | RF-19 | Cada rol ve solo lo suyo y el admin ve todo. Solo el admin bloquea a un usuario desmarcando «Activo»: con su contraseña correcta ve «Tu cuenta está desactivada. Comunícate con la tienda.», su sesión abierta deja de valer y la tienda ya no lo encuentra para rentarle. | ENT-53, ENT-55, ENT-79 | `roles.role_required`, `LoginForm.confirm_login_allowed`, `AUTHENTICATION_BACKENDS` |
 | RF-20 | El cliente recibe un correo al crear su cuenta, al confirmar o cancelar una renta y al crearse una deuda. Si el correo falla, la operación sigue. | ENT-85 | `notifications.py` |
@@ -212,12 +212,11 @@ sequenceDiagram
 sequenceDiagram
     actor C as Cliente
     participant V as Vista catalog
-    participant U as renting.search_catalog y catalog_page
+    participant U as renting.browse_catalog
     participant BD as PostgreSQL
     C->>V: GET /?q=silla&free_from=…&free_to=…&page=2
-    V->>U: search_catalog(texto, fechas, estado)
-    U->>BD: equipos sin rentas que ocupen esas fechas
-    V->>U: catalog_page(equipos, página 2)
+    V->>U: browse_catalog(cliente, filtros, página 2)
+    U->>U: search_catalog: equipos que ve su rol y sin rentas en esas fechas
     U->>BD: total, 20 equipos y sus próximas rentas (3 consultas)
     U-->>V: la página
     V-->>C: catálogo con paginación
@@ -450,7 +449,7 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     actor T as Mantenimiento
-    participant V as Vista review_unit
+    participant V as Vista review_equipment_view
     participant U as review.review_equipment
     participant BD as PostgreSQL
     T->>V: POST /maintenance/MES-00007/ «Baja»
@@ -639,10 +638,10 @@ sequenceDiagram
 sequenceDiagram
     actor C as Cliente
     participant V as Vista client_rentals
-    participant U as renting.rentals_of y payments.pending_debts_of
+    participant U as renting.my_rentals
     participant BD as PostgreSQL
     C->>V: GET /my-rentals/
-    V->>U: rentals_of(cl02), pending_debts_of(cl02)
+    V->>U: my_rentals(cl02)
     U->>BD: sus rentas y sus deudas pendientes
     V-->>C: la tabla, la deuda total y el detalle
 ```

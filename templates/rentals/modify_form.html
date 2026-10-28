@@ -20,7 +20,7 @@
 
       <div class="form__actions">
         <button class="button" type="submit">Guardar cambios</button>
-        <a class="button button--secondary" href="{% if is_operator %}{% url 'staff_reservations' %}{% else %}{% url 'client_rentals' %}{% endif %}">Volver</a>
+        <a class="button button--secondary" href="{% url back_page %}">Volver</a>
       </div>
     </form>
   </section>

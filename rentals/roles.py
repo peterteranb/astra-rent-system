@@ -19,6 +19,14 @@ def has_role(user, role) -> bool:
     return user.role.code in (role, ADMINISTRATOR)
 
 
+def is_store_staff(user) -> bool:
+    """Devuelve True si el usuario es del personal: operador, mantenimiento o administrador.
+
+    El personal ve todos los equipos con su estado; el cliente, solo los disponibles.
+    """
+    return has_role(user, OPERATOR) or has_role(user, MAINTENANCE)
+
+
 def role_required(*roles):
     """Deja abrir la vista solo a quien tiene uno de los roles; a los demás, el login o un 403."""
 

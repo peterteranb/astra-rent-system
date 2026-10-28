@@ -10,7 +10,7 @@
 <body>
   <header class="site-header">
     <a class="site-header__brand" href="{% url 'catalog' %}">SergioCorp · Mesas y sillas para eventos</a>
-    {% if is_operator or is_maintenance %}
+    {% if is_store_staff %}
       <nav class="site-header__nav">
         <a href="{% url 'catalog' %}">Catálogo</a>
         {% if is_operator %}

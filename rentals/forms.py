@@ -1,20 +1,11 @@
 """Formularios del catálogo (CU-03), la renta en línea (CU-04) y en tienda (CU-05), la devolución (CU-09) y el registro de equipos (CU-12)."""
-from datetime import datetime
-
 from django import forms
-from django.utils import timezone
 
 from . import rules
 from .inventory import normalize_inventory_id
 from .models import Equipment, Rental
-from .renting import CatalogFilters, client_accounts, list_catalog
+from .renting import CatalogFilters, catalog_filters, client_accounts, list_catalog
 from .statuses import EquipmentStatus
-
-
-def combine_local(day, chosen_time):
-    """Junta una fecha y una hora en un momento con la zona de La Paz."""
-    # make_aware usa el TIME_ZONE del proyecto (America/La_Paz).
-    return timezone.make_aware(datetime.combine(day, chosen_time))
 
 
 class CatalogFilterForm(forms.Form):
@@ -36,7 +27,7 @@ class CatalogFilterForm(forms.Form):
     )
 
     def clean(self):
-        """Revisa que lleguen las dos fechas y en orden; el periodo va de las 18:00 a las 09:00, como una renta."""
+        """Revisa que lleguen las dos fechas y en orden."""
         cleaned_data = super().clean()
         free_from, free_to = cleaned_data.get("free_from"), cleaned_data.get("free_to")
         if bool(free_from) != bool(free_to):
@@ -50,13 +41,7 @@ class CatalogFilterForm(forms.Form):
         if not self.is_valid():
             return CatalogFilters()
         data = self.cleaned_data
-        free_from, free_to = data["free_from"], data["free_to"]
-        return CatalogFilters(
-            text=data["q"].strip(),
-            free_start=free_from and combine_local(free_from, rules.EARLIEST_PICKUP_TIME),
-            free_end=free_to and combine_local(free_to, rules.LATEST_RETURN_TIME),
-            status=data["status"],
-        )
+        return catalog_filters(data["q"], data["free_from"], data["free_to"], data["status"])
 
 
 class RentalForm(forms.Form):
@@ -91,11 +76,11 @@ class RentalForm(forms.Form):
         cleaned_data = super().clean()
         # Si falta una parte, el error de su campo ya le dice al cliente qué falta.
         if cleaned_data.get("start_date") and cleaned_data.get("start_time"):
-            cleaned_data["start_datetime"] = combine_local(
+            cleaned_data["start_datetime"] = rules.combine_local(
                 cleaned_data["start_date"], cleaned_data["start_time"]
             )
         if cleaned_data.get("end_date") and cleaned_data.get("end_time"):
-            cleaned_data["end_datetime"] = combine_local(
+            cleaned_data["end_datetime"] = rules.combine_local(
                 cleaned_data["end_date"], cleaned_data["end_time"]
             )
         return cleaned_data

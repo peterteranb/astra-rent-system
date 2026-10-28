@@ -6,21 +6,20 @@ from django.views.decorators.http import require_POST
 from ..errors import OperationRejectedError
 from ..formatting import money_text
 from ..models import Equipment
-from ..review import equipment_to_review, review_choices_for, review_equipment
+from ..review import review_equipment, review_queue
 from ..roles import MAINTENANCE, role_required
 
 
 @role_required(MAINTENANCE)
 def maintenance(request):
     """Muestra los equipos en revisión o en reparación, cada uno con sus opciones de decisión."""
-    entries = [(equipment, review_choices_for(equipment)) for equipment in equipment_to_review()]
-    return render(request, "rentals/maintenance.html", {"entries": entries})
+    return render(request, "rentals/maintenance.html", {"entries": review_queue()})
 
 
 # role_required va afuera: un visitante va al login antes de que require_POST responda 405.
 @role_required(MAINTENANCE)
 @require_POST
-def review_unit(request, inventory_id):
+def review_equipment_view(request, inventory_id):
     """Guarda la decisión de mantenimiento sobre un equipo y vuelve a la lista (CU-10)."""
     equipment = get_object_or_404(Equipment, inventory_id=inventory_id)
     try:

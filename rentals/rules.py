@@ -7,6 +7,7 @@ from datetime import datetime, time, timedelta
 from decimal import ROUND_HALF_UP, Decimal
 
 from django.conf import settings
+from django.utils import timezone
 
 from .statuses import DebtReason, EquipmentStatus, ReturnResult
 
@@ -67,6 +68,12 @@ def is_return_time_allowed(end) -> bool:
 def start_of_day(moment):
     """Devuelve la medianoche con que empezó el día de moment."""
     return datetime.combine(moment.date(), time(0, 0), tzinfo=moment.tzinfo)
+
+
+def combine_local(day, clock_time):
+    """Junta una fecha y una hora de reloj en un momento de La Paz, por ejemplo el 09/10 a las 18:00."""
+    # make_aware usa el TIME_ZONE del proyecto (America/La_Paz).
+    return timezone.make_aware(datetime.combine(day, clock_time))
 
 
 def is_pickup_expired(start, now) -> bool:

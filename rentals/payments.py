@@ -2,6 +2,7 @@
 
 Las deudas nacen en la devolución (atraso) y en la revisión (daño); aquí se crean, se suman y se cobran.
 """
+from dataclasses import dataclass
 from decimal import Decimal
 
 from django.db import transaction
@@ -14,6 +15,19 @@ from .formatting import local_text, rental_state_message
 from .models import Debt, Rental
 from .notifications import send_debt_created, send_rental_confirmed
 from .statuses import PaymentMethod, RentalStatus
+
+
+@dataclass(frozen=True)
+class DebtsOverview:
+    """Lo que ve el operador en «Deudas»: cada deuda sin pagar y el total de cada cliente (CU-11)."""
+
+    debts: list[Debt]
+    totals: list[dict]
+
+
+def online_rentals_of(client):
+    """Devuelve las rentas que el cliente hizo en línea: solo esas se pagan con el QR (CU-04)."""
+    return Rental.objects.filter(client=client, registered_by__isnull=True)
 
 
 @logs_rejection("PAYMENT_REJECTED")
@@ -74,6 +88,11 @@ def pending_debts():
         .select_related("rental__client", "rental__equipment")
         .order_by("rental__client__username", "created_at")
     )
+
+
+def debts_overview() -> DebtsOverview:
+    """Devuelve las deudas sin pagar, una por una, y el total que debe cada cliente (CU-11)."""
+    return DebtsOverview(list(pending_debts()), list(pending_totals_by_client()))
 
 
 def pending_debts_of(client):

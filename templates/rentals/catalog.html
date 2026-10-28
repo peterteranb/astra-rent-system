@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 
 {% block title %}Catálogo{% endblock %}
-{% block heading %}{% if staff %}Catálogo de equipos{% else %}Catálogo de equipos disponibles{% endif %}{% endblock %}
+{% block heading %}{% if is_store_staff %}Catálogo de equipos{% else %}Catálogo de equipos disponibles{% endif %}{% endblock %}
 
 {% block content %}
   <section class="card">
@@ -19,7 +19,7 @@
         {{ form.free_to.label_tag }}
         {{ form.free_to }}
       </div>
-      {% if staff %}
+      {% if is_store_staff %}
         <div class="form__field">
           {{ form.status.label_tag }}
           {{ form.status }}
@@ -30,7 +30,7 @@
         <a class="button button--secondary" href="{% url 'catalog' %}">Limpiar</a>
       </div>
     </form>
-    <p class="hint">Con las dos fechas ves solo los equipos libres desde las 18:00 del primer día hasta las 09:00 del último.</p>
+    <p class="hint">Con las dos fechas ves solo los equipos libres desde las {{ earliest_pickup_time|time:"H:i" }} del primer día hasta las {{ latest_return_time|time:"H:i" }} del último.</p>
   </section>
 
   {% if page.object_list %}
@@ -40,7 +40,7 @@
         <li class="list__item">
           <span class="list__id">{{ entry.equipment.inventory_id }}</span>
           <span class="list__name">{{ entry.equipment.name }} · {{ entry.equipment.daily_price|floatformat:"2g" }} Bs por día</span>
-          {% if staff %}
+          {% if is_store_staff %}
             <span class="badge badge--{{ entry.equipment.status }}">{{ entry.equipment.get_status_display }}</span>
           {% else %}
             <a class="button" href="{% url 'rent_equipment' entry.equipment.inventory_id %}">Rentar</a>

@@ -4,19 +4,19 @@
 {% block heading %}Mis rentas{% endblock %}
 
 {% block content %}
-  {% if debt_total %}
+  {% if summary.debt_total %}
     {# ENT-77: el cliente con deuda ve cuánto debe y qué hacer para volver a rentar. #}
     <section class="card card--warning">
-      <p><strong>Tienes una deuda pendiente de {{ debt_total|floatformat:"2g" }} Bs. Págala en la tienda para volver a rentar.</strong></p>
+      <p><strong>Tienes una deuda pendiente de {{ summary.debt_total|floatformat:"2g" }} Bs. Págala en la tienda para volver a rentar.</strong></p>
       <ul class="totals">
-        {% for debt in debts %}
+        {% for debt in summary.debts %}
           <li>{{ debt.get_reason_display }} · {{ debt.rental.equipment.inventory_id }} · {{ debt.amount|floatformat:"2g" }} Bs</li>
         {% endfor %}
       </ul>
     </section>
   {% endif %}
 
-  {% if rentals %}
+  {% if summary.rentals %}
     <table class="table">
       <thead>
         <tr>
@@ -30,7 +30,7 @@
         </tr>
       </thead>
       <tbody>
-        {% for rental in rentals %}
+        {% for rental in summary.rentals %}
           {% with status=rental.status %}
             <tr>
               <td data-label="Equipo">{{ rental.equipment }}</td>

@@ -9,18 +9,14 @@ from django.views.decorators.http import require_POST
 from ..errors import OperationRejectedError
 from ..formatting import money_text
 from ..models import Debt
-from ..payments import pay_debt, pending_debts, pending_totals_by_client
+from ..payments import debts_overview, pay_debt
 from ..roles import OPERATOR, role_required
 
 
 @role_required(OPERATOR)
 def staff_debts(request):
     """Muestra las deudas pendientes, una por una, y el total que debe cada cliente."""
-    return render(
-        request,
-        "rentals/staff_debts.html",
-        {"debts": pending_debts(), "totals": pending_totals_by_client()},
-    )
+    return render(request, "rentals/staff_debts.html", {"overview": debts_overview()})
 
 
 # role_required va afuera: un visitante va al login antes de que require_POST responda 405.

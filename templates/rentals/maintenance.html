@@ -11,7 +11,7 @@
           <span class="list__id">{{ equipment.inventory_id }}</span>
           <span class="list__name">{{ equipment.name }}</span>
           <span class="badge badge--{{ equipment.status }}">{{ equipment.get_status_display }}</span>
-          <form class="list__form" method="post" action="{% url 'review_unit' equipment.inventory_id %}">
+          <form class="list__form" method="post" action="{% url 'review_equipment' equipment.inventory_id %}">
             {% csrf_token %}
             <select name="status" aria-label="Nuevo estado de {{ equipment.inventory_id }}">
               {% for value, label in choices %}

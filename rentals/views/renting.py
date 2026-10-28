@@ -12,33 +12,26 @@ from .. import rules
 from ..errors import EquipmentNotAvailableError, OperationRejectedError
 from ..formatting import local_text
 from ..forms import CatalogFilterForm, RentalForm, WalkInRentalForm
-from ..models import Equipment, Rental
-from ..payments import debt_total_of, pay_with_qr, pending_debts_of
+from ..models import Equipment
+from ..payments import online_rentals_of, pay_with_qr
 from ..renting import (
+    browse_catalog,
     cancel_rental,
-    catalog_page,
     create_rental,
     find_clients,
     modify_rental,
-    rentals_of,
-    search_catalog,
-    visible_rental,
+    my_rentals,
+    rentals_visible_to,
 )
-from ..roles import MAINTENANCE, OPERATOR, has_role, role_required
+from ..roles import OPERATOR, has_role, role_required
 
 
 @login_required
 def catalog(request):
     """Muestra el catálogo filtrado, de 20 en 20, con los próximos periodos ocupados de cada equipo (CU-03)."""
-    now = timezone.now()
-    staff = has_role(request.user, OPERATOR) or has_role(request.user, MAINTENANCE)
     form = CatalogFilterForm(request.GET or None)
-    equipment = search_catalog(form.filters(), now, staff=staff)
-    return render(
-        request,
-        "rentals/catalog.html",
-        {"form": form, "page": catalog_page(equipment, request.GET.get("page"), now), "staff": staff},
-    )
+    page = browse_catalog(request.user, form.filters(), request.GET.get("page"), timezone.now())
+    return render(request, "rentals/catalog.html", {"form": form, "page": page, **period_limits()})
 
 
 @login_required
@@ -63,13 +56,15 @@ def rent_equipment(request, inventory_id):
             form.add_error(None, str(error))
         else:
             return redirect("pay_rental", rental_id=rental.pk)
-    return render(request, "rentals/rent_form.html", rental_form_context(equipment, form))
+    return render(
+        request, "rentals/rent_form.html", {"equipment": equipment, "form": form, **period_limits()}
+    )
 
 
 @login_required
 def pay_rental(request, rental_id):
     """Muestra el QR simulado de una reserva en línea y guarda el botón que presiona el cliente (CU-04)."""
-    rental = get_object_or_404(Rental, pk=rental_id, client=request.user, registered_by__isnull=True)
+    rental = get_object_or_404(online_rentals_of(request.user), pk=rental_id)
     if request.method != "POST":
         return render(request, "rentals/pay_rental.html", {"rental": rental})
     approved = request.POST.get("result") == "approved"
@@ -99,19 +94,18 @@ def rental_confirmation(request, rental_id):
     return render(
         request,
         "rentals/rental_confirmation.html",
-        {
-            "rental": visible_rental(request.user, rental_id),
-            "earliest_pickup_time": rules.EARLIEST_PICKUP_TIME,
-        },
+        {"rental": visible_rental(request, rental_id), **period_limits()},
     )
 
 
-def rental_form_context(equipment, form):
-    """Datos que necesita la plantilla del formulario de renta, con los límites de las reglas."""
+def visible_rental(request, rental_id):
+    """Devuelve la renta si el usuario puede abrirla; si no, responde 404 sin decir que existe."""
+    return get_object_or_404(rentals_visible_to(request.user), pk=rental_id)
+
+
+def period_limits():
+    """Los horarios y la duración máxima que muestran las páginas con fechas (ENT-19, ENT-72)."""
     return {
-        "equipment": equipment,
-        "equipment_daily_price": rules.daily_price_for(equipment.value),
-        "form": form,
         "earliest_pickup_time": rules.EARLIEST_PICKUP_TIME,
         "latest_return_time": rules.LATEST_RETURN_TIME,
         "max_days": rules.MAX_RENTAL_DAYS,
@@ -121,7 +115,7 @@ def rental_form_context(equipment, form):
 @login_required
 def modify_reservation(request, rental_id):
     """Muestra las fechas de una reserva y guarda las nuevas, con los mismos días (CU-06)."""
-    rental = visible_rental(request.user, rental_id)
+    rental = visible_rental(request, rental_id)
     form = RentalForm(request.POST or None, initial=current_period(rental))
     if request.method == "POST" and form.is_valid():
         try:
@@ -143,7 +137,13 @@ def modify_reservation(request, rental_id):
     return render(
         request,
         "rentals/modify_form.html",
-        {**rental_form_context(rental.equipment, form), "rental": rental},
+        {
+            "equipment": rental.equipment,
+            "form": form,
+            "rental": rental,
+            "back_page": reservations_page_for(request.user),
+            **period_limits(),
+        },
     )
 
 
@@ -168,7 +168,7 @@ def reservations_page_for(user):
 @require_POST
 def cancel_reservation(request, rental_id):
     """Cancela una reserva del cliente o, para el personal, de cualquiera, y vuelve a su lista (CU-07)."""
-    rental = visible_rental(request.user, rental_id)
+    rental = visible_rental(request, rental_id)
     try:
         cancel_rental(rental, request.user)
     except OperationRejectedError as error:
@@ -213,12 +213,4 @@ def walk_in_rental(request):
 @login_required
 def client_rentals(request):
     """Muestra las rentas del cliente con su estado y su pago, y lo que debe (CU-16)."""
-    return render(
-        request,
-        "rentals/client_rentals.html",
-        {
-            "rentals": rentals_of(request.user),
-            "debts": pending_debts_of(request.user),
-            "debt_total": debt_total_of(request.user),
-        },
-    )
+    return render(request, "rentals/client_rentals.html", {"summary": my_rentals(request.user)})

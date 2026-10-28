@@ -4,11 +4,11 @@
 {% block heading %}Deudas pendientes{% endblock %}
 
 {% block content %}
-  {% if debts %}
+  {% if overview.debts %}
     <section class="card">
       <h2 class="card__title">Total por cliente</h2>
       <ul class="totals">
-        {% for row in totals %}
+        {% for row in overview.totals %}
           <li>
             {{ row.rental__client__first_name }} {{ row.rental__client__last_name }} ({{ row.rental__client__username }}):
             <strong>{{ row.total|floatformat:"2g" }} Bs</strong>
@@ -29,7 +29,7 @@
         </tr>
       </thead>
       <tbody>
-        {% for debt in debts %}
+        {% for debt in overview.debts %}
           <tr>
             <td data-label="Cliente">{{ debt.rental.client.get_full_name|default:debt.rental.client.username }}</td>
             <td data-label="Equipo">{{ debt.rental.equipment }}</td>
