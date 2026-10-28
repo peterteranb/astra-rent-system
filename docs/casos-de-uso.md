@@ -133,7 +133,7 @@ flowchart LR
 | **Flujos alternativos** | Si alguna regla falla, se queda en el formulario con los datos escritos (menos las contraseñas) y el título «No se creó la cuenta:» seguido de **todas** las causas: «Falta el campo Correo.» · «El correo no es válido.» · «El teléfono debe tener entre 7 y 15 números.» · «El usuario solo puede tener letras, números y los signos @ . + - _» · «Las contraseñas no coinciden.» · «La contraseña necesita al menos una mayúscula.» · «La contraseña necesita al menos un número.» · los mensajes de Django para contraseñas cortas, comunes, solo numéricas o parecidas al usuario · «El usuario cl03 ya existe.» · «El correo ya está registrado.» · «El teléfono ya está registrado.» |
 | **Postcondición** | Existe un usuario con rol «cliente» que puede iniciar sesión. |
 | **Guarda** | Una fila en `accounts_user` con la contraseña cifrada (`set_password`) y el teléfono solo con dígitos. |
-| **Log** | `ACCOUNT_CREATED id=7 username=cl03 role=cliente registered_by=web` · `ACCOUNT_REJECTED reason="El usuario cl03 ya existe." username=cl03` |
+| **Log** | `ACCOUNT_CREATED id=7 username=cl03 role=cliente registered_by=web` · `ACCOUNT_REJECTED reason="No se creó la cuenta: El usuario cl03 ya existe."` |
 | **Correo** | Bienvenida. |
 | **Origen** | ENT-15, ENT-84, PRE-01, [sesión 20](sesion-20-bocetos.md) |
 
@@ -199,7 +199,7 @@ sequenceDiagram
 |---|---|
 | **Actor** | Cliente; operador (también ve el filtro por estado) |
 | **Precondición** | Tiene sesión. |
-| **Flujo normal** | 1. Abre el catálogo: ve 20 equipos por página, cada uno con su precio por día y sus próximos periodos ocupados. 2. Escribe un código o un nombre, o elige «Libres desde» y «Libres hasta». 3. Presiona «Buscar» y ve solo los equipos que cumplen. 4. Pasa de página con «Anterior» y «Siguiente». |
+| **Flujo normal** | 1. Abre el catálogo: ve 20 equipos por página, cada uno con su precio por día y sus próximos periodos ocupados. 2. Escribe un código o un nombre, o elige «Libre desde» y «Libre hasta». 3. Presiona «Buscar» y ve solo los equipos que cumplen. 4. Pasa de página con «Anterior» y «Siguiente». |
 | **Flujos alternativos** | Solo una fecha: «Elige las dos fechas para ver los equipos libres.» · Fecha final antes de la inicial: «La fecha final debe ser posterior a la inicial.» · Sin resultados: «No hay equipos que coincidan con la búsqueda.» |
 | **Postcondición** | No cambia nada. |
 | **Guarda** | Nada. |
@@ -216,7 +216,7 @@ sequenceDiagram
     V->>U: search_catalog(texto, fechas, estado)
     U->>BD: equipos sin rentas que ocupen esas fechas
     V->>U: catalog_page(equipos, página 2)
-    U->>BD: 20 equipos y sus próximas rentas (2 consultas)
+    U->>BD: total, 20 equipos y sus próximas rentas (3 consultas)
     U-->>V: la página
     V-->>C: catálogo con paginación
 ```
@@ -233,7 +233,7 @@ sequenceDiagram
 | **Flujos alternativos** | 4a. Presiona «Simular pago fallido»: la reserva sigue hecha y ve «Tu reserva está hecha, pero el pago no se completó. Paga en la tienda al recoger el equipo.»; recibe el correo con el pago pendiente. · 2a. Debe dinero: «Tienes una deuda pendiente de 40,00 Bs. Págala en la tienda para volver a rentar.» · 2b. Fechas ocupadas: vuelve al catálogo con «El equipo MES-00002 está ocupado del 05/11/2026 18:00 al 07/11/2026 09:00. Está libre hasta el 05/11/2026 a las 09:00.» · 2c. Horario o duración: «El recojo debe ser desde las 18:00.» · «La devolución debe ser hasta las 09:00.» · «La renta no puede durar más de 5 días.» · «La fecha y hora de devolución debe ser posterior a la de recojo.» · 2d. Equipo no disponible: «El equipo MES-00002 no está disponible (estado: En revisión).» · 4b. Ya pagada: «La renta de MES-00002 ya está pagada.» |
 | **Postcondición** | La renta queda «Reservada», pagada con QR o con el pago pendiente. |
 | **Guarda** | Una fila en `rentals_rental` con `daily_price` (5 % del valor); con el pago exitoso, `paid_at` y `payment_method = qr`. |
-| **Log** | `RENTAL_CREATED id=12 equipment=MES-00002 client=cl01 paid=no` · `PAYMENT_APPROVED rental=12 amount=40.00` · `PAYMENT_FAILED rental=12 amount=40.00` · `RENTAL_REJECTED reason="…"` · `PAYMENT_REJECTED reason="…"` |
+| **Log** | `RENTAL_CREATED id=12 equipment=MES-00002 client=cl01 paid=no registered_by=web` · `PAYMENT_APPROVED rental=12 amount=40.00` · `PAYMENT_FAILED rental=12 amount=40.00` · `RENTAL_REJECTED reason="…"` · `PAYMENT_REJECTED reason="…"` |
 | **Correo** | Renta confirmada (pagada o con el pago pendiente). |
 | **Origen** | ENT-16, ENT-21, ENT-48, ENT-66, ENT-67, ENT-71, ENT-77, PRE-03, PRE-04 |
 
@@ -406,7 +406,7 @@ sequenceDiagram
 | **Flujos alternativos** | Llega desde las 12:01 del día de vencimiento: se crea la deuda y ve «… Con 2 días de atraso: deuda de 40,00 Bs.»; el cliente recibe el correo de la deuda. · Sin observación: «Escribe cómo llegó el equipo.» · Ya devuelta o cancelada: «La renta de MES-00004 ya fue devuelta el 28/10/2026 08:30.». |
 | **Postcondición** | La renta queda «Devuelta» y el equipo «En revisión». |
 | **Guarda** | `returned_at`, `received_by`, `return_note`; el estado del equipo y una fila en `rentals_statuschange`; con atraso, una fila en `rentals_debt` con `late_return`. |
-| **Log** | `RETURN_REGISTERED id=12 equipment=MES-00004 client=cl01 by=op01 result=late late_days=2` · `STATUS_CHANGED equipment=MES-00004 from=available to=in_review by=op01` · `DEBT_CREATED id=3 rental=12 client=cl01 reason=late_return amount=40.00` · `RETURN_REJECTED reason="…"` |
+| **Log** | `RETURN_REGISTERED id=12 equipment=MES-00004 client=cl01 by=op01 result=late late_days=2` · `STATUS_CHANGED equipment=MES-00004 old=available new=in_review by=op01` · `DEBT_CREATED id=3 rental=12 client=cl01 reason=late_return amount=40.00` · `RETURN_REJECTED reason="…"` |
 | **Correo** | Deuda creada (si hubo atraso). |
 | **Origen** | ENT-03, ENT-60, ENT-73, PRE-05 |
 
@@ -441,7 +441,7 @@ sequenceDiagram
 | **Flujos alternativos** | En reparación: se crea la deuda del 20 % para el cliente de la última renta devuelta y ve «MES-00006 ahora está «En reparación». Deuda de 80,00 Bs para cl01.» · Baja: deuda del 100 %, se cancelan las reservas futuras del equipo (con correo a cada cliente) y ve «MES-00007 ahora está «Baja». Deuda de 400,00 Bs para cl02. Reservas futuras canceladas: 1.» · Sin renta devuelta antes, no hay a quién cobrar y no se crea deuda. · Rechazos: «El equipo MES-00007 está dado de baja; su estado ya no puede cambiar.» · «El equipo MES-00006 ya está «En reparación».» · «El equipo MES-00006 solo puede pasar a disponible, en reparación o baja.» |
 | **Postcondición** | El equipo tiene su estado nuevo y queda en el historial. |
 | **Guarda** | El estado del equipo y una fila en `rentals_statuschange`; con reparación o baja, una fila en `rentals_debt`; con baja, `cancelled_at` y `cancelled_by` (mantenimiento) en cada reserva futura. |
-| **Log** | `STATUS_CHANGED equipment=MES-00007 from=in_review to=retired by=mt01` · `DEBT_CREATED id=4 rental=9 client=cl02 reason=retired amount=400.00` · `RENTAL_CANCELLED id=15 … by=mt01 reason="…"` · `REVIEW_REJECTED reason="…"` |
+| **Log** | `STATUS_CHANGED equipment=MES-00007 old=in_review new=retired by=mt01` · `DEBT_CREATED id=4 rental=9 client=cl02 reason=retired amount=400.00` · `RENTAL_CANCELLED id=15 … by=mt01 reason="…"` · `REVIEW_REJECTED reason="…"` |
 | **Correo** | Deuda creada; renta cancelada a cada cliente afectado. |
 | **Origen** | ENT-03, ENT-34, ENT-47, ENT-49, ENT-74, PRE-06 |
 
@@ -543,7 +543,7 @@ sequenceDiagram
 | **Flujos alternativos** | De baja o ya en ese estado: aparecen en «No se cambiaron: MES-00007.». |
 | **Postcondición** | El estado cambia y queda en el historial. **No crea deudas** ni cancela reservas (ENT-75): es una corrección, no una revisión. |
 | **Guarda** | El estado del equipo y una fila en `rentals_statuschange`. |
-| **Log** | `STATUS_CHANGED equipment=MES-00002 from=available to=in_repair by=ad01` · `STATUS_CHANGE_REJECTED reason="…"` |
+| **Log** | `STATUS_CHANGED equipment=MES-00002 old=available new=in_repair by=ad01` · `STATUS_CHANGE_REJECTED reason="…"` |
 | **Origen** | ENT-40, ENT-50, ENT-75, PRE-07 |
 
 ```mermaid
