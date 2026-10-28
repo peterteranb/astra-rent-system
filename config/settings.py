@@ -73,6 +73,8 @@ AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
     {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
+    # ENT-84: además, al menos una mayúscula y un número.
+    {"NAME": "accounts.validators.UppercaseAndDigitValidator"},
 ]
 
 LANGUAGE_CODE = "es"

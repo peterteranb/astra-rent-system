@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+
+{% block title %}{% if at_store %}Nuevo cliente{% else %}Crear cuenta{% endif %}{% endblock %}
+{% block heading %}{% if at_store %}Nuevo cliente{% else %}Crear cuenta{% endif %}{% endblock %}
+
+{% block content %}
+  <section class="card login">
+    {% include "includes/rejection.html" with title="No se creó la cuenta:" %}
+
+    <form class="form" method="post" action="{% if at_store %}{% url 'register_client_at_store' %}{% else %}{% url 'sign_up' %}{% endif %}">
+      {% csrf_token %}
+      {% for field in form %}
+        <div class="form__field">
+          {{ field.label_tag }}
+          {{ field }}
+          {% if field.help_text %}<small class="form__help">{{ field.help_text }}</small>{% endif %}
+          {{ field.errors }}
+        </div>
+      {% endfor %}
+      <div class="form__actions">
+        <button class="button" type="submit">{% if at_store %}Registrar cliente{% else %}Registrarme{% endif %}</button>
+      </div>
+    </form>
+    {% if not at_store %}
+      <p class="hint">¿Ya tienes cuenta? <a href="{% url 'login' %}">Iniciar sesión</a></p>
+    {% endif %}
+  </section>
+{% endblock %}

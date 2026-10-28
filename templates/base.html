@@ -13,6 +13,7 @@
     {% if is_operator or is_maintenance %}
       <nav class="site-header__nav">
         {% if is_operator %}
+          <a href="{% url 'register_client_at_store' %}">Nuevo cliente</a>
           <a href="{% url 'walk_in_rental' %}">Renta en tienda</a>
           <a href="{% url 'staff_reservations' %}">Reservas por entregar</a>
           <a href="{% url 'staff_returns' %}">Devoluciones</a>
