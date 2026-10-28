@@ -1,29 +1,30 @@
-"""Páginas de mantenimiento para CU-05: los equipos por revisar y el formulario que guarda cada decisión."""
+"""Páginas de mantenimiento para CU-10: los equipos por revisar y el formulario que guarda cada decisión."""
 from django.contrib import messages
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
+from accounts.roles import MAINTENANCE, role_required
+
 from ..errors import OperationRejectedError
 from ..models import Equipment
-from ..review import equipment_to_review, review_choices_for, review_equipment
-from ..roles import MAINTENANCE, role_required
+from ..services.formatting import money_text
+from ..use_cases.review import review_equipment, review_queue
 
 
 @role_required(MAINTENANCE)
 def maintenance(request):
     """Muestra los equipos en revisión o en reparación, cada uno con sus opciones de decisión."""
-    entries = [(equipment, review_choices_for(equipment)) for equipment in equipment_to_review()]
-    return render(request, "rentals/maintenance.html", {"entries": entries})
+    return render(request, "rentals/maintenance.html", {"entries": review_queue()})
 
 
 # role_required va afuera: un visitante va al login antes de que require_POST responda 405.
 @role_required(MAINTENANCE)
 @require_POST
-def review_unit(request, inventory_id):
-    """Guarda la decisión de mantenimiento sobre un equipo y vuelve a la lista (CU-05)."""
+def review_equipment_view(request, inventory_id):
+    """Guarda la decisión de mantenimiento sobre un equipo y vuelve a la lista (CU-10)."""
     equipment = get_object_or_404(Equipment, inventory_id=inventory_id)
     try:
-        change = review_equipment(
+        outcome = review_equipment(
             equipment,
             request.user,
             request.POST.get("status", ""),
@@ -32,8 +33,16 @@ def review_unit(request, inventory_id):
     except OperationRejectedError as error:
         messages.error(request, str(error))
     else:
-        messages.success(
-            request, f"{inventory_id} ahora está «{change.get_new_status_display()}»."
-        )
+        messages.success(request, review_message(inventory_id, outcome))
     # Redirige después del POST: recargar la página no lo envía otra vez.
     return redirect("maintenance")
+
+
+def review_message(inventory_id, outcome):
+    """Mensaje de éxito de la revisión: el estado nuevo, la deuda y las reservas canceladas."""
+    message = f"{inventory_id} ahora está «{outcome.change.get_new_status_display()}»."
+    if outcome.debt:
+        message += f" Deuda de {money_text(outcome.debt.amount)} para {outcome.debt.rental.client.username}."
+    if outcome.cancelled:
+        message += f" Reservas futuras canceladas: {len(outcome.cancelled)}."
+    return message

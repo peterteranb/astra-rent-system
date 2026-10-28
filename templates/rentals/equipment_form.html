@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+
+{% block title %}Registrar equipo{% endblock %}
+{% block heading %}Registrar equipo{% endblock %}
+
+{% block content %}
+  <section class="card">
+    <p class="hint">El equipo queda «Disponible» y aparece en el catálogo. También se puede registrar desde el admin.</p>
+
+    {% include "includes/rejection.html" %}
+
+    <form class="form" method="post" action="{% url 'register_equipment' %}">
+      {% csrf_token %}
+      {% for field in form %}
+        <div class="form__field">
+          {{ field.label_tag }}
+          {{ field }}
+          {% if field.help_text %}<small class="form__help">{{ field.help_text }}</small>{% endif %}
+          {{ field.errors }}
+        </div>
+      {% endfor %}
+      <div class="form__actions">
+        <button class="button" type="submit">Registrar equipo</button>
+      </div>
+    </form>
+  </section>
+{% endblock %}

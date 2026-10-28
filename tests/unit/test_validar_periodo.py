@@ -1,8 +1,8 @@
-"""Prueba rentals/renting.py: check_period(), el mensaje con la causa de cada periodo rechazado (RC-01)."""
+"""Prueba rentals/use_cases/renting.py: check_period(), el mensaje con la causa de cada periodo rechazado (RC-04)."""
 import pytest
 
 from rentals.errors import InvalidPeriodError
-from rentals.renting import check_period
+from rentals.use_cases.renting import check_period
 from tests.helpers import local_datetime
 
 

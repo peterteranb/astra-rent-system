@@ -1,7 +1,8 @@
-"""Páginas de login y de cierre de sesión."""
+"""Páginas de registro de clientes, login y cierre de sesión."""
 from django.contrib.auth.views import LoginView, LogoutView
 from django.urls import path
 
+from . import views
 from .forms import LoginForm
 
 urlpatterns = [
@@ -17,4 +18,6 @@ urlpatterns = [
     ),
     # LogoutView solo acepta POST: el botón de cerrar sesión es un formulario.
     path("logout/", LogoutView.as_view(), name="logout"),
+    path("signup/", views.sign_up, name="sign_up"),
+    path("staff/clients/new/", views.register_client_at_store, name="register_client_at_store"),
 ]

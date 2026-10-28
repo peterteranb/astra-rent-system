@@ -1,0 +1,15 @@
+{# Una tarjeta del panel con rentas: cantidad, las primeras filas y el enlace a la lista completa en el admin. #}
+<section class="card">
+  <span class="card__count">{{ list.total }}</span>
+  <h2 class="card__title">{{ title }}</h2>
+  {% if list.rows %}
+    <ul class="totals">
+      {% for rental in list.rows %}
+        <li>{{ rental.equipment.inventory_id }} · {{ rental.client.username }} · {{ rental.start_datetime|date:"d/m H:i" }} a {{ rental.end_datetime|date:"d/m H:i" }}</li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p class="empty">Nada por aquí.</p>
+  {% endif %}
+  <a href="{% url 'admin:rentals_rental_changelist' %}?situacion={{ situation }}">Ver en el admin</a>
+</section>

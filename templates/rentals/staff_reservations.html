@@ -12,22 +12,31 @@
           <th>Cliente</th>
           <th>Desde</th>
           <th>Hasta</th>
+          <th>Pago</th>
           <th></th>
         </tr>
       </thead>
       <tbody>
         {% for rental in reservations %}
           <tr>
-            <td data-label="Equipo">{{ rental.equipment.inventory_id }} · {{ rental.equipment.description }}</td>
+            <td data-label="Equipo">{{ rental.equipment }}</td>
             <td data-label="Cliente">{{ rental.client.get_full_name|default:rental.client.username }}</td>
             <td data-label="Desde">{{ rental.start_datetime|date:"d/m/Y H:i" }}</td>
             <td data-label="Hasta">{{ rental.end_datetime|date:"d/m/Y H:i" }}</td>
+            <td data-label="Pago">{% include "includes/payment_badge.html" %}</td>
             <td class="table__actions">
               <div class="form__actions">
                 <form method="post" action="{% url 'register_pickup' rental.pk %}">
                   {% csrf_token %}
-                  <button class="button" type="submit">Registrar recojo</button>
+                  {% if rental.is_paid %}
+                    <button class="button" type="submit">Registrar recojo</button>
+                  {% else %}
+                    {# ENT-68: con el pago pendiente, el botón cobra en efectivo y entrega a la vez. #}
+                    <input type="hidden" name="paid_now" value="yes">
+                    <button class="button" type="submit">Cobrar {{ rental.total_price|floatformat:"2g" }} Bs y entregar</button>
+                  {% endif %}
                 </form>
+                <a class="button button--secondary" href="{% url 'modify_reservation' rental.pk %}">Modificar</a>
                 <form method="post" action="{% url 'cancel_reservation' rental.pk %}">
                   {% csrf_token %}
                   <button class="button button--secondary" type="submit">Cancelar</button>

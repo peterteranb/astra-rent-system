@@ -1,164 +1,206 @@
-"""Comando seed_demo: deja la base con el escenario de la demo del MVP, con fechas relativas a hoy.
+"""Comando seed_demo: deja la base con el escenario de la demo, con fechas relativas a hoy.
 
-SOLO PARA LA DEMO: borra todas las rentas y todo el historial y los vuelve a crear,
-así cada vez que se corre el escenario queda igual.
+SOLO PARA LA DEMO: vacía logs/negocio.log, borra todas las deudas, rentas, historial y equipos
+y los vuelve a crear, así cada vez que se corre el escenario queda igual.
 """
 from datetime import datetime, time, timedelta
+from decimal import Decimal
 
+from django.conf import settings
 from django.contrib.auth import get_user_model
-from django.contrib.auth.models import Group
 from django.core.management.base import BaseCommand
 from django.db import transaction
+from django.test.utils import override_settings
 from django.utils import timezone
 
-from rentals.history import change_status
-from rentals.models import Equipment, EquipmentStatus, Rental, StatusChange
-from rentals.renting import cancel_rental, create_rental
-from rentals.roles import MAINTENANCE, OPERATOR
+from accounts.models import Role
+from accounts.roles import ADMINISTRATOR, CLIENT, MAINTENANCE, OPERATOR
+from rentals.models import Debt, Equipment, EquipmentStatus, Rental, StatusChange
+from rentals.services.events import log_event
+from rentals.statuses import DebtReason
+from rentals.use_cases.history import change_status
+from rentals.use_cases.payments import charge_debt, pay_with_qr
+from rentals.use_cases.renting import cancel_rental, create_rental
 
-DEMO_PASSWORD = "demo1234"
+# La demo no manda correos: sus clientes tienen direcciones inventadas.
+NO_EMAIL = {"default": {"BACKEND": "django.core.mail.backends.dummy.EmailBackend"}}
 
-# Usuarios de una versión anterior de la demo.
-OLD_DEMO_USERS = ["c01", "c02", "admin"]
+# Cumple las reglas de contraseña: 8 caracteres, una mayúscula y un número.
+DEMO_PASSWORD = "Demo1234"
 
-DEMO_CLIENTS = [
-    ("cl01", "Carla", "Mendoza", "carla.mendoza@correo.com"),
-    ("cl02", "Diego", "Rojas", "diego.rojas@correo.com"),
+DEMO_USERS = [
+    ("cl01", "Carla", "Mendoza", "carla.mendoza@correo.com", "71000001", CLIENT),
+    ("cl02", "Diego", "Rojas", "diego.rojas@correo.com", "71000002", CLIENT),
+    ("op01", "Olga", "Pérez", "olga.perez@sergiocorp.com", "71000003", OPERATOR),
+    ("mt01", "Mario", "Torres", "mario.torres@sergiocorp.com", "71000004", MAINTENANCE),
+    ("ad01", "Ana", "Díaz", "ana.diaz@sergiocorp.com", "71000005", ADMINISTRATOR),
 ]
-DEMO_STAFF = [("op01", "Olga", "Pérez", OPERATOR), ("mt01", "Mario", "Torres", MAINTENANCE)]
-DEMO_ADMIN = ("ad01", "Ana", "Díaz")
 
-# EQ-06 y EQ-07 empiezan «En revisión» para que su única fila de historial
-# sea la decisión de mantenimiento.
-DEMO_EQUIPMENT = [
-    ("EQ-01", "SN-T-001", "Mesa plegable 1,80 m", EquipmentStatus.AVAILABLE),
-    ("EQ-02", "SN-T-002", "Mesa plegable 1,80 m", EquipmentStatus.AVAILABLE),
-    ("EQ-03", "SN-T-003", "Mesa redonda 1,20 m", EquipmentStatus.AVAILABLE),
-    ("EQ-04", "SN-C-001", "Silla plegable blanca", EquipmentStatus.AVAILABLE),
-    ("EQ-05", "SN-C-002", "Silla plegable blanca", EquipmentStatus.AVAILABLE),
-    ("EQ-06", "SN-C-003", "Silla Tiffany dorada", EquipmentStatus.IN_REVIEW),
-    ("EQ-07", "SN-C-004", "Silla Tiffany dorada", EquipmentStatus.IN_REVIEW),
-    ("EQ-08", "SN-T-004", "Mesa redonda 1,20 m", EquipmentStatus.AVAILABLE),
-]
+# Valores de compra en Bs: de ellos salen el precio por día (5 %) y los cargos por daño.
+DEMO_MODELS = {
+    "MES": [
+        ("Mesa plegable 1,80 m", "400.00"),
+        ("Mesa plegable 1,80 m", "400.00"),
+        ("Mesa redonda 1,20 m", "350.00"),
+        ("Mesa redonda 1,20 m", "350.00"),
+        ("Mesa rectangular de madera 2,40 m", "650.00"),
+        ("Mesa rectangular de madera 2,40 m", "650.00"),
+        ("Mesa cóctel alta", "300.00"),
+        ("Mesa cóctel alta", "300.00"),
+    ],
+    "SIL": [
+        ("Silla plegable blanca", "80.00"),
+        ("Silla plegable blanca", "80.00"),
+        ("Silla plegable blanca", "80.00"),
+        ("Silla Tiffany dorada", "150.00"),
+        ("Silla Tiffany dorada", "150.00"),
+        ("Silla Tiffany dorada", "150.00"),
+        ("Silla Tiffany blanca", "150.00"),
+        ("Silla acolchada negra", "120.00"),
+        ("Silla acolchada negra", "120.00"),
+        ("Silla acolchada negra", "120.00"),
+        ("Silla acolchada negra", "120.00"),
+        ("Silla acolchada negra", "120.00"),
+    ],
+}
 
 DEMO_PURPOSE = {
-    "EQ-01": "CU-03: entregar la reserva de hoy",
-    "EQ-02": "CU-01: pedir hoy+8 se rechaza; la cancelada no ocupa",
-    "EQ-03": "CU-04: devolver «A tiempo»",
-    "EQ-04": "CU-04: devolver después de las 12:00, «Se cobra un día más»",
-    "EQ-05": "CU-05: revisar y dejar disponible",
-    "EQ-06": "CU-05: en reparación, pasa a disponible o baja",
-    "EQ-07": "CU-07: una baja ya no cambia",
-    "EQ-08": "CU-02: libre para la renta en tienda",
+    "MES-00001": "CU-08: reserva pagada de cl01 para hoy, lista para entregar",
+    "MES-00002": "CU-04: pedir hoy+8 se rechaza; la reserva cancelada no ocupa",
+    "MES-00003": "CU-08: reserva de hoy con pago pendiente: cobrar o cancelar",
+    "MES-00004": "CU-05: libre para la renta en tienda",
+    "MES-00005": "CU-06 y CU-07: cl01 la modifica o la cancela (faltan más de 24 h)",
+    "SIL-00001": "CU-09: venció ayer; al devolverla se crea la deuda por atraso",
+    "SIL-00002": "CU-15: renta vencida hace 2 días, en el panel",
+    "SIL-00003": "CU-10: en revisión; reparación cobra 16 Bs a cl02",
+    "SIL-00004": "CU-10: en reparación, pasa a disponible o baja",
+    "SIL-00005": "CU-13: una baja ya no cambia",
+    "SIL-00006": "CU-11: volvió con atraso; deuda pendiente de cl02",
+    "SIL-00007": "CU-09: rentada, se devuelve a tiempo",
 }
 
 
 class Command(BaseCommand):
-    """Borra las rentas y el historial y crea el escenario de la demo."""
+    """Vacía el log de negocio, borra las deudas, rentas, historial y equipos y crea el escenario de la demo."""
 
-    help = "SOLO PARA LA DEMO: borra todas las rentas y el historial y crea el escenario del MVP."
+    help = (
+        "SOLO PARA LA DEMO: vacía logs/negocio.log, borra deudas, rentas, historial y equipos "
+        "y crea el escenario de la demo."
+    )
 
     def handle(self, *args, **options):
-        """Crea todo el escenario en una sola transacción: o queda completo o no cambia nada."""
-        with transaction.atomic():
+        """Empieza el log de cero y crea todo el escenario en una sola transacción: o queda completo o no cambia nada."""
+        start_business_log()
+        with override_settings(MAILERS=NO_EMAIL), transaction.atomic():
+            # PROTECT: se borra de las hojas hacia la raíz.
+            Debt.objects.all().delete()
             Rental.objects.all().delete()
             StatusChange.objects.all().delete()
-            # Sin rentas ni historial, los usuarios viejos ya no tienen nada que proteger.
-            get_user_model().objects.filter(username__in=OLD_DEMO_USERS).delete()
+            Equipment.objects.all().delete()
             users = create_users()
-            reset_equipment()
-            create_scenario(users)
+            equipment = create_equipment()
+            create_scenario(users, equipment)
         self.print_summary()
 
     def print_summary(self):
         """Imprime una tabla corta: equipo, estado, rentas y para qué sirve en la demo."""
         self.stdout.write(f"Usuarios: cl01, cl02, op01, mt01, ad01 (clave: {DEMO_PASSWORD})")
-        self.stdout.write(f"{'Equipo':<7} {'Estado':<14} {'Rentas':<40} Para qué sirve")
-        for equipment in Equipment.objects.prefetch_related("rentals__client"):
+        self.stdout.write(f"{'Equipo':<10} {'Estado':<14} {'Rentas':<44} Para qué sirve")
+        for unit in Equipment.objects.prefetch_related("rentals__client"):
             rentals = ", ".join(
-                f"{rental.status.label} de {rental.client.username}"
-                for rental in equipment.rentals.all()
+                f"{rental.status.label} de {rental.client.username}" for rental in unit.rentals.all()
             )
             self.stdout.write(
-                f"{equipment.inventory_id:<7} {equipment.get_status_display():<14} "
-                f"{rentals or '-':<40} {DEMO_PURPOSE.get(equipment.inventory_id, '')}"
+                f"{unit.inventory_id:<10} {unit.get_status_display():<14} "
+                f"{rentals or '-':<44} {DEMO_PURPOSE.get(unit.inventory_id, 'Libre')}"
             )
         self.stdout.write(self.style.SUCCESS("Escenario de la demo listo."))
 
 
+def start_business_log():
+    """Vacía logs/negocio.log y escribe DEMO_RESET como su primera línea."""
+    # Sin esto el archivo crece sin límite y en la presentación se mezclan las pruebas viejas con la demo.
+    settings.BUSINESS_LOG_FILE.write_text("", encoding="utf-8")
+    log_event("DEMO_RESET")
+
+
 def create_users():
     """Crea o reinicia los usuarios de la demo y los devuelve por nombre de usuario."""
-    users = {}
-    for username, first_name, last_name, email in DEMO_CLIENTS:
-        users[username] = reset_user(username, first_name, last_name, email)
-    for username, first_name, last_name, role in DEMO_STAFF:
-        users[username] = reset_user(username, first_name, last_name)
-        users[username].groups.add(Group.objects.get_or_create(name=role)[0])
-    username, first_name, last_name = DEMO_ADMIN
-    users[username] = reset_user(username, first_name, last_name, is_superuser=True)
-    return users
+    return {username: reset_user(username, *data) for username, *data in DEMO_USERS}
 
 
-def reset_user(username, first_name, last_name, email="", is_superuser=False):
-    """Crea el usuario si falta, le pone sus datos y la clave de la demo, y lo devuelve sin grupos."""
-    user, _created = get_user_model().objects.get_or_create(username=username)
+def reset_user(username, first_name, last_name, email, phone, role_code):
+    """Crea el usuario si falta, le pone sus datos, su rol y la clave de la demo, y lo devuelve."""
+    user = get_user_model().objects.filter(username=username).first() or get_user_model()(
+        username=username
+    )
     user.first_name = first_name
     user.last_name = last_name
     user.email = email
-    user.is_staff = is_superuser
-    user.is_superuser = is_superuser
+    user.phone = phone
+    user.role = Role.objects.get(code=role_code)
+    user.is_active = True
     # set_password guarda un hash, nunca la clave en texto.
     user.set_password(DEMO_PASSWORD)
     user.save()
-    user.groups.clear()
     return user
 
 
-def reset_equipment():
-    """Crea los equipos de la demo o les devuelve sus datos y su estado inicial."""
-    # El estado inicial se pone directo y no con change_status: el historial se borró
-    # y un equipo de baja de una corrida anterior ya no podría cambiar.
-    for inventory_id, serial_number, description, status in DEMO_EQUIPMENT:
-        Equipment.objects.update_or_create(
-            inventory_id=inventory_id,
-            defaults={"serial_number": serial_number, "description": description, "status": status},
-        )
+def create_equipment():
+    """Crea las 8 mesas y 12 sillas de la demo, disponibles, y las devuelve por código."""
+    equipment = {}
+    for prefix, models in DEMO_MODELS.items():
+        for number, (name, value) in enumerate(models, start=1):
+            code = f"{prefix}-{number:05d}"
+            equipment[code] = Equipment.objects.create(
+                inventory_id=code, serial_number=f"SN-{code}", name=name, value=Decimal(value)
+            )
+    return equipment
 
 
-def create_scenario(users):
-    """Crea las rentas y los cambios de estado de cada equipo de la demo."""
-    equipment = {unit.inventory_id: unit for unit in Equipment.objects.all()}
+def create_scenario(users, equipment):
+    """Crea las rentas, los cambios de estado y la deuda de la demo.
+
+    Las rentas de cl02 van primero que su deuda: con ella ya no podría rentar (ENT-77).
+    """
     cl01, cl02, op01, mt01 = users["cl01"], users["cl02"], users["op01"], users["mt01"]
 
-    create_rental(cl01, equipment["EQ-01"], days_from_today(0, 18), days_from_today(1, 9))
+    pay_with_qr(create_rental(cl01, equipment["MES-00001"], at(0, 18), at(1, 9)), approved=True)
 
     # La cancelada se crea antes en las mismas fechas: muestra que libera el equipo.
-    cancelled = create_rental(cl01, equipment["EQ-02"], days_from_today(7, 18), days_from_today(9, 9))
-    cancel_rental(cancelled, op01)
-    create_rental(cl02, equipment["EQ-02"], days_from_today(7, 18), days_from_today(9, 9))
+    cancel_rental(create_rental(cl01, equipment["MES-00002"], at(7, 18), at(9, 9)), op01)
+    pay_with_qr(create_rental(cl02, equipment["MES-00002"], at(7, 18), at(9, 9)), approved=True)
 
-    rented = create_rental(cl02, equipment["EQ-03"], days_from_today(-1, 18), days_from_today(1, 9))
-    mark_picked_up(rented, op01, days_from_today(-1, 18, 30))
+    pay_with_qr(create_rental(cl02, equipment["MES-00003"], at(0, 18), at(1, 9)), approved=False)
+    pay_with_qr(create_rental(cl01, equipment["MES-00005"], at(10, 18), at(12, 9)), approved=True)
 
-    late = create_rental(cl01, equipment["EQ-04"], days_from_today(-3, 18), days_from_today(0, 9))
-    mark_picked_up(late, op01, days_from_today(-3, 18, 30))
+    picked_up_in_store(cl01, equipment["SIL-00001"], op01, at(-3, 18), at(-1, 9))
+    picked_up_in_store(cl01, equipment["SIL-00002"], op01, at(-4, 18), at(-2, 9))
+    picked_up_in_store(cl02, equipment["SIL-00007"], op01, at(-1, 18), at(1, 9))
 
-    returned = create_rental(cl02, equipment["EQ-05"], days_from_today(-3, 18), days_from_today(-1, 9))
-    mark_picked_up(returned, op01, days_from_today(-3, 18, 30))
-    mark_returned(returned, op01, days_from_today(-1, 8, 30), "Una pata floja")
+    on_time = picked_up_in_store(cl02, equipment["SIL-00003"], op01, at(-3, 18), at(-1, 9))
+    returned_in_past(on_time, op01, at(-1, 8, 30), "Una pata floja")
 
-    change_status(equipment["EQ-06"], EquipmentStatus.IN_REPAIR, mt01, "Tapiz roto")
-    change_status(equipment["EQ-07"], EquipmentStatus.RETIRED, mt01, "Estructura partida")
+    change_status(equipment["SIL-00004"], EquipmentStatus.IN_REPAIR, mt01, "Tapiz roto")
+    change_status(equipment["SIL-00005"], EquipmentStatus.RETIRED, mt01, "Estructura partida")
 
-    create_rental(cl01, equipment["EQ-08"], days_from_today(-3, 18), days_from_today(-2, 9))
-
-
-def mark_picked_up(rental, operator, moment):
-    """Pone un recojo en el pasado; register_pickup usaría la hora de ahora."""
-    Rental.objects.filter(pk=rental.pk).update(picked_up_at=moment, handed_over_by=operator)
+    late = picked_up_in_store(cl02, equipment["SIL-00006"], op01, at(-6, 18), at(-4, 9))
+    returned_in_past(late, op01, at(-2, 12, 30), "Volvió dos días tarde")
+    change_status(equipment["SIL-00006"], EquipmentStatus.AVAILABLE, mt01, "Revisada, en buen estado")
+    late.refresh_from_db()
+    charge_debt(late, DebtReason.LATE_RETURN, late.late_charge)
 
 
-def mark_returned(rental, operator, moment, note):
+def picked_up_in_store(client, unit, operator, start, end):
+    """Crea una renta en tienda con el recojo y el pago en start; register_pickup usaría la hora de ahora."""
+    rental = create_rental(client, unit, start, end, registered_by=operator)
+    Rental.objects.filter(pk=rental.pk).update(
+        picked_up_at=start, handed_over_by=operator, paid_at=start
+    )
+    return rental
+
+
+def returned_in_past(rental, operator, moment, note):
     """Pone una devolución en el pasado con su nota y su fila de historial con esa misma hora."""
     Rental.objects.filter(pk=rental.pk).update(
         returned_at=moment, received_by=operator, return_note=note
@@ -167,7 +209,7 @@ def mark_returned(rental, operator, moment, note):
     StatusChange.objects.filter(pk=change.pk).update(changed_at=moment)
 
 
-def days_from_today(days, hour, minute=0):
+def at(days, hour, minute=0):
     """Devuelve el día que cae days después de hoy, a esa hora de La Paz."""
     day = timezone.localdate() + timedelta(days=days)
     return timezone.make_aware(datetime.combine(day, time(hour, minute)))

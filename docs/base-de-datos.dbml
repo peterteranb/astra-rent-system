@@ -1,0 +1,78 @@
+// Base de datos final de astra-rent-system.
+// Para verla: pegar este texto en https://dbdiagram.io/d
+
+Table rol {
+  id bigint [pk]
+  code varchar [unique, note: 'cliente, operador, mantenimiento, administrador']
+  name varchar
+  description varchar
+}
+
+Table usuario {
+  id bigint [pk]
+  username varchar [unique]
+  first_name varchar
+  last_name varchar
+  email varchar [unique]
+  phone varchar [unique]
+  password varchar [note: 'hash']
+  role_id bigint [ref: > rol.id]
+  is_active boolean [note: 'False = bloqueado por el admin']
+  is_staff boolean [note: 'automatico segun rol']
+  is_superuser boolean [note: 'automatico segun rol']
+  date_joined timestamp
+}
+
+Table equipo {
+  id bigint [pk]
+  inventory_id varchar(9) [unique, note: 'AAA-00000']
+  serial_number varchar [unique]
+  name varchar
+  value decimal [note: 'precio de compra, Bs; CHECK value > 0']
+  status varchar [note: 'available, in_review, in_repair, retired']
+  created_at timestamp
+}
+
+Table renta {
+  id bigint [pk]
+  client_id bigint [ref: > usuario.id]
+  equipment_id bigint [ref: > equipo.id]
+  start_datetime timestamp
+  end_datetime timestamp
+  daily_price decimal [note: '5% del valor, fijado al reservar']
+  paid_at timestamp [null, note: 'vacio = pago pendiente']
+  payment_method varchar [null, note: 'qr, cash']
+  registered_by_id bigint [null, ref: > usuario.id]
+  picked_up_at timestamp [null]
+  handed_over_by_id bigint [null, ref: > usuario.id]
+  returned_at timestamp [null]
+  received_by_id bigint [null, ref: > usuario.id]
+  return_note varchar
+  cancelled_at timestamp [null]
+  cancelled_by_id bigint [null, ref: > usuario.id]
+  created_at timestamp
+}
+
+Table deuda {
+  id bigint [pk]
+  rental_id bigint [ref: > renta.id]
+  reason varchar [note: 'late_return, repair, retired']
+  amount decimal
+  created_at timestamp
+  paid_at timestamp [null, note: 'vacio = sigue debiendo']
+  paid_received_by_id bigint [null, ref: > usuario.id]
+
+  indexes {
+    (rental_id, reason) [unique]
+  }
+}
+
+Table cambio_de_estado {
+  id bigint [pk]
+  equipment_id bigint [ref: > equipo.id]
+  old_status varchar
+  new_status varchar
+  changed_by_id bigint [ref: > usuario.id]
+  changed_at timestamp
+  comment text
+}

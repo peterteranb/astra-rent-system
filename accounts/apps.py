@@ -1,4 +1,4 @@
-"""Configuración de la app accounts: el login y el cierre de sesión."""
+"""Configuración de la app accounts: usuarios, roles, registro, login y cierre de sesión."""
 from django.apps import AppConfig
 
 

@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+
+{% block title %}Página no encontrada{% endblock %}
+{% block heading %}No encontramos esta página{% endblock %}
+
+{% block content %}
+  <section class="card">
+    <p>La dirección no existe o ya no está disponible.</p>
+    <p class="hint">Revisa la dirección o vuelve al inicio.</p>
+    <a class="button" href="{% url 'home' %}">Volver al inicio</a>
+  </section>
+{% endblock %}
