@@ -12,6 +12,8 @@ from django.core.validators import validate_email
 from django.db import IntegrityError, transaction
 
 from rentals.errors import RegistrationRejectedError
+from rentals.events import log_event, logs_rejection
+from rentals.notifications import send_welcome
 
 from .models import PHONE_FORMAT, Role, User
 
@@ -46,6 +48,7 @@ def normalize_phone(text):
     return "".join(character for character in text if character.isdigit())
 
 
+@logs_rejection("ACCOUNT_REJECTED")
 def register_client(data, registered_by=None) -> User:
     """Crea la cuenta de un cliente con su contraseña cifrada y la devuelve (ENT-15, ENT-84).
 
@@ -74,6 +77,14 @@ def register_client(data, registered_by=None) -> User:
         raise RegistrationRejectedError(
             REJECTION_TITLE, ["El usuario, el correo o el teléfono ya están registrados."]
         ) from error
+    log_event(
+        "ACCOUNT_CREATED",
+        id=user.pk,
+        username=user.username,
+        role=Role.CLIENT,
+        registered_by=registered_by.username if registered_by else "web",
+    )
+    send_welcome(user)
     return user
 
 

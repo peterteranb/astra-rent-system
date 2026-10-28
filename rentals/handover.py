@@ -3,6 +3,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from . import history
+from .events import log_event, logs_rejection
 from .payments import charge_debt
 from .errors import IncompleteReturnError, PaymentRequiredError, RentalStateError
 from .formatting import money_text, rental_state_message
@@ -37,6 +38,7 @@ def rentals_to_receive():
     )
 
 
+@logs_rejection("PICKUP_REJECTED")
 def register_pickup(rental, staff_user, paid_now=False) -> Rental:
     """Guarda que el cliente se llevó el equipo ahora y qué operador lo entregó (ENT-56).
 
@@ -51,7 +53,8 @@ def register_pickup(rental, staff_user, paid_now=False) -> Rental:
         locked_rental = Rental.objects.select_for_update().get(pk=rental.pk)
         now = timezone.now()
         check_can_pick_up(locked_rental, now)
-        if not locked_rental.is_paid:
+        charged_now = not locked_rental.is_paid
+        if charged_now:
             check_payment_received(locked_rental, paid_now)
             locked_rental.paid_at = now
             locked_rental.payment_method = PaymentMethod.CASH
@@ -60,7 +63,21 @@ def register_pickup(rental, staff_user, paid_now=False) -> Rental:
         locked_rental.save(
             update_fields=["paid_at", "payment_method", "picked_up_at", "handed_over_by"]
         )
-        return locked_rental
+    if charged_now:
+        log_event(
+            "PAYMENT_CASH",
+            rental=locked_rental.pk,
+            amount=locked_rental.total_price,
+            received_by=staff_user.username,
+        )
+    log_event(
+        "PICKUP_REGISTERED",
+        id=locked_rental.pk,
+        equipment=locked_rental.equipment.inventory_id,
+        client=locked_rental.client.username,
+        by=staff_user.username,
+    )
+    return locked_rental
 
 
 def check_can_pick_up(rental, now):
@@ -79,6 +96,7 @@ def check_payment_received(rental, paid_now):
         )
 
 
+@logs_rejection("RETURN_REJECTED")
 def register_return(rental, staff_user, note) -> Rental:
     """Guarda que el equipo volvió ahora y cómo llegó, lo manda a revisión y cobra el atraso (RF-09, RF-10).
 
@@ -103,9 +121,18 @@ def register_return(rental, staff_user, note) -> Rental:
             history.change_status(
                 locked_rental.equipment, EquipmentStatus.IN_REVIEW, staff_user, comment=note
             )
+        log_event(
+            "RETURN_REGISTERED",
+            id=locked_rental.pk,
+            equipment=locked_rental.equipment.inventory_id,
+            client=locked_rental.client.username,
+            by=staff_user.username,
+            result=locked_rental.return_result,
+            late_days=locked_rental.late_days,
+        )
         if locked_rental.late_days:
             charge_debt(locked_rental, DebtReason.LATE_RETURN, locked_rental.late_charge)
-        return locked_rental
+    return locked_rental
 
 
 def check_can_return(rental):

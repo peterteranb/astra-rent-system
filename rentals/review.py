@@ -6,6 +6,7 @@ from django.utils import timezone
 
 from . import rules
 from .errors import InvalidStatusChangeError
+from .events import logs_rejection
 from .history import change_status
 from .models import Debt, Equipment, Rental, StatusChange
 from .payments import charge_debt
@@ -44,6 +45,7 @@ def review_choices_for(equipment):
     ]
 
 
+@logs_rejection("REVIEW_REJECTED")
 def review_equipment(equipment, staff_user, new_status, comment="") -> ReviewOutcome:
     """Guarda el estado nuevo de un equipo revisado con su historial, su deuda y sus cancelaciones.
 
@@ -88,4 +90,5 @@ def last_returned_rental(equipment):
 def cancel_future_reservations(equipment, staff_user):
     """Cancela las reservas todavía no recogidas de un equipo dado de baja y las devuelve (ENT-74)."""
     reservations = Rental.objects.reserved_at(timezone.now()).filter(equipment=equipment)
-    return [cancel_rental(reservation, staff_user) for reservation in reservations]
+    reason = "El equipo se dio de baja en la revisión."
+    return [cancel_rental(reservation, staff_user, reason) for reservation in reservations]

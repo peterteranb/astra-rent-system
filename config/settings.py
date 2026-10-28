@@ -97,6 +97,57 @@ RETIRE_CHARGE_RATE = Decimal("1.00")
 # ENT-83: 3 letras, guion y 5 números, por ejemplo MES-00001.
 INVENTORY_ID_FORMAT = r"^[A-Z]{3}-[0-9]{5}$"
 
+# Log de negocio (RC-05): cada operación del logger «rentals» va a la consola y a logs/negocio.log.
+LOG_DIR = BASE_DIR / "logs"
+LOG_DIR.mkdir(exist_ok=True)
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "business": {
+            "format": "{asctime} | {levelname:<7} | {message}",
+            "style": "{",
+            "datefmt": "%Y-%m-%d %H:%M:%S",
+        },
+    },
+    "handlers": {
+        "console": {"class": "logging.StreamHandler", "formatter": "business"},
+        "business_file": {
+            "class": "logging.FileHandler",
+            "filename": LOG_DIR / "negocio.log",
+            "encoding": "utf-8",
+            "formatter": "business",
+            "delay": True,
+        },
+    },
+    "loggers": {
+        "rentals": {"handlers": ["console", "business_file"], "level": "INFO"},
+    },
+}
+
+# Correo (ENT-85) con MAILERS de Django 6.1: consola por defecto y Gmail si .env trae
+# la cuenta y su contraseña de aplicación.
+gmail_user = os.environ.get("EMAIL_HOST_USER", "")
+gmail_app_password = os.environ.get("EMAIL_HOST_PASSWORD", "")
+if gmail_user and gmail_app_password:
+    MAILERS = {
+        "default": {
+            "BACKEND": "django.core.mail.backends.smtp.EmailBackend",
+            "OPTIONS": {
+                "host": "smtp.gmail.com",
+                "port": 587,
+                "username": gmail_user,
+                "password": gmail_app_password,
+                "use_tls": True,
+                "timeout": 10,
+            },
+        },
+    }
+    DEFAULT_FROM_EMAIL = f"SergioCorp <{gmail_user}>"
+else:
+    MAILERS = {"default": {"BACKEND": "django.core.mail.backends.console.EmailBackend"}}
+    DEFAULT_FROM_EMAIL = "SergioCorp <no-responder@sergiocorp.local>"
+
 LOGIN_URL = "login"
 LOGIN_REDIRECT_URL = "home"
 LOGOUT_REDIRECT_URL = "login"

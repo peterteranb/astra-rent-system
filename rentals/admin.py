@@ -5,6 +5,7 @@ from django.utils import timezone
 from .errors import OperationRejectedError
 from .forms import EquipmentAdminForm
 from .history import change_status
+from .inventory import log_equipment_registered
 from .models import Debt, Equipment, Rental, StatusChange
 from .payments import pay_debt
 from .renting import cancel_rental
@@ -31,6 +32,12 @@ class EquipmentAdmin(admin.ModelAdmin):
     # y dejan cada cambio en el historial (ENT-34).
     readonly_fields = ["status", "created_at"]
     actions = ["mark_available", "send_to_repair", "retire"]
+
+    def save_model(self, request, obj, form, change):
+        """Guarda el equipo y, si es nuevo, escribe EQUIPMENT_REGISTERED como la página de registro."""
+        super().save_model(request, obj, form, change)
+        if not change:
+            log_equipment_registered(obj, request.user)
 
     @admin.action(description="Marcar disponible")
     def mark_available(self, request, queryset):

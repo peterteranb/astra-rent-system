@@ -20,8 +20,10 @@ from .errors import (
     InvalidPeriodError,
     RentalStateError,
 )
+from .events import log_event, logs_rejection
 from .formatting import local_text, money_text, rental_state_message
 from .models import Equipment, EquipmentStatus, Rental
+from .notifications import send_rental_cancelled, send_rental_confirmed
 from .payments import debt_total_of
 from .roles import CLIENT, OPERATOR, has_role
 from .statuses import PaymentMethod, RentalStatus
@@ -145,6 +147,7 @@ def visible_rental(user, rental_id) -> Rental:
     return get_object_or_404(Rental, Q(client=user) | Q(registered_by=user), pk=rental_id)
 
 
+@logs_rejection("RENTAL_REJECTED")
 def create_rental(
     client, equipment, start_datetime, end_datetime, registered_by=None, picked_up_now=False
 ) -> Rental:
@@ -183,7 +186,26 @@ def create_rental(
             rental.picked_up_at = timezone.now()
             rental.handed_over_by = registered_by
         rental.save()
-        return rental
+    log_rental_created(rental)
+    return rental
+
+
+def log_rental_created(rental):
+    """Escribe RENTAL_CREATED y, en la tienda, el cobro en efectivo y el correo de confirmación."""
+    registered_by = rental.registered_by.username if rental.registered_by else "web"
+    log_event(
+        "RENTAL_CREATED",
+        id=rental.pk,
+        equipment=rental.equipment.inventory_id,
+        client=rental.client.username,
+        paid="yes" if rental.is_paid else "no",
+        registered_by=registered_by,
+    )
+    # En línea, el correo sale cuando el cliente presiona un botón del QR (payments.pay_with_qr).
+    if rental.registered_by is None:
+        return
+    log_event("PAYMENT_CASH", rental=rental.pk, amount=rental.total_price, received_by=registered_by)
+    send_rental_confirmed(rental)
 
 
 def check_period(start, end):
@@ -260,6 +282,7 @@ def busy_message(equipment, rental, start):
     return message
 
 
+@logs_rejection("MODIFY_REJECTED")
 def modify_rental(rental, start_datetime, end_datetime, changed_by) -> Rental:
     """Cambia las fechas de una reserva por otras con la misma cantidad de días y la devuelve (ENT-81).
 
@@ -280,7 +303,15 @@ def modify_rental(rental, start_datetime, end_datetime, changed_by) -> Rental:
         locked_rental.start_datetime = start
         locked_rental.end_datetime = end
         locked_rental.save(update_fields=["start_datetime", "end_datetime"])
-        return locked_rental
+    log_event(
+        "RENTAL_MODIFIED",
+        id=locked_rental.pk,
+        equipment=locked_rental.equipment.inventory_id,
+        start=f"{start:%Y-%m-%dT%H:%M}",
+        end=f"{end:%Y-%m-%dT%H:%M}",
+        by=changed_by.username,
+    )
+    return locked_rental
 
 
 def check_same_days(rental, start, end):
@@ -295,11 +326,13 @@ def check_same_days(rental, start, end):
     )
 
 
-def cancel_rental(rental, cancelled_by) -> Rental:
-    """Cancela una reserva todavía no recogida y guarda quién la canceló (ENT-80).
+@logs_rejection("CANCEL_REJECTED")
+def cancel_rental(rental, cancelled_by, reason="") -> Rental:
+    """Cancela una reserva todavía no recogida, guarda quién la canceló y avisa al cliente (ENT-80).
 
     Sus fechas quedan libres al instante, porque una renta cancelada ya no ocupa
-    el equipo. El dinero se devuelve fuera del sistema (ENT-82). Lanza un
+    el equipo. El dinero se devuelve fuera del sistema (ENT-82). reason va en el
+    correo y en el log; si falta, se dice quién canceló. Lanza un
     OperationRejectedError si no está «Reservada» o si el cliente llega tarde.
     """
     with transaction.atomic():
@@ -310,7 +343,24 @@ def cancel_rental(rental, cancelled_by) -> Rental:
         locked_rental.cancelled_at = now
         locked_rental.cancelled_by = cancelled_by
         locked_rental.save(update_fields=["cancelled_at", "cancelled_by"])
-        return locked_rental
+    reason = reason or default_cancellation_reason(locked_rental, cancelled_by)
+    log_event(
+        "RENTAL_CANCELLED",
+        id=locked_rental.pk,
+        equipment=locked_rental.equipment.inventory_id,
+        client=locked_rental.client.username,
+        by=cancelled_by.username,
+        reason=reason,
+    )
+    send_rental_cancelled(locked_rental, reason)
+    return locked_rental
+
+
+def default_cancellation_reason(rental, cancelled_by):
+    """Dice quién canceló, para el correo del cliente."""
+    if rental.client_id == cancelled_by.pk:
+        return "Cancelaste tu reserva."
+    return "La tienda canceló tu reserva."
 
 
 def check_can_cancel(rental, user, now):

@@ -9,6 +9,7 @@ from decimal import Decimal
 from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand
 from django.db import transaction
+from django.test.utils import override_settings
 from django.utils import timezone
 
 from accounts.models import Role
@@ -18,6 +19,9 @@ from rentals.payments import charge_debt, pay_with_qr
 from rentals.renting import cancel_rental, create_rental
 from rentals.roles import ADMINISTRATOR, CLIENT, MAINTENANCE, OPERATOR
 from rentals.statuses import DebtReason
+
+# La demo no manda correos: sus clientes tienen direcciones inventadas.
+NO_EMAIL = {"default": {"BACKEND": "django.core.mail.backends.dummy.EmailBackend"}}
 
 # Cumple las reglas de contraseña: 8 caracteres, una mayúscula y un número.
 DEMO_PASSWORD = "Demo1234"
@@ -81,7 +85,7 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         """Crea todo el escenario en una sola transacción: o queda completo o no cambia nada."""
-        with transaction.atomic():
+        with override_settings(MAILERS=NO_EMAIL), transaction.atomic():
             # PROTECT: se borra de las hojas hacia la raíz.
             Debt.objects.all().delete()
             Rental.objects.all().delete()

@@ -17,7 +17,7 @@ def register_equipment_view(request):
     form = EquipmentForm(request.POST or None)
     if request.method == "POST" and form.is_valid():
         try:
-            equipment = register_equipment(**form.cleaned_data)
+            equipment = register_equipment(**form.cleaned_data, registered_by=request.user)
         except RejectedWithCausesError as error:
             for cause in error.causes:
                 form.add_error(None, cause)

@@ -9,11 +9,14 @@ from django.db.models import Sum
 from django.utils import timezone
 
 from .errors import DebtStateError, RentalStateError
+from .events import log_event, logs_rejection
 from .formatting import local_text, rental_state_message
 from .models import Debt, Rental
+from .notifications import send_debt_created, send_rental_confirmed
 from .statuses import PaymentMethod, RentalStatus
 
 
+@logs_rejection("PAYMENT_REJECTED")
 def pay_with_qr(rental, approved) -> Rental:
     """Guarda el resultado del QR simulado de una reserva y la devuelve (ENT-66, ENT-67).
 
@@ -30,7 +33,10 @@ def pay_with_qr(rental, approved) -> Rental:
             locked_rental.paid_at = now
             locked_rental.payment_method = PaymentMethod.QR
             locked_rental.save(update_fields=["paid_at", "payment_method"])
-        return locked_rental
+    event = "PAYMENT_APPROVED" if approved else "PAYMENT_FAILED"
+    log_event(event, rental=locked_rental.pk, amount=locked_rental.total_price)
+    send_rental_confirmed(locked_rental)
+    return locked_rental
 
 
 def check_can_pay_online(rental, now):
@@ -43,11 +49,22 @@ def check_can_pay_online(rental, now):
 
 
 def charge_debt(rental, reason, amount):
-    """Crea la deuda de la renta por ese motivo y la devuelve; None si ya existía (ENT-76: una por motivo)."""
+    """Crea la deuda de la renta por ese motivo, avisa al cliente y la devuelve; None si ya existía (ENT-76)."""
     debt, created = Debt.objects.get_or_create(
         rental=rental, reason=reason, defaults={"amount": amount}
     )
-    return debt if created else None
+    if not created:
+        return None
+    log_event(
+        "DEBT_CREATED",
+        id=debt.pk,
+        rental=rental.pk,
+        client=rental.client.username,
+        reason=reason,
+        amount=amount,
+    )
+    send_debt_created(debt)
+    return debt
 
 
 def pending_debts():
@@ -80,6 +97,7 @@ def pending_totals_by_client():
     )
 
 
+@logs_rejection("DEBT_PAYMENT_REJECTED")
 def pay_debt(debt, staff_user) -> Debt:
     """Guarda que el cliente pagó esta deuda en la tienda y qué operador la cobró (ENT-76).
 
@@ -92,7 +110,14 @@ def pay_debt(debt, staff_user) -> Debt:
         locked_debt.paid_at = timezone.now()
         locked_debt.paid_received_by = staff_user
         locked_debt.save(update_fields=["paid_at", "paid_received_by"])
-        return locked_debt
+    log_event(
+        "DEBT_PAID",
+        id=locked_debt.pk,
+        client=locked_debt.rental.client.username,
+        amount=locked_debt.amount,
+        received_by=staff_user.username,
+    )
+    return locked_debt
 
 
 def check_debt_is_pending(debt):

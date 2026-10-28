@@ -3,6 +3,7 @@ from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
 
 from .errors import EquipmentRegistrationError
+from .events import log_event, logs_rejection
 from .models import Equipment
 
 REJECTION_TITLE = "No se registró el equipo:"
@@ -13,7 +14,8 @@ def normalize_inventory_id(text):
     return text.strip().upper()
 
 
-def register_equipment(inventory_id, serial_number, name, value) -> Equipment:
+@logs_rejection("EQUIPMENT_REJECTED")
+def register_equipment(inventory_id, serial_number, name, value, registered_by) -> Equipment:
     """Guarda un equipo nuevo «Disponible» y lo devuelve.
 
     Usa las mismas reglas del modelo que el admin de Django: formato del código,
@@ -36,7 +38,19 @@ def register_equipment(inventory_id, serial_number, name, value) -> Equipment:
         raise EquipmentRegistrationError(
             REJECTION_TITLE, ["Ya existe un equipo con este código o número de serie."]
         ) from error
+    log_equipment_registered(equipment, registered_by)
     return equipment
+
+
+def log_equipment_registered(equipment, registered_by):
+    """Escribe EQUIPMENT_REGISTERED; lo usan esta página y el admin de Django."""
+    log_event(
+        "EQUIPMENT_REGISTERED",
+        id=equipment.pk,
+        equipment=equipment.inventory_id,
+        value=equipment.value,
+        by=registered_by.username,
+    )
 
 
 def check_new_equipment(equipment):

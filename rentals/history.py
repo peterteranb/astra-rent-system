@@ -2,10 +2,12 @@
 from django.db import transaction
 
 from .errors import InvalidStatusChangeError
+from .events import log_event, logs_rejection
 from .models import Equipment, StatusChange
 from .statuses import EquipmentStatus
 
 
+@logs_rejection("STATUS_CHANGE_REJECTED")
 def change_status(equipment, new_status, user, comment="") -> StatusChange:
     """Pone el estado nuevo del equipo y guarda quién lo cambió, desde cuál y por qué.
 
@@ -27,7 +29,14 @@ def change_status(equipment, new_status, user, comment="") -> StatusChange:
         locked_equipment.status = new_status
         locked_equipment.save(update_fields=["status"])
         change.save()
-        return change
+    log_event(
+        "STATUS_CHANGED",
+        equipment=locked_equipment.inventory_id,
+        old=change.old_status,
+        new=new_status,
+        by=user.username,
+    )
+    return change
 
 
 def check_status_can_change(equipment, new_status):
