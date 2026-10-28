@@ -1,4 +1,4 @@
-"""Correos al cliente: bienvenida, renta confirmada, renta cancelada y deuda creada (ENT-85).
+"""Correos al cliente: bienvenida, renta confirmada, reserva modificada por la tienda, renta cancelada y deuda creada (ENT-85).
 
 Se mandan cuando la transacción se confirma, así nunca avisan algo que se deshizo.
 Si el envío falla, la operación no se cae: el log escribe EMAIL_FAILED.
@@ -39,6 +39,18 @@ def send_rental_confirmed(rental):
         f"Recojo desde: {local_text(rental.start_datetime)}\n"
         f"Devolución hasta: {local_text(rental.end_datetime)}\n"
         f"{payment}\n",
+    )
+
+
+def send_rental_modified(rental):
+    """Avisa al cliente las fechas nuevas de la reserva que cambió la tienda (ENT-95)."""
+    send_after_commit(
+        rental.client,
+        f"Reserva modificada: {rental.equipment.inventory_id}",
+        f"Hola {rental.client.first_name}:\n\n"
+        f"La tienda cambió las fechas de tu reserva de {rental.equipment}.\n"
+        f"Recojo desde: {local_text(rental.start_datetime)}\n"
+        f"Devolución hasta: {local_text(rental.end_datetime)}\n",
     )
 
 

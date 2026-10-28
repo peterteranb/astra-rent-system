@@ -24,7 +24,7 @@ from ..errors import (
 from ..models import Debt, Equipment, Rental
 from ..services.events import log_event, logs_rejection
 from ..services.formatting import client_debt_message, days_text, local_text, money_text, rental_state_message
-from ..services.notifications import send_rental_cancelled, send_rental_confirmed
+from ..services.notifications import send_rental_cancelled, send_rental_confirmed, send_rental_modified
 from ..statuses import PaymentMethod, RentalStatus
 from .payments import debt_total_of, pending_debts_of
 
@@ -228,7 +228,8 @@ def modify_rental(rental, start_datetime, end_datetime, changed_by) -> Rental:
     """Cambia las fechas de una reserva por otras con la misma cantidad de días y la devuelve (ENT-81).
 
     El precio no cambia. Se revisan otra vez los horarios y la disponibilidad, sin
-    contar la misma reserva. Lanza un OperationRejectedError si se rompe una regla.
+    contar la misma reserva. Si la cambió el personal, el cliente recibe las fechas
+    nuevas por correo (ENT-95). Lanza un OperationRejectedError si se rompe una regla.
     """
     start = timezone.localtime(start_datetime)
     end = timezone.localtime(end_datetime)
@@ -252,6 +253,8 @@ def modify_rental(rental, start_datetime, end_datetime, changed_by) -> Rental:
         end=f"{end:%Y-%m-%dT%H:%M}",
         by=changed_by.username,
     )
+    if changed_by.pk != locked_rental.client_id:
+        send_rental_modified(locked_rental)
     return locked_rental
 
 
@@ -317,16 +320,21 @@ def check_can_cancel(rental, user, now):
 
 
 def check_can_modify(rental, user, now):
-    """Lanza un rechazo si user no puede modificar la renta en now (ENT-80)."""
+    """Lanza un rechazo si user no puede modificar la renta en now: el cliente hasta 24 h antes, el personal hasta el inicio (ENT-95)."""
     check_reservation_can_change(
         rental, user, now, "Ya no puedes modificar en línea; comunícate con la tienda."
     )
+    if not rules.can_staff_modify(rental.start_datetime, now):
+        raise DeadlinePassedError(
+            f"La reserva de {rental.equipment.inventory_id} ya empezó el {local_text(rental.start_datetime)}; "
+            "ya no se puede modificar."
+        )
 
 
 def check_reservation_can_change(rental, user, now, late_message):
     """Lanza RentalStateError si la renta no está «Reservada» y DeadlinePassedError si su cliente llega tarde.
 
-    El plazo de 24 h es solo para el cliente; el personal la cambia hasta el recojo.
+    El plazo de 24 h es solo para el cliente; el personal la cancela hasta el recojo.
     """
     status = rental.status_at(now)
     if status != RentalStatus.RESERVED:

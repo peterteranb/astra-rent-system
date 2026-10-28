@@ -102,6 +102,11 @@ def can_client_change(start, now) -> bool:
     return now <= start - CLIENT_CHANGE_NOTICE
 
 
+def can_staff_modify(start, now) -> bool:
+    """Devuelve True si la reserva todavía no empezó: el personal la modifica hasta su inicio, no hasta el recojo (ENT-95)."""
+    return now < start
+
+
 def charge_for(value, rate) -> Decimal:
     """Devuelve rate del valor del equipo, redondeado a centavos (0,005 sube)."""
     return (value * rate).quantize(MONEY_STEP, rounding=ROUND_HALF_UP)
