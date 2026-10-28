@@ -42,7 +42,7 @@ Después de cada `git pull`, vuelve a ejecutar `python manage.py migrate`.
 
 ## Usuarios de la demo
 
-Todos usan la clave `demo1234`.
+Todos usan la clave `Demo1234`.
 
 | Usuario | Quién es | Qué ve |
 |---|---|---|

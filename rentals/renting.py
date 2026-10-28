@@ -14,7 +14,7 @@ from . import rules
 from .errors import EquipmentNotAvailableError, InvalidPeriodError, RentalStateError
 from .formatting import local_text, rental_state_message
 from .models import Equipment, EquipmentStatus, Rental
-from .roles import MAINTENANCE, OPERATOR
+from .roles import CLIENT
 from .statuses import RentalStatus
 
 # ENT-64: el catálogo dice cuándo está ocupado cada equipo; con 3 periodos basta para elegir fechas.
@@ -63,12 +63,8 @@ def busy_rentals_at(rentals, now) -> list[Rental]:
 
 
 def client_accounts():
-    """Devuelve los usuarios que son clientes: ni personal, ni superusuarios, ni de un grupo del personal."""
-    return (
-        get_user_model()
-        .objects.filter(is_staff=False, is_superuser=False)
-        .exclude(groups__name__in=[OPERATOR, MAINTENANCE])
-    )
+    """Devuelve los usuarios con el rol cliente."""
+    return get_user_model().objects.filter(role__code=CLIENT)
 
 
 def find_clients(text):

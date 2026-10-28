@@ -1,5 +1,5 @@
-"""Variables de plantilla que le dicen a base.html qué enlaces mostrar según el rol (RF-10)."""
-from .roles import MAINTENANCE, OPERATOR, has_role
+"""Variables de plantilla que le dicen a base.html qué enlaces mostrar según el rol (RF-19)."""
+from .roles import ADMINISTRATOR, MAINTENANCE, OPERATOR, has_role
 
 
 def staff_roles(request):
@@ -7,5 +7,5 @@ def staff_roles(request):
     return {
         "is_operator": has_role(request.user, OPERATOR),
         "is_maintenance": has_role(request.user, MAINTENANCE),
-        "is_admin": request.user.is_superuser,
+        "is_admin": has_role(request.user, ADMINISTRATOR),
     }

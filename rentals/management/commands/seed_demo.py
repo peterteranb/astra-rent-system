@@ -6,7 +6,6 @@ así cada vez que se corre el escenario queda igual.
 from datetime import datetime, time, timedelta
 
 from django.contrib.auth import get_user_model
-from django.contrib.auth.models import Group
 from django.core.management.base import BaseCommand
 from django.db import transaction
 from django.utils import timezone
@@ -14,19 +13,19 @@ from django.utils import timezone
 from rentals.history import change_status
 from rentals.models import Equipment, EquipmentStatus, Rental, StatusChange
 from rentals.renting import cancel_rental, create_rental
-from rentals.roles import MAINTENANCE, OPERATOR
+from accounts.models import Role
+from rentals.roles import ADMINISTRATOR, CLIENT, MAINTENANCE, OPERATOR
 
-DEMO_PASSWORD = "demo1234"
+# Cumple las reglas de contraseña: 8 caracteres, una mayúscula y un número.
+DEMO_PASSWORD = "Demo1234"
 
-# Usuarios de una versión anterior de la demo.
-OLD_DEMO_USERS = ["c01", "c02", "admin"]
-
-DEMO_CLIENTS = [
-    ("cl01", "Carla", "Mendoza", "carla.mendoza@correo.com"),
-    ("cl02", "Diego", "Rojas", "diego.rojas@correo.com"),
+DEMO_USERS = [
+    ("cl01", "Carla", "Mendoza", "carla.mendoza@correo.com", "71000001", CLIENT),
+    ("cl02", "Diego", "Rojas", "diego.rojas@correo.com", "71000002", CLIENT),
+    ("op01", "Olga", "Pérez", "olga.perez@sergiocorp.com", "71000003", OPERATOR),
+    ("mt01", "Mario", "Torres", "mario.torres@sergiocorp.com", "71000004", MAINTENANCE),
+    ("ad01", "Ana", "Díaz", "ana.diaz@sergiocorp.com", "71000005", ADMINISTRATOR),
 ]
-DEMO_STAFF = [("op01", "Olga", "Pérez", OPERATOR), ("mt01", "Mario", "Torres", MAINTENANCE)]
-DEMO_ADMIN = ("ad01", "Ana", "Díaz")
 
 # EQ-06 y EQ-07 empiezan «En revisión» para que su única fila de historial
 # sea la decisión de mantenimiento.
@@ -63,8 +62,6 @@ class Command(BaseCommand):
         with transaction.atomic():
             Rental.objects.all().delete()
             StatusChange.objects.all().delete()
-            # Sin rentas ni historial, los usuarios viejos ya no tienen nada que proteger.
-            get_user_model().objects.filter(username__in=OLD_DEMO_USERS).delete()
             users = create_users()
             reset_equipment()
             create_scenario(users)
@@ -88,29 +85,23 @@ class Command(BaseCommand):
 
 def create_users():
     """Crea o reinicia los usuarios de la demo y los devuelve por nombre de usuario."""
-    users = {}
-    for username, first_name, last_name, email in DEMO_CLIENTS:
-        users[username] = reset_user(username, first_name, last_name, email)
-    for username, first_name, last_name, role in DEMO_STAFF:
-        users[username] = reset_user(username, first_name, last_name)
-        users[username].groups.add(Group.objects.get_or_create(name=role)[0])
-    username, first_name, last_name = DEMO_ADMIN
-    users[username] = reset_user(username, first_name, last_name, is_superuser=True)
-    return users
+    return {username: reset_user(username, *data) for username, *data in DEMO_USERS}
 
 
-def reset_user(username, first_name, last_name, email="", is_superuser=False):
-    """Crea el usuario si falta, le pone sus datos y la clave de la demo, y lo devuelve sin grupos."""
-    user, _created = get_user_model().objects.get_or_create(username=username)
+def reset_user(username, first_name, last_name, email, phone, role_code):
+    """Crea el usuario si falta, le pone sus datos, su rol y la clave de la demo, y lo devuelve."""
+    user = get_user_model().objects.filter(username=username).first() or get_user_model()(
+        username=username
+    )
     user.first_name = first_name
     user.last_name = last_name
     user.email = email
-    user.is_staff = is_superuser
-    user.is_superuser = is_superuser
+    user.phone = phone
+    user.role = Role.objects.get(code=role_code)
+    user.is_active = True
     # set_password guarda un hash, nunca la clave en texto.
     user.set_password(DEMO_PASSWORD)
     user.save()
-    user.groups.clear()
     return user
 
 
