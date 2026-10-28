@@ -60,6 +60,20 @@ def test_un_pago_qr_fallido_deja_la_reserva_y_avisa_que_se_paga_en_la_tienda(cli
     assert (renta.status, renta.paid_at) == (RentalStatus.RESERVED, None)
 
 
+def test_el_cliente_cancela_desde_mis_rentas_y_no_puede_cancelar_la_de_otro(client, cl01, cl02, mes01, mes02):
+    # cl01 cancela su reserva desde «Mis rentas» e intenta cancelar la de cl02 -> la suya se cancela y la otra da 404
+    propia = create_rental(cl01, mes01, dentro_de(7, 18), dentro_de(9, 9))
+    ajena = create_rental(cl02, mes02, dentro_de(7, 18), dentro_de(9, 9))
+    client.force_login(cl01)
+    respuesta = client.post(f"/rentals/{propia.pk}/cancel/", follow=True)
+    intento = client.post(f"/rentals/{ajena.pk}/cancel/")
+    ajena.refresh_from_db()
+    # Comprueba que volvió a «Mis rentas» con el aviso
+    assertContains(respuesta, "Reserva cancelada: MES-00001 de cl01.")
+    # Comprueba que la reserva ajena no existe para cl01 y sigue reservada
+    assert (intento.status_code, ajena.status) == (404, RentalStatus.RESERVED)
+
+
 def test_un_rechazo_por_fechas_ocupadas_se_ve_en_el_catalogo(client, cl01, cl02, mes01):
     # cl01 ya tiene MES-00001 y cl02 pide las mismas fechas -> vuelve al catálogo con «ocupado del» y nada se guarda
     create_rental(cl01, mes01, dentro_de(7, 18), dentro_de(9, 9))

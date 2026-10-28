@@ -235,6 +235,14 @@ class Rental(models.Model):
         return f"Pagado ({self.get_payment_method_display().lower()})"
 
     @property
+    def client_can_change(self):
+        """Devuelve True si el cliente todavía puede cancelar o modificar esta reserva en línea (ENT-80)."""
+        now = timezone.now()
+        return self.status_at(now) == RentalStatus.RESERVED and rules.can_client_change(
+            self.start_datetime, now
+        )
+
+    @property
     def return_result(self):
         """Devuelve cómo llegó la devolución, o None mientras el equipo no vuelve (RF-09)."""
         if self.returned_at is None:

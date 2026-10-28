@@ -11,11 +11,18 @@ from django.shortcuts import get_object_or_404
 from django.utils import timezone
 
 from . import rules
-from .errors import DebtPendingError, EquipmentNotAvailableError, InvalidPeriodError, RentalStateError
+from .errors import (
+    DeadlinePassedError,
+    DebtPendingError,
+    EquipmentNotAvailableError,
+    InvalidModificationError,
+    InvalidPeriodError,
+    RentalStateError,
+)
 from .formatting import local_text, money_text, rental_state_message
 from .models import Equipment, EquipmentStatus, Rental
 from .payments import debt_total_of
-from .roles import CLIENT
+from .roles import CLIENT, OPERATOR, has_role
 from .statuses import PaymentMethod, RentalStatus
 
 # ENT-64: el catálogo dice cuándo está ocupado cada equipo; con 3 periodos basta para elegir fechas.
@@ -89,7 +96,9 @@ def rentals_of(client):
 
 
 def visible_rental(user, rental_id) -> Rental:
-    """Devuelve la renta si user es su cliente o quien la registró; si no, responde 404."""
+    """Devuelve la renta si user es del personal de la tienda, su cliente o quien la registró; si no, responde 404."""
+    if has_role(user, OPERATOR):
+        return get_object_or_404(Rental, pk=rental_id)
     # Filtrar por usuario hace que nadie más pueda abrir la renta, ni saber que existe.
     return get_object_or_404(Rental, Q(client=user) | Q(registered_by=user), pk=rental_id)
 
@@ -173,8 +182,11 @@ def check_client_has_no_debt(client, registered_by):
     )
 
 
-def check_equipment_is_free(equipment, start, end):
-    """Lanza EquipmentNotAvailableError si el equipo no se puede rentar en ese periodo (RF-01)."""
+def check_equipment_is_free(equipment, start, end, ignored=None):
+    """Lanza EquipmentNotAvailableError si el equipo no se puede rentar en ese periodo (RF-01).
+
+    ignored es la reserva que se está modificando: no choca consigo misma.
+    """
     if not rules.is_rentable_status(equipment.status):
         raise EquipmentNotAvailableError(
             f"El equipo {equipment.inventory_id} no está disponible "
@@ -183,7 +195,7 @@ def check_equipment_is_free(equipment, start, end):
     # Las rentas vienen ordenadas por inicio (Rental.Meta): el primer choque es el
     # más próximo, y el mensaje nombra ese periodo.
     now = timezone.now()
-    for rental in equipment.rentals.all():
+    for rental in equipment.rentals.exclude(pk=getattr(ignored, "pk", None)):
         if not rental.occupies_equipment_at(now):
             continue
         if rules.periods_overlap(start, end, rental.start_datetime, rental.end_datetime):
@@ -206,25 +218,80 @@ def busy_message(equipment, rental, start):
     return message
 
 
-def cancel_rental(rental, cancelled_by) -> Rental:
-    """Cancela una reserva todavía no recogida y guarda quién la canceló (ENT-55).
+def modify_rental(rental, start_datetime, end_datetime, changed_by) -> Rental:
+    """Cambia las fechas de una reserva por otras con la misma cantidad de días y la devuelve (ENT-81).
 
-    Sus fechas quedan libres al instante, porque una renta cancelada ya no
-    ocupa el equipo. Lanza RentalStateError si no está «Reservada».
+    El precio no cambia. Se revisan otra vez los horarios y la disponibilidad, sin
+    contar la misma reserva. Lanza un OperationRejectedError si se rompe una regla.
+    """
+    start = timezone.localtime(start_datetime)
+    end = timezone.localtime(end_datetime)
+    check_period(start, end)
+    with transaction.atomic():
+        # Mismo orden que create_rental (primero el equipo, después la renta): dos
+        # operaciones sobre el mismo equipo no se quedan esperando una a la otra.
+        locked_equipment = Equipment.objects.select_for_update().get(pk=rental.equipment_id)
+        locked_rental = Rental.objects.select_for_update().get(pk=rental.pk)
+        check_can_modify(locked_rental, changed_by, timezone.now())
+        check_same_days(locked_rental, start, end)
+        check_equipment_is_free(locked_equipment, start, end, ignored=locked_rental)
+        locked_rental.start_datetime = start
+        locked_rental.end_datetime = end
+        locked_rental.save(update_fields=["start_datetime", "end_datetime"])
+        return locked_rental
+
+
+def check_same_days(rental, start, end):
+    """Lanza InvalidModificationError si el periodo nuevo no tiene los mismos días que la reserva (ENT-81)."""
+    days = rental.rental_days
+    if rules.rental_days(start, end) == days:
+        return
+    days_text = f"{days} día" + ("s" if days > 1 else "")
+    raise InvalidModificationError(
+        f"La reserva es de {days_text}. Elige fechas con la misma cantidad de días; "
+        "para cambiarla, cancela y renta de nuevo."
+    )
+
+
+def cancel_rental(rental, cancelled_by) -> Rental:
+    """Cancela una reserva todavía no recogida y guarda quién la canceló (ENT-80).
+
+    Sus fechas quedan libres al instante, porque una renta cancelada ya no ocupa
+    el equipo. El dinero se devuelve fuera del sistema (ENT-82). Lanza un
+    OperationRejectedError si no está «Reservada» o si el cliente llega tarde.
     """
     with transaction.atomic():
         # Bloquea la fila: un recojo y una cancelación a la vez no se guardan los dos.
         locked_rental = Rental.objects.select_for_update().get(pk=rental.pk)
         now = timezone.now()
-        check_can_cancel(locked_rental, now)
+        check_can_cancel(locked_rental, cancelled_by, now)
         locked_rental.cancelled_at = now
         locked_rental.cancelled_by = cancelled_by
         locked_rental.save(update_fields=["cancelled_at", "cancelled_by"])
         return locked_rental
 
 
-def check_can_cancel(rental, now):
-    """Lanza RentalStateError si en now la renta no está «Reservada» (HU-06)."""
+def check_can_cancel(rental, user, now):
+    """Lanza un rechazo si user no puede cancelar la renta en now (ENT-80)."""
+    check_reservation_can_change(
+        rental, user, now, "Ya no puedes cancelar en línea; comunícate con la tienda."
+    )
+
+
+def check_can_modify(rental, user, now):
+    """Lanza un rechazo si user no puede modificar la renta en now (ENT-80)."""
+    check_reservation_can_change(
+        rental, user, now, "Ya no puedes modificar en línea; comunícate con la tienda."
+    )
+
+
+def check_reservation_can_change(rental, user, now, late_message):
+    """Lanza RentalStateError si la renta no está «Reservada» y DeadlinePassedError si su cliente llega tarde.
+
+    El plazo de 24 h es solo para el cliente; el personal la cambia hasta el recojo.
+    """
     status = rental.status_at(now)
     if status != RentalStatus.RESERVED:
         raise RentalStateError(rental_state_message(rental, status))
+    if rental.client_id == user.pk and not rules.can_client_change(rental.start_datetime, now):
+        raise DeadlinePassedError(late_message)

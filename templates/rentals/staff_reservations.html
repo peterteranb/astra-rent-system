@@ -36,6 +36,7 @@
                     <button class="button" type="submit">Cobrar {{ rental.total_price|floatformat:"2g" }} Bs y entregar</button>
                   {% endif %}
                 </form>
+                <a class="button button--secondary" href="{% url 'modify_reservation' rental.pk %}">Modificar</a>
                 <form method="post" action="{% url 'cancel_reservation' rental.pk %}">
                   {% csrf_token %}
                   <button class="button button--secondary" type="submit">Cancelar</button>

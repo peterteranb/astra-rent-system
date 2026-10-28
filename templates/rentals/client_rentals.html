@@ -12,6 +12,7 @@
           <th>Desde</th>
           <th>Hasta</th>
           <th>Estado</th>
+          <th></th>
         </tr>
       </thead>
       <tbody>
@@ -22,6 +23,20 @@
               <td data-label="Desde">{{ rental.start_datetime|date:"d/m/Y H:i" }}</td>
               <td data-label="Hasta">{{ rental.end_datetime|date:"d/m/Y H:i" }}</td>
               <td data-label="Estado"><span class="badge badge--{{ status }}">{{ status.label }}</span></td>
+              <td class="table__actions">
+                {% if rental.client_can_change %}
+                  <div class="form__actions">
+                    <a class="button button--secondary" href="{% url 'modify_reservation' rental.pk %}">Modificar</a>
+                    <form method="post" action="{% url 'cancel_reservation' rental.pk %}">
+                      {% csrf_token %}
+                      <button class="button button--secondary" type="submit">Cancelar</button>
+                    </form>
+                  </div>
+                {% elif status == "reserved" %}
+                  {# ENT-80: a menos de 24 h el cliente ya no cambia la reserva en línea. #}
+                  <span class="hint">Para cambiarla, comunícate con la tienda.</span>
+                {% endif %}
+              </td>
             </tr>
           {% endwith %}
         {% endfor %}

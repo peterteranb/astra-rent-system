@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+
+{% block title %}Modificar {{ equipment.inventory_id }}{% endblock %}
+{% block heading %}Modificar la reserva de {{ equipment.inventory_id }}{% endblock %}
+
+{% block content %}
+  <section class="card">
+    <p>{{ equipment.name }} · reserva de {{ rental.client.get_full_name|default:rental.client.username }}</p>
+    <p class="hint">
+      Ahora va del {{ rental.start_datetime|date:"d/m/Y H:i" }} al {{ rental.end_datetime|date:"d/m/Y H:i" }}.
+      Elige fechas con la misma cantidad de días ({{ rental.rental_days }}); el precio no cambia.
+      Recojo desde las {{ earliest_pickup_time|time:"H:i" }} y devolución hasta las {{ latest_return_time|time:"H:i" }}.
+    </p>
+
+    {% include "includes/form_errors.html" %}
+
+    <form class="form" method="post" action="{% url 'modify_reservation' rental.pk %}">
+      {% csrf_token %}
+      {% include "includes/period_fields.html" %}
+
+      <div class="form__actions">
+        <button class="button" type="submit">Guardar cambios</button>
+        <a class="button button--secondary" href="{% if is_operator %}{% url 'staff_reservations' %}{% else %}{% url 'client_rentals' %}{% endif %}">Volver</a>
+      </div>
+    </form>
+  </section>
+{% endblock %}
