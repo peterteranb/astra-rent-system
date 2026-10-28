@@ -1,16 +1,19 @@
 # Cómo está hecho el sistema
 
-> Versión del 19/10/2026. Django 6.1 + PostgreSQL. Una app de negocio (`rentals`) y una de login (`accounts`).
+> Versión del 28/10/2026 (versión final). Django 6.1 + PostgreSQL 17. Una app de cuentas (`accounts`) y una de negocio (`rentals`).
+> La base de datos, con el porqué de cada tabla, está en [base-de-datos.md](base-de-datos.md).
 
 ## Capas
 
 ```mermaid
 flowchart LR
-    N[Navegador] --> M[Middleware de Django<br/>sesión · CSRF · usuario]
-    M --> V[Vista<br/>rentals/views/]
-    V --> U[Caso de uso<br/>renting · handover · review]
+    N[Navegador] --> M[Middleware de Django<br/>seguridad · whitenoise · sesión · CSRF · usuario]
+    M --> V[Vista<br/>rentals/views/ · accounts/views.py]
+    V --> U[Caso de uso<br/>renting · payments · handover · review<br/>inventory · dashboard · registration]
     U --> R[Reglas puras<br/>rules.py]
     U --> H[history.py<br/>único cambio de estado]
+    U --> L[events.py<br/>log de negocio]
+    U --> E[notifications.py<br/>correos]
     U --> BD[(PostgreSQL)]
     H --> BD
     V --> T[Plantilla<br/>templates/]
@@ -18,98 +21,73 @@ flowchart LR
 
 | Capa | Archivos | Qué hace | Qué no hace |
 |---|---|---|---|
-| Vista | `rentals/views/` | Lee la petición, llama a **una** función del caso de uso, muestra el mensaje y elige la página. | No decide reglas. |
-| Caso de uso | `renting.py`, `handover.py`, `review.py`, `history.py` | Hace una operación completa: valida, bloquea la fila, guarda. | No sabe nada de HTTP. |
-| Reglas | `rules.py` | Compara fechas y estados y responde sí o no. | No lee ni escribe la base. |
-| Datos | `models.py`, `migrations/` | Define las tablas y calcula el estado de la renta. | — |
+| Vista | `rentals/views/`, `accounts/views.py` | Lee la petición, llama a **una** función del caso de uso, muestra el mensaje y elige la página. | No decide reglas. |
+| Caso de uso | `renting.py` (rentar, modificar, cancelar), `payments.py` (QR, efectivo, deudas), `handover.py` (entregar y devolver), `review.py` (revisar), `inventory.py` (registrar equipos), `dashboard.py` (panel), `accounts/registration.py` (crear cuentas) | Hace una operación completa: valida, bloquea la fila, guarda, escribe el log y manda el correo. | No sabe nada de HTTP: una API futura puede llamar a las mismas funciones. |
+| Reglas | `rules.py` | Compara fechas, horas y montos y responde sí, no o un número. | No lee ni escribe la base. |
+| Datos | `models.py`, `migrations/` | Define las tablas, sus restricciones y calcula el estado de la renta. | — |
 
-**Patrón de cada operación que guarda:** validar lo que no necesita la base → abrir la transacción → bloquear la fila (`select_for_update`) → validar lo que sí la necesita → guardar. Si algo falla, se lanza un error con la causa y no se guarda nada.
-
-## Base de datos
-
-```mermaid
-erDiagram
-    USUARIO ||--o{ RENTA : "client (PROTECT)"
-    USUARIO |o--o{ RENTA : "registered_by (PROTECT)"
-    USUARIO |o--o{ RENTA : "handed_over_by (PROTECT)"
-    USUARIO |o--o{ RENTA : "received_by (PROTECT)"
-    USUARIO |o--o{ RENTA : "cancelled_by (PROTECT)"
-    EQUIPO ||--o{ RENTA : "equipment (PROTECT)"
-    EQUIPO ||--o{ CAMBIO_DE_ESTADO : "equipment (PROTECT)"
-    USUARIO ||--o{ CAMBIO_DE_ESTADO : "changed_by (PROTECT)"
-    USUARIO }o--o{ GRUPO : "operador / mantenimiento"
-
-    USUARIO {
-        bigint id PK
-        string password "obligatorio"
-        string email "obligatorio"
-        string telefono "obligatorio"
-        string username UK "obligatorio"
-    }
-    GRUPO {
-        int id PK
-        string name UK "operador, mantenimiento"
-    }
-    EQUIPO {
-        bigint id PK
-        string inventory_id UK "una fila por unidad: EQ-01"
-        string serial_number
-        string description
-        string status "solo estado físico: available, in_review, in_repair, retired"
-    }
-    RENTA {
-        bigint id PK
-        bigint client_id FK "obligatorio"
-        bigint equipment_id FK "obligatorio"
-        bigint registered_by_id FK "nulo = renta en línea"
-        bigint handed_over_by_id FK "nulo"
-        bigint received_by_id FK "nulo"
-        bigint cancelled_by_id FK "nulo"
-        datetime start_datetime "recojo desde"
-        datetime end_datetime "CHECK end > start"
-        datetime picked_up_at "nulo = no recogida"
-        datetime returned_at "nulo = no devuelta"
-        datetime cancelled_at "nulo = vigente"
-        string return_note
-    }
-    CAMBIO_DE_ESTADO {
-        bigint id PK
-        bigint equipment_id FK
-        bigint changed_by_id FK
-        string old_status
-        string new_status
-        datetime changed_at "quién, cuándo, de qué a qué"
-        string comment "opcional"
-    }
-```
-
-| Decisión | Por qué |
-|---|---|
-| Una fila por cada mesa o silla | El cliente registra cada unidad por separado (ENT-09). |
-| La renta **no guarda** su estado | Se calcula de sus fechas. Así nunca contradice a las fechas y «No recogida» aparece sola a las 12:01, sin un proceso programado (ENT-59). |
-| El equipo guarda solo su estado físico | Un equipo rentado en noviembre sigue disponible en octubre (ENT-61). |
-| El historial es una tabla aparte | Un equipo tiene muchos cambios; cada fila dice quién, cuándo, de qué a qué y por qué (ENT-34). |
-| No hay tablas de clientes ni de reservas | Se usa el usuario de Django y su grupo. Una reserva es una renta todavía no recogida. |
-| `PROTECT` en todas las relaciones | No se puede borrar un usuario o un equipo que tiene historial. |
-| La base rechaza fin antes del inicio | `CheckConstraint`: una defensa más, aunque alguien se salte el código. |
+**Patrón de cada operación que guarda:** validar lo que no necesita la base → abrir la transacción → bloquear la fila (`select_for_update`) → validar lo que sí la necesita → guardar → escribir el log → mandar el correo. Si algo falla, se lanza un error (subclase de `OperationRejectedError`) con la causa en español, no se guarda nada y el log escribe `<ACCIÓN>_REJECTED`.
 
 ## Roles
 
-| Rol | Cómo se reconoce | Página de inicio |
+| Rol (`Role.code`) | Página de inicio | Qué puede hacer |
 |---|---|---|
-| Cliente | Usuario sin grupo | Catálogo |
-| Operador | Grupo `operador` | Reservas por entregar |
-| Mantenimiento | Grupo `mantenimiento` | Mantenimiento |
-| Admin | Superusuario: tiene todos los roles | Admin de Django |
+| `cliente` | Catálogo | Crear su cuenta, rentar y pagar, modificar y cancelar sus reservas, ver sus rentas y su deuda. |
+| `operador` | Reservas por entregar | Crear cuentas, rentar en tienda, entregar, cobrar, recibir, cobrar deudas, modificar y cancelar. |
+| `mantenimiento` | Mantenimiento | Revisar los equipos devueltos. |
+| `administrador` | Panel del responsable | Todo lo anterior, registrar equipos y el admin de Django. `is_staff` e `is_superuser` se ponen solos según el rol. |
 
-`role_required` revisa el rol en cada página del personal: sin sesión manda al login; sin el rol responde 403.
+`role_required` revisa el rol en cada página del personal: sin sesión manda al login; sin el rol responde 403 con una página en español. Solo el admin bloquea a un usuario, desactivando su cuenta (`is_active = False`).
+
+## Despliegue con Docker
+
+```mermaid
+flowchart LR
+    U[Navegador] -->|http://localhost:8000| W
+    subgraph Docker Compose
+        W["web<br/>Python 3.12 slim<br/>migrate · collectstatic · gunicorn :8000<br/>whitenoise sirve /static/"]
+        D[("db<br/>postgres:17<br/>volumen pgdata · healthcheck")]
+    end
+    W -->|DB_HOST=db:5432| D
+    W -->|monta ./logs| LOG[logs/negocio.log en la máquina]
+    ENV[.env] -.->|variables| W
+    ENV -.->|POSTGRES_*| D
+```
+
+| Nodo | Imagen | Qué hace |
+|---|---|---|
+| `web` | `Dockerfile` (Python 3.12 slim) | Espera a que `db` esté sana, aplica las migraciones, junta los estáticos y arranca gunicorn en el puerto 8000. |
+| `db` | `postgres:17` | Guarda los datos en el volumen `pgdata`, que sobrevive a `docker compose down`. |
+
+Las opciones que exigen HTTPS (cookies seguras, redirección y HSTS) se activan con `USE_HTTPS=True` en `.env`.
+
+## Cómo viaja una línea del log
+
+```mermaid
+sequenceDiagram
+    participant U as Caso de uso (renting.create_rental)
+    participant E as events.log_event
+    participant L as logger «rentals»
+    participant C as Consola (docker compose logs)
+    participant F as logs/negocio.log
+    U->>E: log_event("RENTAL_CREATED", id=12, equipment="SIL-00001", client="cl01", paid="no")
+    E->>L: info("RENTAL_CREATED id=12 equipment=SIL-00001 client=cl01 paid=no")
+    L->>C: 2026-10-29 10:15:02 | INFO    | RENTAL_CREATED …
+    L->>F: la misma línea, en UTF-8
+```
+
+Si un caso de uso lanza `OperationRejectedError`, el decorador `logs_rejection` escribe `RENTAL_REJECTED reason="…"` con nivel `WARNING` y deja pasar el error a la vista. Si un correo falla, `notifications.py` escribe `EMAIL_FAILED` y la operación sigue.
+
+## Correo
+
+Se usa `django.core.mail.send_mail` con el setting `MAILERS` de Django 6.1. Por defecto, el backend de consola (el correo se imprime en la terminal). Si `.env` tiene `EMAIL_HOST_USER` y `EMAIL_HOST_PASSWORD`, se usa el SMTP de Gmail (`smtp.gmail.com:587`, TLS, con una contraseña de aplicación).
 
 ## Pruebas y CI
 
 | Tipo | Carpeta | Qué prueba |
 |---|---|---|
 | Unitarias | `tests/unit/` | Reglas y validaciones, sin base de datos. |
-| Integración | `tests/integration/` | Cada caso de uso con la base de datos. |
+| Integración | `tests/integration/` | Cada caso de uso con la base de datos, el log (`caplog`) y el correo (`mail.outbox`). |
 | Sistema | `tests/system/` | Recorridos completos por la web. |
 
 GitHub Actions (`.github/workflows/ci-sesion12.yml`) corre en cada push: revisa la configuración, que no falte ninguna migración, y todas las pruebas con un PostgreSQL temporal.
