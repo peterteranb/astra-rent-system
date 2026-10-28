@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+
+{% block title %}Sin permiso{% endblock %}
+{% block heading %}No tienes permiso para ver esta página{% endblock %}
+
+{% block content %}
+  <section class="card">
+    <p>Esta página es para otro tipo de usuario.</p>
+    <p class="hint">Si necesitas entrar, cierra sesión e ingresa con la cuenta que corresponde.</p>
+    <a class="button" href="{% url 'home' %}">Volver al inicio</a>
+  </section>
+{% endblock %}

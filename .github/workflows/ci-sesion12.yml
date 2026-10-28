@@ -36,6 +36,8 @@ jobs:
       DB_PASSWORD: ci-password
       DB_HOST: localhost
       DB_PORT: "5432"
+      # Agregado: con DEBUG=False la configuración exige una clave; esta solo sirve para el CI.
+      SECRET_KEY: clave-solo-para-el-ci-de-github-actions-no-se-usa-en-produccion
 
     steps:
       - name: Obtener la version del repositorio

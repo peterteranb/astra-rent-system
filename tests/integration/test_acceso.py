@@ -10,10 +10,17 @@ def test_un_visitante_sin_sesion_va_al_login(client, db):
 
 
 def test_un_cliente_recibe_403_en_una_pagina_del_operador(client, cl01):
-    # cl01 es cliente y abre «Reservas por entregar» -> 403
+    # cl01 es cliente y abre «Reservas por entregar» -> 403 con la página en español
     client.force_login(cl01)
     respuesta = client.get("/staff/reservations/")
-    assert respuesta.status_code == 403
+    assertContains(respuesta, "No tienes permiso para ver esta página", status_code=403)
+
+
+def test_una_direccion_que_no_existe_muestra_la_pagina_404_en_espanol(client, cl01):
+    # cl01 abre una dirección que no existe -> 404 con qué hacer, sin detalles técnicos
+    client.force_login(cl01)
+    respuesta = client.get("/no-existe/")
+    assertContains(respuesta, "No encontramos esta página", status_code=404)
 
 
 def test_un_login_incorrecto_muestra_el_mensaje(client, cl01):

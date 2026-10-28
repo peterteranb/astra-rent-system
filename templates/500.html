@@ -1,0 +1,21 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Algo salió mal · SergioCorp</title>
+  <link rel="stylesheet" href="{% static 'css/style.css' %}">
+</head>
+<body>
+  {# No hereda de base.html: si el error vino de la base de datos o del usuario, esta página igual se muestra. #}
+  <main class="page">
+    <h1 class="page__title">Algo salió mal de nuestro lado</h1>
+    <section class="card">
+      <p>No es un error tuyo.</p>
+      <p class="hint">Vuelve a intentarlo en unos minutos. Si sigue pasando, avísanos en la tienda.</p>
+      <a class="button" href="/">Volver al inicio</a>
+    </section>
+  </main>
+</body>
+</html>

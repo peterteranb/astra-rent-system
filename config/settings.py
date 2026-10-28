@@ -1,19 +1,38 @@
-"""Configuración de Django del proyecto; los datos secretos se leen del archivo .env."""
+"""Configuración de Django del proyecto; los datos secretos y lo que cambia por servidor se leen de .env."""
 import os
 from decimal import Decimal
 from pathlib import Path
 
+from django.core.exceptions import ImproperlyConfigured
 from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / ".env")
 
-# Los valores por defecto sirven solo para desarrollo; en un servidor real
-# se ponen en .env una clave secreta propia y DEBUG=False.
-SECRET_KEY = os.environ.get("SECRET_KEY", "django-insecure-solo-para-desarrollo")
-DEBUG = os.environ.get("DEBUG", "True") == "True"
 
-ALLOWED_HOSTS = []
+def env_list(name, default=""):
+    """Lee de .env una lista separada por comas, por ejemplo «localhost,127.0.0.1»."""
+    return [item.strip() for item in os.environ.get(name, default).split(",") if item.strip()]
+
+
+# DEBUG es False salvo que .env diga DEBUG=True: un servidor nunca queda en modo desarrollo por olvido.
+DEBUG = os.environ.get("DEBUG", "False") == "True"
+SECRET_KEY = os.environ.get("SECRET_KEY", "")
+if not SECRET_KEY and not DEBUG:
+    raise ImproperlyConfigured("Falta SECRET_KEY en .env: es obligatoria con DEBUG=False.")
+SECRET_KEY = SECRET_KEY or "django-insecure-solo-para-desarrollo"
+
+ALLOWED_HOSTS = env_list("ALLOWED_HOSTS", "localhost,127.0.0.1")
+CSRF_TRUSTED_ORIGINS = env_list("CSRF_TRUSTED_ORIGINS")
+
+# USE_HTTPS=True solo detrás de HTTPS: con HTTP estas opciones impiden iniciar sesión.
+USE_HTTPS = os.environ.get("USE_HTTPS", "False") == "True"
+SESSION_COOKIE_SECURE = USE_HTTPS
+CSRF_COOKIE_SECURE = USE_HTTPS
+SECURE_SSL_REDIRECT = USE_HTTPS
+SECURE_HSTS_SECONDS = 31536000 if USE_HTTPS else 0
+SECURE_HSTS_INCLUDE_SUBDOMAINS = USE_HTTPS
+SECURE_HSTS_PRELOAD = USE_HTTPS
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -28,6 +47,8 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    # whitenoise sirve /static/ con gunicorn, sin un servidor web aparte.
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -85,6 +106,12 @@ USE_TZ = True
 
 STATIC_URL = "static/"
 STATICFILES_DIRS = [BASE_DIR / "static"]
+# collectstatic junta aquí los estáticos; whitenoise los sirve comprimidos y con un nombre por versión.
+STATIC_ROOT = BASE_DIR / "staticfiles"
+STORAGES = {
+    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    "staticfiles": {"BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"},
+}
 
 AUTH_USER_MODEL = "accounts.User"
 
