@@ -7,7 +7,7 @@ from accounts.roles import MAINTENANCE, role_required
 
 from ..errors import OperationRejectedError
 from ..models import Equipment
-from ..services.formatting import money_text
+from ..services.formatting import review_message
 from ..use_cases.review import review_equipment, review_queue
 
 
@@ -33,16 +33,6 @@ def review_equipment_view(request, inventory_id):
     except OperationRejectedError as error:
         messages.error(request, str(error))
     else:
-        messages.success(request, review_message(inventory_id, outcome))
+        messages.success(request, review_message(outcome))
     # Redirige después del POST: recargar la página no lo envía otra vez.
     return redirect("maintenance")
-
-
-def review_message(inventory_id, outcome):
-    """Mensaje de éxito de la revisión: el estado nuevo, la deuda y las reservas canceladas."""
-    message = f"{inventory_id} ahora está «{outcome.change.get_new_status_display()}»."
-    if outcome.debt:
-        message += f" Deuda de {money_text(outcome.debt.amount)} para {outcome.debt.rental.client.username}."
-    if outcome.cancelled:
-        message += f" Reservas futuras canceladas: {len(outcome.cancelled)}."
-    return message

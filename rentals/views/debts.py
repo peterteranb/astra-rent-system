@@ -10,7 +10,7 @@ from accounts.roles import OPERATOR, role_required
 
 from ..errors import OperationRejectedError
 from ..models import Debt
-from ..services.formatting import money_text
+from ..services.formatting import debt_paid_message
 from ..use_cases.payments import debts_overview, pay_debt
 
 
@@ -31,9 +31,6 @@ def pay_debt_view(request, debt_id):
     except OperationRejectedError as error:
         messages.error(request, str(error))
     else:
-        messages.success(
-            request,
-            f"Pago registrado: deuda de {money_text(debt.amount)} de {debt.rental.client.username}.",
-        )
+        messages.success(request, debt_paid_message(debt))
     # Redirige después del POST: recargar la página no lo envía otra vez.
     return redirect("staff_debts")

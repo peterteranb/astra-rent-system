@@ -9,6 +9,7 @@ from accounts.roles import ADMINISTRATOR, role_required
 
 from ..errors import RejectedWithCausesError
 from ..forms import EquipmentForm
+from ..services.formatting import equipment_registered_message
 from ..use_cases.inventory import REJECTION_TITLE, register_equipment
 
 
@@ -22,7 +23,7 @@ def register_equipment_view(request):
         except RejectedWithCausesError as error:
             error.add_to(form)
         else:
-            messages.success(request, f"Equipo registrado: {equipment}.")
+            messages.success(request, equipment_registered_message(equipment))
             return redirect("register_equipment")
     return render(
         request, "rentals/equipment_form.html", {"form": form, "rejection_title": REJECTION_TITLE}
