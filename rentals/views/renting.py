@@ -76,7 +76,7 @@ def rental_form_context(equipment, form):
         "form": form,
         "earliest_pickup_time": rules.EARLIEST_PICKUP_TIME,
         "latest_return_time": rules.LATEST_RETURN_TIME,
-        "max_days": rules.MAX_RENTAL_DURATION.days,
+        "max_days": rules.MAX_RENTAL_DAYS,
     }
 
 

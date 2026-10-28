@@ -1,5 +1,5 @@
-"""Prueba rentals/rules.py: is_pickup_time_allowed(), is_return_time_allowed(),
-is_within_max_duration() y ends_after_start() (ENT-18, ENT-19)."""
+"""Prueba rentals/rules.py: is_pickup_time_allowed(), is_return_time_allowed(), rental_days(),
+is_within_max_duration() y ends_after_start() (ENT-18, ENT-19, ENT-72)."""
 from datetime import timedelta
 
 from rentals.rules import (
@@ -7,6 +7,7 @@ from rentals.rules import (
     is_pickup_time_allowed,
     is_return_time_allowed,
     is_within_max_duration,
+    rental_days,
 )
 from tests.helpers import local_datetime
 
@@ -33,14 +34,19 @@ def test_devolucion_a_las_09_01_rechazada():
     assert is_return_time_allowed(local_datetime(2026, 10, 12, 9, 1)) is False
 
 
+def test_recojo_el_09_y_devolucion_el_11_son_dos_dias():
+    # Recoge el 09/10 a las 18:00 y devuelve el 11/10 a las 09:00 -> 2 días (ENT-72)
+    assert rental_days(INICIO, local_datetime(2026, 10, 11, 9, 0)) == 2
+
+
 def test_renta_de_5_dias_permitida():
-    # Del 09/10 18:00 al 14/10 18:00 son 5 días justos -> permitido (ENT-18: máximo 5 días)
-    assert is_within_max_duration(INICIO, INICIO + timedelta(days=5)) is True
+    # Recoge el 09/10 y devuelve el 14/10 -> 5 días justos, permitido (ENT-18: máximo 5 días)
+    assert is_within_max_duration(INICIO, local_datetime(2026, 10, 14, 9, 0)) is True
 
 
-def test_renta_de_5_dias_y_1_minuto_rechazada():
-    # Un minuto más que 5 días -> rechazado
-    assert is_within_max_duration(INICIO, INICIO + timedelta(days=5, minutes=1)) is False
+def test_renta_de_6_dias_rechazada():
+    # Recoge el 09/10 y devuelve el 15/10 -> 6 días, rechazado
+    assert is_within_max_duration(INICIO, local_datetime(2026, 10, 15, 9, 0)) is False
 
 
 def test_fin_igual_al_inicio_rechazado():

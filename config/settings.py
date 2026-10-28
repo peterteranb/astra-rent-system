@@ -1,5 +1,6 @@
 """Configuración de Django del proyecto; los datos secretos se leen del archivo .env."""
 import os
+from decimal import Decimal
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -84,6 +85,15 @@ STATIC_URL = "static/"
 STATICFILES_DIRS = [BASE_DIR / "static"]
 
 AUTH_USER_MODEL = "accounts.User"
+
+# Reglas del negocio que el cliente puede cambiar sin tocar el código.
+# ENT-71: el precio por día es el 5 % del valor del equipo.
+DAILY_RATE = Decimal("0.05")
+# ENT-74: reparación cobra el 20 % del valor y baja, el 100 %.
+REPAIR_CHARGE_RATE = Decimal("0.20")
+RETIRE_CHARGE_RATE = Decimal("1.00")
+# ENT-83: 3 letras, guion y 5 números, por ejemplo MES-00001.
+INVENTORY_ID_FORMAT = r"^[A-Z]{3}-[0-9]{5}$"
 
 LOGIN_URL = "login"
 LOGIN_REDIRECT_URL = "home"

@@ -4,6 +4,9 @@ Todas las fechas llegan en hora local (America/La_Paz); el caso de uso las convi
 No se rechazan fechas pasadas: ENT-17 dice que no hay límite de anticipación («puede ser al instante»).
 """
 from datetime import datetime, time, timedelta
+from decimal import ROUND_HALF_UP, Decimal
+
+from django.conf import settings
 
 from .statuses import EquipmentStatus, ReturnResult
 
@@ -12,14 +15,17 @@ from .statuses import EquipmentStatus, ReturnResult
 EARLIEST_PICKUP_TIME = time(18, 0)
 LATEST_RETURN_TIME = time(9, 0)
 
-# ENT-63: hasta las 09:00 sin multa, hasta las 12:00 con multa y desde las 12:01 un día más.
-RETURN_FINE_LIMIT = time(12, 0)
+# ENT-73: de 09:00 a 12:00 es tolerancia sin cobro; desde las 12:01 hay deuda por atraso.
+RETURN_TOLERANCE_LIMIT = time(12, 0)
 
-# ENT-18: una renta dura como máximo 5 días (las 2 semanas del cliente frecuente siguen pendientes, ENT-20).
-MAX_RENTAL_DURATION = timedelta(days=5)
+# ENT-18 y ENT-72: como máximo 5 días, contados entre la fecha de recojo y la de devolución.
+MAX_RENTAL_DAYS = 5
 
-# ENT-59: una reserva no recogida hasta las 12:00 del día siguiente queda libre a las 12:01.
-PICKUP_DEADLINE = time(12, 0)
+# ENT-80: el cliente cancela o modifica en línea hasta 24 h antes del recojo.
+CLIENT_CHANGE_NOTICE = timedelta(hours=24)
+
+# Los montos se guardan en bolivianos con centavos.
+MONEY_STEP = Decimal("0.01")
 
 
 def periods_overlap(new_start, new_end, existing_start, existing_end) -> bool:
@@ -38,9 +44,14 @@ def ends_after_start(start, end) -> bool:
     return end > start
 
 
+def rental_days(start, end) -> int:
+    """Devuelve los días de renta: los que hay entre la fecha de recojo y la de devolución (ENT-72)."""
+    return (end.date() - start.date()).days
+
+
 def is_within_max_duration(start, end) -> bool:
-    """Devuelve True si el periodo dura como máximo MAX_RENTAL_DURATION (ENT-18)."""
-    return end - start <= MAX_RENTAL_DURATION
+    """Devuelve True si la renta dura como máximo MAX_RENTAL_DAYS días (ENT-18)."""
+    return rental_days(start, end) <= MAX_RENTAL_DAYS
 
 
 def is_pickup_time_allowed(start) -> bool:
@@ -53,21 +64,49 @@ def is_return_time_allowed(end) -> bool:
     return end.time() <= LATEST_RETURN_TIME
 
 
+def start_of_day(moment):
+    """Devuelve la medianoche con que empezó el día de moment."""
+    return datetime.combine(moment.date(), time(0, 0), tzinfo=moment.tzinfo)
+
+
 def is_pickup_expired(start, now) -> bool:
-    """Devuelve True si now pasó las PICKUP_DEADLINE del día siguiente al inicio (RF-03)."""
-    next_day = start.date() + timedelta(days=1)
-    deadline = datetime.combine(next_day, PICKUP_DEADLINE, tzinfo=start.tzinfo)
-    return now > deadline
+    """Devuelve True si en now ya pasó la medianoche que cierra el día de inicio (ENT-69)."""
+    return now >= start_of_day(start) + timedelta(days=1)
+
+
+def can_client_change(start, now) -> bool:
+    """Devuelve True si faltan al menos 24 h para el recojo: el cliente aún cancela o modifica en línea (ENT-80)."""
+    return now <= start - CLIENT_CHANGE_NOTICE
+
+
+def charge_for(value, rate) -> Decimal:
+    """Devuelve rate del valor del equipo, redondeado a centavos (0,005 sube)."""
+    return (value * rate).quantize(MONEY_STEP, rounding=ROUND_HALF_UP)
+
+
+def daily_price_for(value) -> Decimal:
+    """Devuelve el precio por día: DAILY_RATE del valor del equipo (ENT-71)."""
+    return charge_for(value, settings.DAILY_RATE)
 
 
 def classify_return(returned_at, due_date) -> ReturnResult:
-    """Dice si una devolución del día due_date llegó a tiempo, con multa o con un día más (RF-02).
+    """Dice si una devolución del día due_date llegó a tiempo, en tolerancia o con atraso (RF-09).
 
     Compara con las 09:00 de due_date y no con la hora que eligió el cliente,
-    porque la regla es «hasta las 9 sin multas» (ENT-63, ENT-65).
+    porque la regla es «hasta las 9 sin multas» (ENT-65, ENT-73).
     """
     if returned_at <= datetime.combine(due_date, LATEST_RETURN_TIME, tzinfo=returned_at.tzinfo):
         return ReturnResult.ON_TIME
-    if returned_at <= datetime.combine(due_date, RETURN_FINE_LIMIT, tzinfo=returned_at.tzinfo):
-        return ReturnResult.WITH_FINE
-    return ReturnResult.EXTRA_DAY
+    if returned_at <= datetime.combine(due_date, RETURN_TOLERANCE_LIMIT, tzinfo=returned_at.tzinfo):
+        return ReturnResult.TOLERANCE
+    return ReturnResult.LATE
+
+
+def late_days(returned_at, due_date) -> int:
+    """Cuenta los mediodías (12:00) vencidos entre el día de vencimiento y returned_at (ENT-73).
+
+    Vence el 10: vuelve el 10 a las 12:01 -> 1; el 11 a las 10:00 -> 1; el 11 a las 12:01 -> 2.
+    """
+    days_after_due = (returned_at.date() - due_date).days
+    noon_passed = 1 if returned_at.time() > RETURN_TOLERANCE_LIMIT else 0
+    return max(days_after_due + noon_passed, 0)

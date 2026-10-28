@@ -5,7 +5,7 @@
 
 {% block content %}
   <section class="card">
-    <p>{{ equipment.description }}</p>
+    <p>{{ equipment.name }}</p>
     <p class="hint">
       Recojo desde las {{ earliest_pickup_time|time:"H:i" }}.
       Devolución hasta las {{ latest_return_time|time:"H:i" }}.

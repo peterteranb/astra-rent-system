@@ -1,8 +1,10 @@
 """Datos de prueba compartidos (fixtures) con los mismos nombres de la demo: cl01, cl02, op01, mt01, ad01 y los equipos.
 
-Una prueba pide un dato escribiendo su nombre como parámetro, por ejemplo test_algo(cl01, eq01).
+Una prueba pide un dato escribiendo su nombre como parámetro, por ejemplo test_algo(cl01, mes01).
 Las fixtures que reciben db escriben en la base de pruebas, que se deshace después de cada prueba.
 """
+from decimal import Decimal
+
 import pytest
 from django.contrib.auth import get_user_model
 
@@ -59,27 +61,30 @@ def ad01(db):
 
 
 @pytest.fixture
-def eq01(db):
-    """EQ-01: mesa plegable disponible."""
+def mes01(db):
+    """MES-00001: mesa plegable de 400 Bs, disponible; su día cuesta 20 Bs."""
     return Equipment.objects.create(
-        inventory_id="EQ-01", serial_number="SN-T-001", description="Mesa plegable 1,80 m"
+        inventory_id="MES-00001", serial_number="SN-MES-00001", name="Mesa plegable 1,80 m",
+        value=Decimal("400.00"),
     )
 
 
 @pytest.fixture
-def eq02(db):
-    """EQ-02: otra mesa plegable igual, disponible."""
+def mes02(db):
+    """MES-00002: otra mesa plegable igual, disponible."""
     return Equipment.objects.create(
-        inventory_id="EQ-02", serial_number="SN-T-002", description="Mesa plegable 1,80 m"
+        inventory_id="MES-00002", serial_number="SN-MES-00002", name="Mesa plegable 1,80 m",
+        value=Decimal("400.00"),
     )
 
 
 @pytest.fixture
-def eq03_en_revision(db):
-    """EQ-03: mesa redonda devuelta que espera a mantenimiento."""
+def mes03_en_revision(db):
+    """MES-00003: mesa redonda de 350 Bs devuelta, que espera a mantenimiento."""
     return Equipment.objects.create(
-        inventory_id="EQ-03",
-        serial_number="SN-T-003",
-        description="Mesa redonda 1,20 m",
+        inventory_id="MES-00003",
+        serial_number="SN-MES-00003",
+        name="Mesa redonda 1,20 m",
+        value=Decimal("350.00"),
         status=EquipmentStatus.IN_REVIEW,
     )

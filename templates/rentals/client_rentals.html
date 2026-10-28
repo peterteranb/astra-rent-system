@@ -18,7 +18,7 @@
         {% for rental in rentals %}
           {% with status=rental.status %}
             <tr>
-              <td data-label="Equipo">{{ rental.equipment.inventory_id }} · {{ rental.equipment.description }}</td>
+              <td data-label="Equipo">{{ rental.equipment.inventory_id }} · {{ rental.equipment.name }}</td>
               <td data-label="Desde">{{ rental.start_datetime|date:"d/m/Y H:i" }}</td>
               <td data-label="Hasta">{{ rental.end_datetime|date:"d/m/Y H:i" }}</td>
               <td data-label="Estado"><span class="badge badge--{{ status }}">{{ status.label }}</span></td>

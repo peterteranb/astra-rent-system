@@ -4,6 +4,7 @@ SOLO PARA LA DEMO: borra todas las rentas y todo el historial y los vuelve a cre
 así cada vez que se corre el escenario queda igual.
 """
 from datetime import datetime, time, timedelta
+from decimal import Decimal
 
 from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand
@@ -27,28 +28,28 @@ DEMO_USERS = [
     ("ad01", "Ana", "Díaz", "ana.diaz@sergiocorp.com", "71000005", ADMINISTRATOR),
 ]
 
-# EQ-06 y EQ-07 empiezan «En revisión» para que su única fila de historial
+# MES-00006 y SIL-00007 empiezan «En revisión» para que su única fila de historial
 # sea la decisión de mantenimiento.
 DEMO_EQUIPMENT = [
-    ("EQ-01", "SN-T-001", "Mesa plegable 1,80 m", EquipmentStatus.AVAILABLE),
-    ("EQ-02", "SN-T-002", "Mesa plegable 1,80 m", EquipmentStatus.AVAILABLE),
-    ("EQ-03", "SN-T-003", "Mesa redonda 1,20 m", EquipmentStatus.AVAILABLE),
-    ("EQ-04", "SN-C-001", "Silla plegable blanca", EquipmentStatus.AVAILABLE),
-    ("EQ-05", "SN-C-002", "Silla plegable blanca", EquipmentStatus.AVAILABLE),
-    ("EQ-06", "SN-C-003", "Silla Tiffany dorada", EquipmentStatus.IN_REVIEW),
-    ("EQ-07", "SN-C-004", "Silla Tiffany dorada", EquipmentStatus.IN_REVIEW),
-    ("EQ-08", "SN-T-004", "Mesa redonda 1,20 m", EquipmentStatus.AVAILABLE),
+    ("MES-00001", "SN-T-001", "Mesa plegable 1,80 m", "400.00", EquipmentStatus.AVAILABLE),
+    ("MES-00002", "SN-T-002", "Mesa plegable 1,80 m", "400.00", EquipmentStatus.AVAILABLE),
+    ("MES-00003", "SN-T-003", "Mesa redonda 1,20 m", "350.00", EquipmentStatus.AVAILABLE),
+    ("SIL-00004", "SN-C-001", "Silla plegable blanca", "80.00", EquipmentStatus.AVAILABLE),
+    ("SIL-00005", "SN-C-002", "Silla plegable blanca", "80.00", EquipmentStatus.AVAILABLE),
+    ("SIL-00006", "SN-C-003", "Silla Tiffany dorada", "120.00", EquipmentStatus.IN_REVIEW),
+    ("SIL-00007", "SN-C-004", "Silla Tiffany dorada", "120.00", EquipmentStatus.IN_REVIEW),
+    ("MES-00008", "SN-T-004", "Mesa redonda 1,20 m", "350.00", EquipmentStatus.AVAILABLE),
 ]
 
 DEMO_PURPOSE = {
-    "EQ-01": "CU-03: entregar la reserva de hoy",
-    "EQ-02": "CU-01: pedir hoy+8 se rechaza; la cancelada no ocupa",
-    "EQ-03": "CU-04: devolver «A tiempo»",
-    "EQ-04": "CU-04: devolver después de las 12:00, «Se cobra un día más»",
-    "EQ-05": "CU-05: revisar y dejar disponible",
-    "EQ-06": "CU-05: en reparación, pasa a disponible o baja",
-    "EQ-07": "CU-07: una baja ya no cambia",
-    "EQ-08": "CU-02: libre para la renta en tienda",
+    "MES-00001": "CU-03: entregar la reserva de hoy",
+    "MES-00002": "CU-01: pedir hoy+8 se rechaza; la cancelada no ocupa",
+    "MES-00003": "CU-04: devolver «A tiempo»",
+    "SIL-00004": "CU-04: devolver después de las 12:00, «Se cobra un día más»",
+    "SIL-00005": "CU-05: revisar y dejar disponible",
+    "SIL-00006": "CU-05: en reparación, pasa a disponible o baja",
+    "SIL-00007": "CU-07: una baja ya no cambia",
+    "MES-00008": "CU-02: libre para la renta en tienda",
 }
 
 
@@ -70,14 +71,14 @@ class Command(BaseCommand):
     def print_summary(self):
         """Imprime una tabla corta: equipo, estado, rentas y para qué sirve en la demo."""
         self.stdout.write(f"Usuarios: cl01, cl02, op01, mt01, ad01 (clave: {DEMO_PASSWORD})")
-        self.stdout.write(f"{'Equipo':<7} {'Estado':<14} {'Rentas':<40} Para qué sirve")
+        self.stdout.write(f"{'Equipo':<9} {'Estado':<14} {'Rentas':<40} Para qué sirve")
         for equipment in Equipment.objects.prefetch_related("rentals__client"):
             rentals = ", ".join(
                 f"{rental.status.label} de {rental.client.username}"
                 for rental in equipment.rentals.all()
             )
             self.stdout.write(
-                f"{equipment.inventory_id:<7} {equipment.get_status_display():<14} "
+                f"{equipment.inventory_id:<9} {equipment.get_status_display():<14} "
                 f"{rentals or '-':<40} {DEMO_PURPOSE.get(equipment.inventory_id, '')}"
             )
         self.stdout.write(self.style.SUCCESS("Escenario de la demo listo."))
@@ -109,10 +110,11 @@ def reset_equipment():
     """Crea los equipos de la demo o les devuelve sus datos y su estado inicial."""
     # El estado inicial se pone directo y no con change_status: el historial se borró
     # y un equipo de baja de una corrida anterior ya no podría cambiar.
-    for inventory_id, serial_number, description, status in DEMO_EQUIPMENT:
+    Equipment.objects.exclude(inventory_id__in=[row[0] for row in DEMO_EQUIPMENT]).delete()
+    for inventory_id, serial_number, name, value, status in DEMO_EQUIPMENT:
         Equipment.objects.update_or_create(
             inventory_id=inventory_id,
-            defaults={"serial_number": serial_number, "description": description, "status": status},
+            defaults={"serial_number": serial_number, "name": name, "value": Decimal(value), "status": status},
         )
 
 
@@ -121,27 +123,27 @@ def create_scenario(users):
     equipment = {unit.inventory_id: unit for unit in Equipment.objects.all()}
     cl01, cl02, op01, mt01 = users["cl01"], users["cl02"], users["op01"], users["mt01"]
 
-    create_rental(cl01, equipment["EQ-01"], days_from_today(0, 18), days_from_today(1, 9))
+    create_rental(cl01, equipment["MES-00001"], days_from_today(0, 18), days_from_today(1, 9))
 
     # La cancelada se crea antes en las mismas fechas: muestra que libera el equipo.
-    cancelled = create_rental(cl01, equipment["EQ-02"], days_from_today(7, 18), days_from_today(9, 9))
+    cancelled = create_rental(cl01, equipment["MES-00002"], days_from_today(7, 18), days_from_today(9, 9))
     cancel_rental(cancelled, op01)
-    create_rental(cl02, equipment["EQ-02"], days_from_today(7, 18), days_from_today(9, 9))
+    create_rental(cl02, equipment["MES-00002"], days_from_today(7, 18), days_from_today(9, 9))
 
-    rented = create_rental(cl02, equipment["EQ-03"], days_from_today(-1, 18), days_from_today(1, 9))
+    rented = create_rental(cl02, equipment["MES-00003"], days_from_today(-1, 18), days_from_today(1, 9))
     mark_picked_up(rented, op01, days_from_today(-1, 18, 30))
 
-    late = create_rental(cl01, equipment["EQ-04"], days_from_today(-3, 18), days_from_today(0, 9))
+    late = create_rental(cl01, equipment["SIL-00004"], days_from_today(-3, 18), days_from_today(0, 9))
     mark_picked_up(late, op01, days_from_today(-3, 18, 30))
 
-    returned = create_rental(cl02, equipment["EQ-05"], days_from_today(-3, 18), days_from_today(-1, 9))
+    returned = create_rental(cl02, equipment["SIL-00005"], days_from_today(-3, 18), days_from_today(-1, 9))
     mark_picked_up(returned, op01, days_from_today(-3, 18, 30))
     mark_returned(returned, op01, days_from_today(-1, 8, 30), "Una pata floja")
 
-    change_status(equipment["EQ-06"], EquipmentStatus.IN_REPAIR, mt01, "Tapiz roto")
-    change_status(equipment["EQ-07"], EquipmentStatus.RETIRED, mt01, "Estructura partida")
+    change_status(equipment["SIL-00006"], EquipmentStatus.IN_REPAIR, mt01, "Tapiz roto")
+    change_status(equipment["SIL-00007"], EquipmentStatus.RETIRED, mt01, "Estructura partida")
 
-    create_rental(cl01, equipment["EQ-08"], days_from_today(-3, 18), days_from_today(-2, 9))
+    create_rental(cl01, equipment["MES-00008"], days_from_today(-3, 18), days_from_today(-2, 9))
 
 
 def mark_picked_up(rental, operator, moment):

@@ -1,4 +1,4 @@
-"""Estados de un equipo, de una renta y de una devolución, que comparten los modelos y las reglas."""
+"""Estados y opciones que comparten los modelos y las reglas: equipo, renta, devolución, pago y deuda."""
 from django.db import models
 
 
@@ -12,7 +12,7 @@ class EquipmentStatus(models.TextChoices):
 
 
 class RentalStatus(models.TextChoices):
-    """Estados de la renta: se calculan desde sus momentos y nunca se guardan (RF-07)."""
+    """Estados de la renta: se calculan desde sus momentos y nunca se guardan (RF-08)."""
 
     RESERVED = "reserved", "Reservada"
     RENTED = "rented", "Rentada"
@@ -22,8 +22,23 @@ class RentalStatus(models.TextChoices):
 
 
 class ReturnResult(models.TextChoices):
-    """Cómo llegó una devolución comparada con las 09:00 del día de vencimiento (ENT-63)."""
+    """Cómo llegó una devolución comparada con el día de vencimiento (ENT-73)."""
 
     ON_TIME = "on_time", "A tiempo"
-    WITH_FINE = "with_fine", "Con multa"
-    EXTRA_DAY = "extra_day", "Se cobra un día más"
+    TOLERANCE = "tolerance", "En tolerancia, sin cobro"
+    LATE = "late", "Con atraso"
+
+
+class PaymentMethod(models.TextChoices):
+    """Cómo se pagó una renta: QR en línea (ENT-66) o efectivo en la tienda (ENT-70)."""
+
+    QR = "qr", "QR"
+    CASH = "cash", "Efectivo"
+
+
+class DebtReason(models.TextChoices):
+    """Por qué se debe: atraso en la devolución (ENT-73), reparación o baja del equipo (ENT-74)."""
+
+    LATE_RETURN = "late_return", "Devolución tardía"
+    REPAIR = "repair", "Reparación"
+    RETIRED = "retired", "Baja del equipo"

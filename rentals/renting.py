@@ -118,6 +118,7 @@ def create_rental(
             equipment=locked_equipment,
             start_datetime=start,
             end_datetime=end,
+            daily_price=rules.daily_price_for(locked_equipment.value),
             registered_by=registered_by,
         )
         if picked_up_now:
@@ -136,7 +137,7 @@ def check_period(start, end):
         )
     if not rules.is_within_max_duration(start, end):
         raise InvalidPeriodError(
-            f"La renta no puede durar más de {rules.MAX_RENTAL_DURATION.days} días."
+            f"La renta no puede durar más de {rules.MAX_RENTAL_DAYS} días."
         )
     if not rules.is_pickup_time_allowed(start):
         raise InvalidPeriodError(

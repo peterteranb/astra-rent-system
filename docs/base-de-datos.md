@@ -132,7 +132,8 @@ erDiagram
 
 - `end_datetime > start_datetime`.
 - `daily_price >= 0` y `amount >= 0`.
-- Únicos: `inventory_id`, `serial_number`, `email`, `phone`, `ROL.code`.
+- `value > 0` en `EQUIPO` (agregada al programar, 28/10: el valor de compra nunca es 0 ni negativo, ENT-83).
+- Únicos: `inventory_id`, `serial_number`, `email` (sin distinguir mayúsculas), `phone`, `ROL.code`.
 - `DEUDA`: un solo registro por (`rental_id`, `reason`).
 - Todas las claves foráneas con `PROTECT`: nada se borra.
 

@@ -18,7 +18,7 @@
       <tbody>
         {% for rental in reservations %}
           <tr>
-            <td data-label="Equipo">{{ rental.equipment.inventory_id }} · {{ rental.equipment.description }}</td>
+            <td data-label="Equipo">{{ rental.equipment.inventory_id }} · {{ rental.equipment.name }}</td>
             <td data-label="Cliente">{{ rental.client.get_full_name|default:rental.client.username }}</td>
             <td data-label="Desde">{{ rental.start_datetime|date:"d/m/Y H:i" }}</td>
             <td data-label="Hasta">{{ rental.end_datetime|date:"d/m/Y H:i" }}</td>

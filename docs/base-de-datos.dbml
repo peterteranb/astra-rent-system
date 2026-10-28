@@ -28,7 +28,7 @@ Table equipo {
   inventory_id varchar(9) [unique, note: 'AAA-00000']
   serial_number varchar [unique]
   name varchar
-  value decimal [note: 'precio de compra, Bs']
+  value decimal [note: 'precio de compra, Bs; CHECK value > 0']
   status varchar [note: 'available, in_review, in_repair, retired']
   created_at timestamp
 }

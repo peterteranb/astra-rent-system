@@ -16,9 +16,9 @@ admin.site.index_title = "Panel del administrador"
 class EquipmentAdmin(admin.ModelAdmin):
     """Lista de equipos con las acciones que corrigen su estado (CU-07)."""
 
-    list_display = ["inventory_id", "description", "serial_number", "status"]
+    list_display = ["inventory_id", "name", "serial_number", "value", "status"]
     list_filter = ["status"]
-    search_fields = ["inventory_id", "serial_number", "description"]
+    search_fields = ["inventory_id", "serial_number", "name"]
     # El estado solo cambia con las acciones, que pasan por history.change_status
     # y dejan cada cambio en el historial (ENT-34).
     readonly_fields = ["status"]
