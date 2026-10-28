@@ -251,6 +251,11 @@ class Rental(models.Model):
         due_date = timezone.localtime(self.end_datetime).date()
         return rules.late_days(timezone.localtime(self.returned_at), due_date)
 
+    @property
+    def late_charge(self):
+        """Devuelve lo que se cobra por el atraso: días de atraso × precio por día (ENT-73)."""
+        return self.late_days * self.daily_price
+
 
 class DebtQuerySet(models.QuerySet):
     """Consultas de deudas que usan el cliente, el operador y el panel."""

@@ -3,10 +3,11 @@ from django.db import transaction
 from django.utils import timezone
 
 from . import history
+from .payments import charge_debt
 from .errors import IncompleteReturnError, PaymentRequiredError, RentalStateError
 from .formatting import money_text, rental_state_message
 from .models import Rental
-from .statuses import EquipmentStatus, PaymentMethod, RentalStatus
+from .statuses import DebtReason, EquipmentStatus, PaymentMethod, RentalStatus
 
 
 def reservations_to_hand_over() -> list[Rental]:
@@ -79,10 +80,11 @@ def check_payment_received(rental, paid_now):
 
 
 def register_return(rental, staff_user, note) -> Rental:
-    """Guarda que el equipo volvió ahora y cómo llegó, y lo manda a revisión (RF-04, RF-08).
+    """Guarda que el equipo volvió ahora y cómo llegó, lo manda a revisión y cobra el atraso (RF-09, RF-10).
 
-    Lanza IncompleteReturnError sin observación y RentalStateError si la renta
-    está cancelada o ya devuelta; entonces nada cambia.
+    Desde las 12:01 del día de vencimiento crea una deuda de días de atraso ×
+    precio por día (ENT-73). Lanza IncompleteReturnError sin observación y
+    RentalStateError si la renta está cancelada o ya devuelta; entonces nada cambia.
     """
     note = note.strip()
     # La nota no necesita la base: se revisa antes de abrir la transacción.
@@ -101,6 +103,8 @@ def register_return(rental, staff_user, note) -> Rental:
             history.change_status(
                 locked_rental.equipment, EquipmentStatus.IN_REVIEW, staff_user, comment=note
             )
+        if locked_rental.late_days:
+            charge_debt(locked_rental, DebtReason.LATE_RETURN, locked_rental.late_charge)
         return locked_rental
 
 

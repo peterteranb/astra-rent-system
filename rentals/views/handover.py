@@ -17,6 +17,7 @@ from ..handover import (
 )
 from ..models import Rental
 from ..roles import OPERATOR, role_required
+from ..statuses import ReturnResult
 
 
 @role_required(OPERATOR)
@@ -76,8 +77,9 @@ def return_rental(request, rental_id):
 
 
 def return_message(rental):
-    """Mensaje de éxito de una devolución, que termina con cómo llegó (RF-02)."""
-    return (
-        f"Devolución registrada: {rental.equipment.inventory_id} recibido de "
-        f"{rental.client.username}. {rental.return_result.label}."
-    )
+    """Mensaje de éxito de una devolución, que termina con cómo llegó y, con atraso, la deuda (RF-09)."""
+    received = f"Devolución registrada: {rental.equipment.inventory_id} recibido de {rental.client.username}."
+    if rental.return_result != ReturnResult.LATE:
+        return f"{received} {rental.return_result.label}."
+    days = f"{rental.late_days} día" + ("s" if rental.late_days > 1 else "")
+    return f"{received} Con {days} de atraso: deuda de {money_text(rental.late_charge)}."

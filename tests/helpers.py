@@ -1,5 +1,6 @@
-"""Funciones de ayuda para las pruebas: fechas en hora de La Paz y una foto de la base para los rechazos."""
+"""Funciones de ayuda para las pruebas: fechas en hora de La Paz, una hora fija y una foto de la base para los rechazos."""
 from datetime import datetime, timedelta
+from unittest import mock
 
 from django.contrib.auth import get_user_model
 from django.utils import timezone
@@ -20,6 +21,11 @@ def dentro_de(dias, hora, minuto=0):
     """
     dia = timezone.localdate() + timedelta(days=dias)
     return local_datetime(dia.year, dia.month, dia.day, hora, minuto)
+
+
+def con_la_hora(momento):
+    """Hace que timezone.now() devuelva momento dentro de un bloque with, para probar horas exactas."""
+    return mock.patch("django.utils.timezone.now", return_value=momento)
 
 
 def foto_de_la_base():

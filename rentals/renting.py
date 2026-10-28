@@ -11,9 +11,10 @@ from django.shortcuts import get_object_or_404
 from django.utils import timezone
 
 from . import rules
-from .errors import EquipmentNotAvailableError, InvalidPeriodError, RentalStateError
-from .formatting import local_text, rental_state_message
+from .errors import DebtPendingError, EquipmentNotAvailableError, InvalidPeriodError, RentalStateError
+from .formatting import local_text, money_text, rental_state_message
 from .models import Equipment, EquipmentStatus, Rental
+from .payments import debt_total_of
 from .roles import CLIENT
 from .statuses import PaymentMethod, RentalStatus
 
@@ -110,6 +111,7 @@ def create_rental(
     # El periodo no necesita la base: se revisa antes de bloquear ninguna fila.
     check_period(start, end)
     with transaction.atomic():
+        check_client_has_no_debt(client, registered_by)
         # Bloquea la fila del equipo hasta el final: si dos clientes confirman a la
         # vez, el segundo espera aquí y ve la renta del primero (ENT-21: gana el primer clic).
         locked_equipment = Equipment.objects.select_for_update().get(pk=equipment.pk)
@@ -151,6 +153,24 @@ def check_period(start, end):
         raise InvalidPeriodError(
             f"La devolución debe ser hasta las {rules.LATEST_RETURN_TIME:%H:%M}."
         )
+
+
+def check_client_has_no_debt(client, registered_by):
+    """Lanza DebtPendingError si el cliente debe algo: no renta ni en línea ni en tienda (ENT-77).
+
+    El mensaje le habla al cliente en línea y al operador en la tienda.
+    """
+    total = debt_total_of(client)
+    if not total:
+        return
+    if registered_by is None:
+        raise DebtPendingError(
+            f"Tienes una deuda pendiente de {money_text(total)}. Págala en la tienda para volver a rentar."
+        )
+    raise DebtPendingError(
+        f"El cliente {client.username} tiene una deuda pendiente de {money_text(total)}. "
+        "Cóbrala antes de registrar otra renta."
+    )
 
 
 def check_equipment_is_free(equipment, start, end):

@@ -1,1 +1,1 @@
-"""Vistas agrupadas por caso de uso: renting, handover y review, más la redirección de inicio."""
+"""Vistas agrupadas por caso de uso: renting, handover, review, debts y la redirección de inicio."""

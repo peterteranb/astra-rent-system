@@ -8,7 +8,7 @@ from decimal import ROUND_HALF_UP, Decimal
 
 from django.conf import settings
 
-from .statuses import EquipmentStatus, ReturnResult
+from .statuses import DebtReason, EquipmentStatus, ReturnResult
 
 # ENT-19 y ENT-52: se recoge desde las 18:00 y se devuelve hasta las 09:00.
 # Son límites «desde» y «hasta»: el cliente elige cualquier hora dentro.
@@ -87,6 +87,15 @@ def charge_for(value, rate) -> Decimal:
 def daily_price_for(value) -> Decimal:
     """Devuelve el precio por día: DAILY_RATE del valor del equipo (ENT-71)."""
     return charge_for(value, settings.DAILY_RATE)
+
+
+def damage_charge(value, new_status):
+    """Devuelve (motivo, monto) de la deuda que deja una revisión, o None si el equipo queda disponible (ENT-74)."""
+    if new_status == EquipmentStatus.IN_REPAIR:
+        return DebtReason.REPAIR, charge_for(value, settings.REPAIR_CHARGE_RATE)
+    if new_status == EquipmentStatus.RETIRED:
+        return DebtReason.RETIRED, charge_for(value, settings.RETIRE_CHARGE_RATE)
+    return None
 
 
 def classify_return(returned_at, due_date) -> ReturnResult:

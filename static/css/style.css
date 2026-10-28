@@ -98,6 +98,16 @@ body {
   border-radius: 0.5rem;
 }
 
+.card__title {
+  margin: 0 0 0.5rem;
+  font-size: 1.1rem;
+}
+
+.totals {
+  margin: 0;
+  padding-left: 1.25rem;
+}
+
 .card + .card {
   margin-top: 1rem;
 }

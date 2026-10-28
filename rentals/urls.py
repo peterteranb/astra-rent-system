@@ -1,7 +1,7 @@
 """URLs de las páginas del cliente (catálogo, renta, confirmación, «Mis rentas») y del personal."""
 from django.urls import path
 
-from .views import handover, home, renting, review
+from .views import debts, handover, home, renting, review
 
 urlpatterns = [
     path("", renting.catalog, name="catalog"),
@@ -26,4 +26,6 @@ urlpatterns = [
     ),
     path("staff/walk-in/", renting.walk_in_rental, name="walk_in_rental"),
     path("my-rentals/", renting.client_rentals, name="client_rentals"),
+    path("staff/debts/", debts.staff_debts, name="staff_debts"),
+    path("staff/debts/<int:debt_id>/pay/", debts.pay_debt_view, name="pay_debt"),
 ]
