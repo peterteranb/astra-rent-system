@@ -1,11 +1,12 @@
 """Comando seed_demo: deja la base con el escenario de la demo, con fechas relativas a hoy.
 
-SOLO PARA LA DEMO: borra todas las deudas, rentas, historial y equipos y los vuelve a crear,
-así cada vez que se corre el escenario queda igual.
+SOLO PARA LA DEMO: vacía logs/negocio.log, borra todas las deudas, rentas, historial y equipos
+y los vuelve a crear, así cada vez que se corre el escenario queda igual.
 """
 from datetime import datetime, time, timedelta
 from decimal import Decimal
 
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand
 from django.db import transaction
@@ -15,6 +16,7 @@ from django.utils import timezone
 from accounts.models import Role
 from accounts.roles import ADMINISTRATOR, CLIENT, MAINTENANCE, OPERATOR
 from rentals.models import Debt, Equipment, EquipmentStatus, Rental, StatusChange
+from rentals.services.events import log_event
 from rentals.statuses import DebtReason
 from rentals.use_cases.history import change_status
 from rentals.use_cases.payments import charge_debt, pay_with_qr
@@ -79,12 +81,16 @@ DEMO_PURPOSE = {
 
 
 class Command(BaseCommand):
-    """Borra las deudas, rentas, historial y equipos y crea el escenario de la demo."""
+    """Vacía el log de negocio, borra las deudas, rentas, historial y equipos y crea el escenario de la demo."""
 
-    help = "SOLO PARA LA DEMO: borra deudas, rentas, historial y equipos y crea el escenario de la demo."
+    help = (
+        "SOLO PARA LA DEMO: vacía logs/negocio.log, borra deudas, rentas, historial y equipos "
+        "y crea el escenario de la demo."
+    )
 
     def handle(self, *args, **options):
-        """Crea todo el escenario en una sola transacción: o queda completo o no cambia nada."""
+        """Empieza el log de cero y crea todo el escenario en una sola transacción: o queda completo o no cambia nada."""
+        start_business_log()
         with override_settings(MAILERS=NO_EMAIL), transaction.atomic():
             # PROTECT: se borra de las hojas hacia la raíz.
             Debt.objects.all().delete()
@@ -109,6 +115,13 @@ class Command(BaseCommand):
                 f"{rentals or '-':<44} {DEMO_PURPOSE.get(unit.inventory_id, 'Libre')}"
             )
         self.stdout.write(self.style.SUCCESS("Escenario de la demo listo."))
+
+
+def start_business_log():
+    """Vacía logs/negocio.log y escribe DEMO_RESET como su primera línea."""
+    # Sin esto el archivo crece sin límite y en la presentación se mezclan las pruebas viejas con la demo.
+    settings.BUSINESS_LOG_FILE.write_text("", encoding="utf-8")
+    log_event("DEMO_RESET")
 
 
 def create_users():

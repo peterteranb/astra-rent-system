@@ -77,18 +77,20 @@ Todos usan la clave `Demo1234`.
 
 `seed_demo` crea 8 mesas (`MES-00001` a `MES-00008`) y 12 sillas (`SIL-00001` a `SIL-00012`) y deja listo un caso para cada demostración: una reserva pagada para hoy, una con el pago pendiente, una devolución atrasada, una renta vencida, un equipo en revisión, uno en reparación, uno de baja y la deuda de `cl02`. Al terminar imprime para qué sirve cada equipo.
 
-**Volver a cero:** `python manage.py seed_demo`. Es solo para la demo: borra deudas, rentas, historial y equipos y crea el mismo escenario con fechas relativas a hoy. No manda correos.
+**Volver a cero:** `python manage.py seed_demo`. Es solo para la demo: vacía `logs/negocio.log`, borra deudas, rentas, historial y equipos y crea el mismo escenario con fechas relativas a hoy. No manda correos.
 
-## Ver los logs
+## El log de negocio: `logs/negocio.log`
 
-Cada operación escribe una línea, aceptada o rechazada:
+Es el registro de cada acción del sistema, aceptada o rechazada: sirve para auditar quién hizo qué y cuándo, y para mostrar en la presentación lo que pasa detrás de cada botón. Cada operación escribe una línea:
 
 ```text
 2026-10-29 10:15:02 | INFO    | RENTAL_CREATED id=12 equipment=SIL-00001 client=cl01 paid=no registered_by=web
 2026-10-29 10:16:40 | WARNING | RENTAL_REJECTED reason="Tienes una deuda pendiente de 22,50 Bs. Págala en la tienda para volver a rentar."
 ```
 
-Se ven en la terminal del servidor y en `logs\negocio.log`. Para seguir el archivo desde otra terminal: `Get-Content logs\negocio.log -Wait`.
+- Las líneas salen en la terminal del servidor y en el archivo. Para seguir el archivo desde otra terminal: `Get-Content logs\negocio.log -Wait`.
+- El archivo crece con cada operación y se conserva entre arranques. `seed_demo` lo vacía al empezar y escribe `DEMO_RESET` como primera línea.
+- Para vaciarlo a mano, aunque el servidor esté corriendo: `Clear-Content logs\negocio.log`.
 
 ## Correo
 
@@ -108,10 +110,10 @@ Usan una base temporal que crea pytest-django; la base de la demo y `logs/negoci
 
 | Tipo | Carpeta | Pruebas | Tiempo |
 |---|---|---|---|
-| Unitarias (sin base de datos) | `tests/unit/` | 90 | 0,3 s |
-| Integración (casos de uso con la base, el log y el correo) | `tests/integration/` | 74 | 4,2 s |
-| Sistema (recorridos por la web) | `tests/system/` | 11 | 2,8 s |
-| **Total** | | **175** | **5,6 s** |
+| Unitarias (sin base de datos) | `tests/unit/` | 90 | 0,2 s |
+| Integración (casos de uso con la base, el log y el correo) | `tests/integration/` | 75 | 2,9 s |
+| Sistema (recorridos por la web) | `tests/system/` | 11 | 2,0 s |
+| **Total** | | **176** | **4,0 s** |
 
 Los tiempos de integración y sistema incluyen crear la base de pruebas.
 

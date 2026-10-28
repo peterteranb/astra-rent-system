@@ -133,6 +133,7 @@ INVENTORY_ID_FORMAT = r"^[A-Z]{3}-[0-9]{5}$"
 # Log de negocio (RC-05): cada operación del logger «rentals» va a la consola y a logs/negocio.log.
 LOG_DIR = BASE_DIR / "logs"
 LOG_DIR.mkdir(exist_ok=True)
+BUSINESS_LOG_FILE = LOG_DIR / "negocio.log"
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
@@ -147,7 +148,7 @@ LOGGING = {
         "console": {"class": "logging.StreamHandler", "formatter": "business"},
         "business_file": {
             "class": "logging.FileHandler",
-            "filename": LOG_DIR / "negocio.log",
+            "filename": BUSINESS_LOG_FILE,
             "encoding": "utf-8",
             "formatter": "business",
             "delay": True,

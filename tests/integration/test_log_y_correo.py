@@ -1,11 +1,14 @@
 """Prueba rentals/services/events.py y rentals/services/notifications.py con la base: el log de negocio de cada operación,
-aceptada o rechazada (RC-05), y los correos al cliente, que no tumban la operación si fallan (ENT-85)."""
+aceptada o rechazada (RC-05), los correos al cliente, que no tumban la operación si fallan (ENT-85), y el log
+que seed_demo vuelve a cero."""
 import smtplib
+from io import StringIO
 from unittest import mock
 
 import pytest
 from django.contrib.auth import get_user_model
 from django.core import mail
+from django.core.management import call_command
 
 from accounts.registration import SignUpData, register_client
 from rentals.errors import EquipmentNotAvailableError, InvalidStatusChangeError, RegistrationRejectedError
@@ -94,3 +97,15 @@ def test_si_el_correo_falla_la_cuenta_se_crea_y_el_log_dice_email_failed(db, cap
     assert get_user_model().objects.filter(username="cl03").exists()
     # Comprueba la línea del error, sin detalles técnicos del servidor
     assert caplog.messages[-1] == 'EMAIL_FAILED to=cl03 subject="Bienvenido a SergioCorp" error=SMTPException'
+
+
+def test_volver_a_cero_la_demo_vacia_el_log_y_empieza_con_demo_reset(db, settings, tmp_path, caplog):
+    # El log tiene líneas de pruebas viejas y se corre seed_demo -> el archivo se vacía y la primera línea es DEMO_RESET
+    log_viejo = tmp_path / "negocio.log"
+    log_viejo.write_text("2026-10-27 10:00:00 | INFO    | RENTAL_CREATED id=1\n", encoding="utf-8")
+    settings.BUSINESS_LOG_FILE = log_viejo
+    call_command("seed_demo", stdout=StringIO())
+    # Comprueba que no quedó la línea vieja (en las pruebas el log va solo a la consola)
+    assert log_viejo.read_text(encoding="utf-8") == ""
+    # Comprueba que DEMO_RESET va primero y que el escenario se creó
+    assert (caplog.messages[0], Equipment.objects.count()) == ("DEMO_RESET", 20)
