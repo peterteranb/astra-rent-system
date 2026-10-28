@@ -77,7 +77,7 @@ DEMO_PURPOSE = {
     "MES-00005": "CU-06 y CU-07: cl01 la modifica o la cancela (faltan más de 24 h)",
     "SIL-00001": "CU-09: venció ayer; al devolverla se crea la deuda por atraso",
     "SIL-00002": "CU-15: renta vencida hace 2 días, en el panel",
-    "SIL-00003": "CU-10: en revisión; reparación cobra 16 Bs a cl02",
+    "SIL-00003": "CU-10: en revisión; reparación con «Cobrar el daño» cobra 16 Bs a cl02",
     "SIL-00004": "CU-10: en reparación, pasa a disponible o baja",
     "SIL-00005": "CU-13: una baja ya no cambia",
     "SIL-00006": "CU-11: volvió con atraso; deuda pendiente de cl02",
