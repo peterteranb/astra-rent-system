@@ -2,8 +2,6 @@
 from dataclasses import dataclass
 from decimal import Decimal
 
-from django.db.models import Sum
-
 from .models import Debt, Rental
 from .payments import pending_totals_by_client
 from .review import equipment_to_review
@@ -43,7 +41,7 @@ def manager_summary(now) -> ManagerSummary:
         pending_payment=dashboard_list(rentals.pending_payment_at(now).order_by("start_datetime")),
         to_review=dashboard_list(equipment_to_review()),
         debts_by_client=dashboard_list(pending_totals_by_client()),
-        debt_total=Debt.objects.pending().aggregate(total=Sum("amount"))["total"] or Decimal("0.00"),
+        debt_total=Debt.objects.pending().total(),
     )
 
 

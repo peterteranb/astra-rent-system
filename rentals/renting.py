@@ -21,7 +21,7 @@ from .errors import (
     RentalStateError,
 )
 from .events import log_event, logs_rejection
-from .formatting import local_text, money_text, rental_state_message
+from .formatting import client_debt_message, days_text, local_text, money_text, rental_state_message
 from .models import Debt, Equipment, EquipmentStatus, Rental
 from .notifications import send_rental_cancelled, send_rental_confirmed
 from .payments import debt_total_of, pending_debts_of
@@ -63,6 +63,11 @@ class ClientRentals:
     rentals: list[Rental]
     debts: list[Debt]
     debt_total: Decimal
+
+    @property
+    def debt_message(self):
+        """El aviso de deuda que el cliente ve arriba de sus rentas."""
+        return client_debt_message(self.debt_total)
 
 
 def list_catalog():
@@ -274,9 +279,7 @@ def check_client_has_no_debt(client, registered_by):
     if not total:
         return
     if registered_by is None:
-        raise DebtPendingError(
-            f"Tienes una deuda pendiente de {money_text(total)}. Págala en la tienda para volver a rentar."
-        )
+        raise DebtPendingError(client_debt_message(total))
     raise DebtPendingError(
         f"El cliente {client.username} tiene una deuda pendiente de {money_text(total)}. "
         "Cóbrala antes de registrar otra renta."
@@ -356,9 +359,8 @@ def check_same_days(rental, start, end):
     days = rental.rental_days
     if rules.rental_days(start, end) == days:
         return
-    days_text = f"{days} día" + ("s" if days > 1 else "")
     raise InvalidModificationError(
-        f"La reserva es de {days_text}. Elige fechas con la misma cantidad de días; "
+        f"La reserva es de {days_text(days)}. Elige fechas con la misma cantidad de días; "
         "para cambiarla, cancela y renta de nuevo."
     )
 

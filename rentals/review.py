@@ -3,7 +3,6 @@ from dataclasses import dataclass
 from decimal import Decimal
 
 from django.db import transaction
-from django.db.models import Sum
 from django.utils import timezone
 
 from . import rules
@@ -93,8 +92,7 @@ def charge_damage(equipment, new_status):
 
 def damage_charged_on(rental) -> Decimal:
     """Devuelve lo que la renta ya debe o pagó por daño: sus deudas de reparación y de baja."""
-    damage = rental.debts.filter(reason__in=[DebtReason.REPAIR, DebtReason.RETIRED])
-    return damage.aggregate(total=Sum("amount"))["total"] or Decimal("0")
+    return rental.debts.filter(reason__in=[DebtReason.REPAIR, DebtReason.RETIRED]).total()
 
 
 def last_returned_rental(equipment):

@@ -15,6 +15,16 @@ def money_text(amount):
     return f"{number_format(amount, 2, force_grouping=True)} Bs"
 
 
+def days_text(days):
+    """Escribe una cantidad de días con su plural, por ejemplo «1 día» o «3 días»."""
+    return f"{days} día" + ("s" if days > 1 else "")
+
+
+def client_debt_message(total):
+    """Le dice al cliente cuánto debe y qué hacer para volver a rentar (ENT-77)."""
+    return f"Tienes una deuda pendiente de {money_text(total)}. Págala en la tienda para volver a rentar."
+
+
 def rental_state_message(rental, status):
     """Dice por qué la renta ya no está «Reservada», con el momento en que dejó de estarlo."""
     inventory_id = rental.equipment.inventory_id

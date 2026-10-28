@@ -15,7 +15,7 @@ from rentals.errors import RegistrationRejectedError
 from rentals.events import log_event, logs_rejection
 from rentals.notifications import send_welcome
 
-from .models import PHONE_FORMAT, Role, User
+from .models import PHONE_FORMAT, PHONE_FORMAT_MESSAGE, Role, User
 
 REJECTION_TITLE = "No se creó la cuenta:"
 
@@ -124,7 +124,7 @@ def format_causes(data):
     if data.email and not is_valid(validate_email, data.email):
         causes.append("El correo no es válido.")
     if data.phone and not re.fullmatch(PHONE_FORMAT, data.phone):
-        causes.append("El teléfono debe tener entre 7 y 15 números.")
+        causes.append(PHONE_FORMAT_MESSAGE)
     if data.username and not is_valid(UnicodeUsernameValidator(), data.username):
         causes.append("El usuario solo puede tener letras, números y los signos @ . + - _")
     return causes

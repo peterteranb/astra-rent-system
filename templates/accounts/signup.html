@@ -5,7 +5,7 @@
 
 {% block content %}
   <section class="card login">
-    {% include "includes/rejection.html" with title="No se creó la cuenta:" %}
+    {% include "includes/rejection.html" %}
 
     <form class="form" method="post" action="{% if at_store %}{% url 'register_client_at_store' %}{% else %}{% url 'sign_up' %}{% endif %}">
       {% csrf_token %}

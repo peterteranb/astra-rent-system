@@ -19,6 +19,28 @@ admin.site.index_title = "Panel del administrador"
 ADMIN_PAGE_SIZE = 50
 
 
+def apply_to_selected(model_admin, request, queryset, operation, texts):
+    """Aplica el caso de uso operation a cada fila marcada y avisa cuántas cambiaron y cuáles no.
+
+    texts es (título de las hechas, título de las rechazadas, cómo nombrar una fila).
+    """
+    done_title, skipped_title, describe = texts
+    done = 0
+    skipped = []
+    for item in queryset:
+        try:
+            operation(item)
+        except OperationRejectedError:
+            skipped.append(describe(item))
+        else:
+            done += 1
+    model_admin.message_user(request, f"{done_title}: {done}.")
+    if skipped:
+        model_admin.message_user(
+            request, f"{skipped_title}: {', '.join(skipped)}.", level=messages.WARNING
+        )
+
+
 @admin.register(Equipment)
 class EquipmentAdmin(admin.ModelAdmin):
     """Equipos: el admin los registra con las reglas del modelo (CU-12) y corrige su estado con acciones (CU-13)."""
@@ -59,22 +81,13 @@ class EquipmentAdmin(admin.ModelAdmin):
 
         Es una corrección: no crea deudas ni cancela reservas (ENT-75).
         """
-        changed = 0
-        skipped = []
-        for equipment in queryset:
-            try:
-                change_status(equipment, new_status, request.user)
-            except OperationRejectedError:
-                skipped.append(equipment.inventory_id)
-            else:
-                changed += 1
-        self.message_user(request, f"Equipos actualizados: {changed}.")
-        if skipped:
-            self.message_user(
-                request,
-                f"No se cambiaron: {', '.join(skipped)}.",
-                level=messages.WARNING,
-            )
+        apply_to_selected(
+            self,
+            request,
+            queryset,
+            lambda equipment: change_status(equipment, new_status, request.user),
+            ("Equipos actualizados", "No se cambiaron", lambda equipment: equipment.inventory_id),
+        )
 
 
 class SituationFilter(admin.SimpleListFilter):
@@ -162,22 +175,13 @@ class RentalAdmin(admin.ModelAdmin):
     @admin.action(description="Cancelar reserva")
     def cancel_reservations(self, request, queryset):
         """Cancela las reservas marcadas y avisa cuántas se cancelaron y cuáles no."""
-        cancelled = 0
-        skipped = []
-        for rental in queryset:
-            try:
-                cancel_rental(rental, request.user)
-            except OperationRejectedError:
-                skipped.append(f"#{rental.pk} {rental}")
-            else:
-                cancelled += 1
-        self.message_user(request, f"Reservas canceladas: {cancelled}.")
-        if skipped:
-            self.message_user(
-                request,
-                f"No se cancelaron: {', '.join(skipped)}.",
-                level=messages.WARNING,
-            )
+        apply_to_selected(
+            self,
+            request,
+            queryset,
+            lambda rental: cancel_rental(rental, request.user),
+            ("Reservas canceladas", "No se cancelaron", lambda rental: f"#{rental.pk} {rental}"),
+        )
 
 
 class PaidFilter(admin.SimpleListFilter):
@@ -193,7 +197,7 @@ class PaidFilter(admin.SimpleListFilter):
     def queryset(self, request, queryset):
         """Aplica la opción elegida."""
         if self.value() == "no":
-            return queryset.filter(paid_at__isnull=True)
+            return queryset.pending()
         if self.value() == "si":
             return queryset.filter(paid_at__isnull=False)
         return queryset
@@ -251,20 +255,13 @@ class DebtAdmin(admin.ModelAdmin):
     @admin.action(description="Registrar pago")
     def register_payments(self, request, queryset):
         """Registra el pago de las deudas marcadas y avisa cuántas se cobraron y cuáles ya estaban pagadas."""
-        paid = 0
-        skipped = []
-        for debt in queryset:
-            try:
-                pay_debt(debt, request.user)
-            except OperationRejectedError:
-                skipped.append(f"#{debt.pk}")
-            else:
-                paid += 1
-        self.message_user(request, f"Deudas cobradas: {paid}.")
-        if skipped:
-            self.message_user(
-                request, f"Ya estaban pagadas: {', '.join(skipped)}.", level=messages.WARNING
-            )
+        apply_to_selected(
+            self,
+            request,
+            queryset,
+            lambda debt: pay_debt(debt, request.user),
+            ("Deudas cobradas", "Ya estaban pagadas", lambda debt: f"#{debt.pk}"),
+        )
 
 
 @admin.register(StatusChange)

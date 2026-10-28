@@ -7,7 +7,7 @@ from django.shortcuts import redirect, render
 
 from ..errors import RejectedWithCausesError
 from ..forms import EquipmentForm
-from ..inventory import register_equipment
+from ..inventory import REJECTION_TITLE, register_equipment
 from ..roles import ADMINISTRATOR, role_required
 
 
@@ -19,9 +19,10 @@ def register_equipment_view(request):
         try:
             equipment = register_equipment(**form.cleaned_data, registered_by=request.user)
         except RejectedWithCausesError as error:
-            for cause in error.causes:
-                form.add_error(None, cause)
+            error.add_to(form)
         else:
             messages.success(request, f"Equipo registrado: {equipment}.")
             return redirect("register_equipment")
-    return render(request, "rentals/equipment_form.html", {"form": form})
+    return render(
+        request, "rentals/equipment_form.html", {"form": form, "rejection_title": REJECTION_TITLE}
+    )

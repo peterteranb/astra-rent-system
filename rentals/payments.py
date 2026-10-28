@@ -102,8 +102,7 @@ def pending_debts_of(client):
 
 def debt_total_of(client) -> Decimal:
     """Suma las deudas sin pagar del cliente; se calcula, no se guarda (ENT-76)."""
-    total = pending_debts_of(client).aggregate(total=Sum("amount"))["total"]
-    return total or Decimal("0.00")
+    return Debt.objects.pending().filter(rental__client=client).total()
 
 
 def pending_totals_by_client():

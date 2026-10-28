@@ -6,6 +6,7 @@ from django.db import models
 from django.db.models.functions import Lower
 
 PHONE_FORMAT = r"^[0-9]{7,15}$"
+PHONE_FORMAT_MESSAGE = "El teléfono debe tener entre 7 y 15 números."
 
 
 class Role(models.Model):
@@ -52,7 +53,7 @@ class User(AbstractUser):
         verbose_name="Teléfono",
         max_length=15,
         unique=True,
-        validators=[RegexValidator(PHONE_FORMAT, "El teléfono debe tener entre 7 y 15 números.")],
+        validators=[RegexValidator(PHONE_FORMAT, PHONE_FORMAT_MESSAGE)],
         error_messages={"unique": "Ya existe una cuenta con este teléfono."},
     )
     role = models.ForeignKey(

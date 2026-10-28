@@ -5,6 +5,7 @@ from decimal import Decimal
 from django.conf import settings
 from django.core.validators import MinValueValidator, RegexValidator
 from django.db import models
+from django.db.models import Sum
 from django.utils import timezone
 
 from . import rules
@@ -272,21 +273,23 @@ class Rental(models.Model):
         )
 
     @property
+    def due_date(self):
+        """Devuelve el día de vencimiento en hora de La Paz: los límites de la devolución son horas de ese día."""
+        return timezone.localtime(self.end_datetime).date()
+
+    @property
     def return_result(self):
         """Devuelve cómo llegó la devolución, o None mientras el equipo no vuelve (RF-09)."""
         if self.returned_at is None:
             return None
-        # Hora local: los límites son horas de reloj de La Paz (09:00, 12:00).
-        due_date = timezone.localtime(self.end_datetime).date()
-        return rules.classify_return(timezone.localtime(self.returned_at), due_date)
+        return rules.classify_return(timezone.localtime(self.returned_at), self.due_date)
 
     @property
     def late_days(self):
         """Devuelve los días de atraso de la devolución, o 0 mientras el equipo no vuelve (ENT-73)."""
         if self.returned_at is None:
             return 0
-        due_date = timezone.localtime(self.end_datetime).date()
-        return rules.late_days(timezone.localtime(self.returned_at), due_date)
+        return rules.late_days(timezone.localtime(self.returned_at), self.due_date)
 
     @property
     def late_charge(self):
@@ -300,6 +303,10 @@ class DebtQuerySet(models.QuerySet):
     def pending(self):
         """Deudas que todavía no se pagaron."""
         return self.filter(paid_at__isnull=True)
+
+    def total(self) -> Decimal:
+        """Suma los montos de estas deudas; se calcula, no se guarda (ENT-76)."""
+        return self.aggregate(total=Sum("amount"))["total"] or Decimal("0.00")
 
 
 class Debt(models.Model):

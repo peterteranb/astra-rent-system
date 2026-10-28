@@ -10,7 +10,7 @@ from rentals.errors import RejectedWithCausesError
 from rentals.roles import OPERATOR, role_required
 
 from .forms import SignUpForm
-from .registration import SignUpData, register_client
+from .registration import REJECTION_TITLE, SignUpData, register_client
 
 
 def sign_up(request):
@@ -23,7 +23,7 @@ def sign_up(request):
         if user:
             messages.success(request, f"Cuenta creada. Ya puedes iniciar sesión con {user.username}.")
             return redirect("login")
-    return render(request, "accounts/signup.html", {"form": form, "at_store": False})
+    return render(request, "accounts/signup.html", signup_context(form, at_store=False))
 
 
 @role_required(OPERATOR)
@@ -35,7 +35,7 @@ def register_client_at_store(request):
         if user:
             messages.success(request, f"Cuenta creada para {user.username}. Ya puedes registrar su renta.")
             return redirect(f"{reverse('walk_in_rental')}?q={user.username}")
-    return render(request, "accounts/signup.html", {"form": form, "at_store": True})
+    return render(request, "accounts/signup.html", signup_context(form, at_store=True))
 
 
 def try_to_register(form, registered_by=None):
@@ -43,6 +43,10 @@ def try_to_register(form, registered_by=None):
     try:
         return register_client(SignUpData(**form.cleaned_data), registered_by)
     except RejectedWithCausesError as error:
-        for cause in error.causes:
-            form.add_error(None, cause)
+        error.add_to(form)
         return None
+
+
+def signup_context(form, at_store):
+    """Datos de la página de registro, en la web o en la tienda."""
+    return {"form": form, "at_store": at_store, "rejection_title": REJECTION_TITLE}

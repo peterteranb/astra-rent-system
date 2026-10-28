@@ -7,7 +7,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
 from ..errors import OperationRejectedError
-from ..formatting import money_text
+from ..formatting import days_text, money_text
 from ..forms import ReturnForm
 from ..handover import (
     register_pickup,
@@ -81,5 +81,4 @@ def return_message(rental):
     received = f"Devolución registrada: {rental.equipment.inventory_id} recibido de {rental.client.username}."
     if rental.return_result != ReturnResult.LATE:
         return f"{received} {rental.return_result.label}."
-    days = f"{rental.late_days} día" + ("s" if rental.late_days > 1 else "")
-    return f"{received} Con {days} de atraso: deuda de {money_text(rental.late_charge)}."
+    return f"{received} Con {days_text(rental.late_days)} de atraso: deuda de {money_text(rental.late_charge)}."

@@ -3,27 +3,21 @@ from django.db import transaction
 from django.utils import timezone
 
 from . import history
-from .events import log_event, logs_rejection
-from .payments import charge_debt
 from .errors import IncompleteReturnError, PaymentRequiredError, RentalStateError
+from .events import log_event, logs_rejection
 from .formatting import money_text, rental_state_message
 from .models import Rental
+from .payments import charge_debt
 from .statuses import DebtReason, EquipmentStatus, PaymentMethod, RentalStatus
 
 
-def reservations_to_hand_over() -> list[Rental]:
+def reservations_to_hand_over():
     """Devuelve las rentas «Reservadas» que el operador todavía puede entregar, la más próxima primero."""
-    pending = (
-        Rental.objects.filter(
-            picked_up_at__isnull=True, cancelled_at__isnull=True, returned_at__isnull=True
-        )
+    return (
+        Rental.objects.reserved_at(timezone.now())
         .select_related("equipment", "client")
         .order_by("start_datetime")
     )
-    # El vencimiento depende de la hora de La Paz, así que lo decide status_at()
-    # con la misma regla de todo el sistema en vez de repetirla en SQL.
-    now = timezone.now()
-    return [rental for rental in pending if rental.status_at(now) == RentalStatus.RESERVED]
 
 
 def rentals_to_receive():

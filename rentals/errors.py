@@ -14,6 +14,11 @@ class RejectedWithCausesError(OperationRejectedError):
         self.title = title
         self.causes = causes
 
+    def add_to(self, form):
+        """Pone cada causa como error general del formulario, para mostrarlas todas juntas."""
+        for cause in self.causes:
+            form.add_error(None, cause)
+
 
 class InvalidPeriodError(OperationRejectedError):
     """Las fechas, los horarios o la duración del periodo pedido rompen una regla."""
