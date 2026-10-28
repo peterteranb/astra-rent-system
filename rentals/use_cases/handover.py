@@ -2,8 +2,9 @@
 from django.db import transaction
 from django.utils import timezone
 
-from ..errors import IncompleteReturnError, PaymentRequiredError, RentalStateError
-from ..models import Rental
+from .. import rules
+from ..errors import EquipmentNotAvailableError, IncompleteReturnError, PaymentRequiredError, RentalStateError
+from ..models import Equipment, Rental
 from ..services.events import log_event, logs_rejection
 from ..services.formatting import money_text, rental_state_message
 from ..statuses import DebtReason, EquipmentStatus, PaymentMethod, RentalStatus
@@ -21,15 +22,8 @@ def reservations_to_hand_over():
 
 
 def rentals_to_receive():
-    """Devuelve las rentas ni devueltas ni canceladas, la que vence primero arriba.
-
-    Incluye las que nunca se recogieron (ENT-60: el sistema deja devolverlas).
-    """
-    return (
-        Rental.objects.filter(returned_at__isnull=True, cancelled_at__isnull=True)
-        .select_related("equipment", "client")
-        .order_by("end_datetime")
-    )
+    """Devuelve las rentas «Rentadas», la que vence primero arriba: solo esas se devuelven (ENT-93)."""
+    return Rental.objects.rented().select_related("equipment", "client").order_by("end_datetime")
 
 
 @logs_rejection("PICKUP_REJECTED")
@@ -38,15 +32,19 @@ def register_pickup(rental, staff_user, paid_now=False) -> Rental:
 
     Con el pago pendiente, solo se entrega si paid_now dice que el cliente pagó en
     efectivo en ese momento (ENT-68). Equipment.status no se toca: «Rentada» se
-    calcula desde picked_up_at. Lanza RentalStateError si no está «Reservada» y
+    calcula desde picked_up_at. Lanza RentalStateError si no está «Reservada»,
+    EquipmentNotAvailableError si el equipo no está «Disponible» y
     PaymentRequiredError si falta el pago.
     """
     with transaction.atomic():
-        # Bloquea la fila y la vuelve a leer: si dos operadores hacen clic a la
-        # vez, el segundo espera aquí y ve el recojo del primero.
+        # Primero el equipo y después la renta, como create_rental: así un cambio de
+        # estado y un recojo a la vez no se esperan uno al otro. Si dos operadores
+        # hacen clic a la vez, el segundo espera aquí y ve el recojo del primero.
+        locked_equipment = Equipment.objects.select_for_update().get(pk=rental.equipment_id)
         locked_rental = Rental.objects.select_for_update().get(pk=rental.pk)
         now = timezone.now()
         check_can_pick_up(locked_rental, now)
+        check_equipment_can_go_out(locked_equipment)
         charged_now = not locked_rental.is_paid
         if charged_now:
             check_payment_received(locked_rental, paid_now)
@@ -83,6 +81,16 @@ def check_can_pick_up(rental, now):
         raise RentalStateError(rental_state_message(rental, status))
 
 
+def check_equipment_can_go_out(equipment):
+    """Lanza EquipmentNotAvailableError si el equipo no está «Disponible», por ejemplo en revisión."""
+    if rules.is_rentable_status(equipment.status):
+        return
+    raise EquipmentNotAvailableError(
+        f"El equipo {equipment.inventory_id} está {equipment.get_status_display().lower()}. "
+        "Espera a que mantenimiento lo revise o cancela la reserva."
+    )
+
+
 def check_payment_received(rental, paid_now):
     """Lanza PaymentRequiredError si la renta tiene el pago pendiente y el operador no lo cobró."""
     if not paid_now:
@@ -98,7 +106,7 @@ def register_return(rental, staff_user, note) -> Rental:
 
     Desde las 12:01 del día de vencimiento crea una deuda de días de atraso ×
     precio por día (ENT-73). Lanza IncompleteReturnError sin observación y
-    RentalStateError si la renta está cancelada o ya devuelta; entonces nada cambia.
+    RentalStateError si la renta no está «Rentada» (ENT-93); entonces nada cambia.
     """
     note = note.strip()
     # La nota no necesita la base: se revisa antes de abrir la transacción.
@@ -112,8 +120,9 @@ def register_return(rental, staff_user, note) -> Rental:
         locked_rental.received_by = staff_user
         locked_rental.return_note = note
         locked_rental.save(update_fields=["returned_at", "received_by", "return_note"])
-        # ENT-60: una renta nunca recogida se puede devolver aunque el equipo ya esté en revisión.
-        if locked_rental.equipment.status != EquipmentStatus.IN_REVIEW:
+        # Si mantenimiento ya le cambió el estado mientras estaba afuera (ENT-90), se
+        # respeta: la devolución no puede fallar por eso (D-28).
+        if rules.is_rentable_status(locked_rental.equipment.status):
             history.change_status(
                 locked_rental.equipment, EquipmentStatus.IN_REVIEW, staff_user, comment=note
             )
@@ -132,7 +141,12 @@ def register_return(rental, staff_user, note) -> Rental:
 
 
 def check_can_return(rental):
-    """Lanza RentalStateError si la renta está cancelada o ya devuelta."""
+    """Lanza RentalStateError si la renta no está «Rentada»: solo se devuelve un equipo que salió (ENT-93)."""
     status = rental.status
-    if status in (RentalStatus.CANCELLED, RentalStatus.RETURNED):
-        raise RentalStateError(rental_state_message(rental, status))
+    if status == RentalStatus.RENTED:
+        return
+    if status in (RentalStatus.RESERVED, RentalStatus.NOT_PICKED_UP):
+        raise RentalStateError(
+            f"La renta de {rental.equipment.inventory_id} nunca se entregó: solo se devuelve una renta «Rentada»."
+        )
+    raise RentalStateError(rental_state_message(rental, status))

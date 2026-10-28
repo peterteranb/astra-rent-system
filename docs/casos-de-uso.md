@@ -488,14 +488,14 @@ sequenceDiagram
 | | |
 |---|---|
 | **Actor** | Operador (`op01`) |
-| **Precondición** | La renta no está cancelada ni devuelta. |
+| **Precondición** | La renta está «Rentada»: el equipo salió y todavía no volvió (ENT-93). |
 | **Flujo normal** | 1. Abre «Devoluciones pendientes». 2. Elige la renta y escribe cómo llegó el equipo. 3. Presiona «Registrar devolución». 4. Ve «Devolución registrada: MES-00004 recibido de cl01. A tiempo.» (o «En tolerancia, sin cobro.»). |
-| **Flujos alternativos** | Sin observación: «Escribe cómo llegó el equipo.» · Ya devuelta o cancelada: «La renta de MES-00004 ya fue devuelta el 28/10/2026 08:30.» · Llega desde las 12:01 del día de vencimiento: se crea la deuda y ve «… Con 2 días de atraso: deuda de 40,00 Bs.»; el cliente recibe el correo de la deuda. · Una renta nunca recogida cuyo equipo ya está «En revisión» se devuelve sin cambiar otra vez el estado (ENT-60). |
+| **Flujos alternativos** | Sin observación: «Escribe cómo llegó el equipo.» · Nunca se entregó: «La renta de MES-00004 nunca se entregó: solo se devuelve una renta «Rentada».» · Ya devuelta o cancelada: «La renta de MES-00004 ya fue devuelta el 28/10/2026 08:30.» · Llega desde las 12:01 del día de vencimiento: se crea la deuda y ve «… Con 2 días de atraso: deuda de 40,00 Bs.»; el cliente recibe el correo de la deuda. · Si mantenimiento ya le cambió el estado mientras estaba afuera, se respeta (D-28). |
 | **Postcondición** | La renta queda «Devuelta» y el equipo «En revisión». |
 | **Guarda** | `returned_at`, `received_by`, `return_note`; el estado del equipo y una fila en `rentals_statuschange`; con atraso, una fila en `rentals_debt` con `late_return`. |
 | **Log** | `RETURN_REGISTERED id=12 equipment=MES-00004 client=cl01 by=op01 result=late late_days=2` · `STATUS_CHANGED equipment=MES-00004 old=available new=in_review by=op01` · `DEBT_CREATED id=3 rental=12 client=cl01 reason=late_return amount=40.00` · `RETURN_REJECTED reason="…"` |
 | **Correo** | Deuda creada (si hubo atraso). |
-| **Origen** | ENT-03, ENT-60, ENT-73, PRE-05 |
+| **Origen** | ENT-03, ENT-73, ENT-93, PRE-05 |
 
 ```mermaid
 sequenceDiagram
@@ -511,12 +511,12 @@ sequenceDiagram
         V-->>O: el formulario con «Escribe cómo llegó el equipo.»
     else hay observación
         U->>BD: bloquea la renta (check_can_return)
-        alt ya devuelta o cancelada
+        alt no está «Rentada»
             U-->>V: RentalStateError
-            V-->>O: el formulario con «La renta de MES-00004 ya fue devuelta el …»
+            V-->>O: el formulario con «… nunca se entregó …» o «… ya fue devuelta el …»
         else se puede devolver
             U->>BD: guarda returned_at, received_by y return_note
-            U->>H: change_status(equipo, «En revisión», op01, nota), salvo que ya esté en revisión (ENT-60)
+            U->>H: change_status(equipo, «En revisión», op01, nota), si sigue «Disponible» (D-28)
             H->>BD: bloquea el equipo, guarda el estado y la fila de historial
             alt desde las 12:01 del día de vencimiento
                 U->>BD: charge_debt: deuda late_return = días de atraso × precio diario
