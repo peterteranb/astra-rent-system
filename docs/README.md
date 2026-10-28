@@ -16,8 +16,8 @@ Versión final del 28/10/2026. Cómo instalar y correr el sistema está en el [R
 | ¿Qué tablas hay, por qué existe cada una y qué se calcula sin guardarse? | [base-de-datos.md](base-de-datos.md); el diagrama editable, en [base-de-datos.dbml](base-de-datos.dbml). |
 | ¿Cómo está hecho el sistema: capas, carpetas, despliegue, log y correo? | [arquitectura.md](arquitectura.md). |
 | ¿Qué endpoints JSON tiene el frontend, qué mandan y qué responden? | [api.md](api.md): cada endpoint con quién lo usa, ejemplos y errores, y cómo conectar React en desarrollo. |
-| ¿Qué respondió el cliente? | [respuestas-del-cliente.md](respuestas-del-cliente.md): ENT-01 a ENT-87; desde ENT-66 separa lo que dijo el cliente de lo que completó el equipo. |
-| ¿Qué decidió el equipo donde el cliente no respondió? | [decisiones.md](decisiones.md): D-01 a D-26, con su motivo y su ENT. |
+| ¿Qué respondió el cliente? | [respuestas-del-cliente.md](respuestas-del-cliente.md): ENT-01 a ENT-98; desde ENT-66 separa lo que dijo el cliente de lo que completó el equipo. |
+| ¿Qué decidió el equipo donde el cliente no respondió? | [decisiones.md](decisiones.md): D-01 a D-27, con su motivo y su ENT. |
 | ¿Qué pruebas hay y cómo se corren? | [arquitectura.md](arquitectura.md#pruebas-y-ci) (tipos y CI), la sección «Pruebas» del [README del proyecto](../README.md#pruebas) (comando, cantidad y tiempo) y la columna «Cómo se verifica» de cada RF. |
 
 ## Cómo leer los IDs
