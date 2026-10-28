@@ -300,6 +300,12 @@ def cancel_rental(rental, cancelled_by, reason="") -> Rental:
     return locked_rental
 
 
+def cancel_reservations(rentals, cancelled_by, reason) -> list[Rental]:
+    """Cancela las rentas de rentals todavía no recogidas, cada una con su correo y su línea de log, y las devuelve."""
+    reservations = rentals.reserved_at(timezone.now())
+    return [cancel_rental(reservation, cancelled_by, reason) for reservation in reservations]
+
+
 def default_cancellation_reason(rental, cancelled_by):
     """Dice quién canceló, para el correo del cliente."""
     if rental.client_id == cancelled_by.pk:

@@ -1,10 +1,17 @@
-"""Caso de uso CU-13, y un paso de CU-09 y CU-10: cambia el estado de un equipo y guarda su historial (ENT-34: quién, cuándo y por qué)."""
+"""Caso de uso CU-13, y un paso de CU-09 y CU-10: cambia el estado de un equipo, guarda su historial (ENT-34) y, si sale de servicio, cancela sus reservas."""
 from django.db import transaction
 
 from ..errors import InvalidStatusChangeError
-from ..models import Equipment, StatusChange
+from ..models import Equipment, Rental, StatusChange
 from ..services.events import log_event, logs_rejection
 from ..statuses import EquipmentStatus
+from .renting import cancel_reservations
+
+# ENT-88: un equipo que pasa a reparación o baja cancela sus reservas todavía no recogidas.
+OUT_OF_SERVICE_REASONS = {
+    EquipmentStatus.IN_REPAIR: "El equipo no está disponible: pasó a reparación.",
+    EquipmentStatus.RETIRED: "El equipo no está disponible: se dio de baja.",
+}
 
 
 @logs_rejection("STATUS_CHANGE_REJECTED")
@@ -51,3 +58,20 @@ def check_status_can_change(equipment, new_status):
         raise InvalidStatusChangeError(
             f"El equipo {equipment.inventory_id} ya está «{equipment.get_status_display()}»."
         )
+
+
+def correct_status(equipment, new_status, user) -> StatusChange:
+    """El admin corrige el estado de un equipo (CU-13); si sale de servicio cancela sus reservas, pero nunca cobra (ENT-75)."""
+    # Una sola transacción: el estado y las cancelaciones se guardan juntos o nada.
+    with transaction.atomic():
+        change = change_status(equipment, new_status, user)
+        cancel_if_out_of_service(change.equipment, new_status, user)
+    return change
+
+
+def cancel_if_out_of_service(equipment, new_status, user) -> list[Rental]:
+    """Cancela las reservas no recogidas del equipo si new_status lo saca de servicio y las devuelve (ENT-88)."""
+    reason = OUT_OF_SERVICE_REASONS.get(new_status)
+    if reason is None:
+        return []
+    return cancel_reservations(Rental.objects.filter(equipment=equipment), user, reason)

@@ -3,16 +3,14 @@ from dataclasses import dataclass
 from decimal import Decimal
 
 from django.db import transaction
-from django.utils import timezone
 
 from .. import rules
 from ..errors import InvalidStatusChangeError
 from ..models import Debt, Equipment, Rental, StatusChange
 from ..services.events import logs_rejection
 from ..statuses import DebtReason, EquipmentStatus
-from .history import change_status
+from .history import cancel_if_out_of_service, change_status
 from .payments import charge_debt
-from .renting import cancel_rental
 
 # ENT-49: desde revisión o reparación un equipo pasa a disponible, a
 # reparación o a baja, y la baja es definitiva.
@@ -55,8 +53,8 @@ def review_choices_for(equipment):
 def review_equipment(equipment, staff_user, new_status, comment="") -> ReviewOutcome:
     """Guarda el estado nuevo de un equipo revisado con su historial, su deuda y sus cancelaciones.
 
-    Reparación o baja cobran al cliente de la última renta devuelta; la baja además
-    cancela las reservas futuras del equipo (ENT-74). Lanza InvalidStatusChangeError
+    Reparación o baja cobran al cliente de la última renta devuelta (ENT-74) y
+    cancelan las reservas no recogidas del equipo (ENT-88). Lanza InvalidStatusChangeError
     si new_status no es un resultado de revisión o el equipo no puede cambiar.
     """
     check_review_result(equipment, new_status)
@@ -64,9 +62,7 @@ def review_equipment(equipment, staff_user, new_status, comment="") -> ReviewOut
     with transaction.atomic():
         change = change_status(equipment, new_status, staff_user, comment.strip())
         debt = charge_damage(change.equipment, new_status)
-        cancelled = []
-        if new_status == EquipmentStatus.RETIRED:
-            cancelled = cancel_future_reservations(change.equipment, staff_user)
+        cancelled = cancel_if_out_of_service(change.equipment, new_status, staff_user)
     return ReviewOutcome(change, debt, cancelled)
 
 
@@ -98,10 +94,3 @@ def damage_charged_on(rental) -> Decimal:
 def last_returned_rental(equipment):
     """Devuelve la última renta devuelta del equipo, o None si nunca volvió de una renta."""
     return equipment.rentals.filter(returned_at__isnull=False).order_by("-returned_at").first()
-
-
-def cancel_future_reservations(equipment, staff_user):
-    """Cancela las reservas todavía no recogidas de un equipo dado de baja y las devuelve (ENT-74)."""
-    reservations = Rental.objects.reserved_at(timezone.now()).filter(equipment=equipment)
-    reason = "El equipo se dio de baja en la revisión."
-    return [cancel_rental(reservation, staff_user, reason) for reservation in reservations]
