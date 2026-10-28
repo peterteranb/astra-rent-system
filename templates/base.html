@@ -22,7 +22,8 @@
           <a href="{% url 'maintenance' %}">Mantenimiento</a>
         {% endif %}
         {% if is_admin %}
-          <a href="{% url 'admin:index' %}">Panel de administración</a>
+          <a href="{% url 'register_equipment' %}">Registrar equipo</a>
+          <a href="{% url 'admin:index' %}">Admin</a>
         {% endif %}
       </nav>
     {% elif user.is_authenticated %}

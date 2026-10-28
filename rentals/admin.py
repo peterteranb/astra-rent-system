@@ -2,6 +2,7 @@
 from django.contrib import admin, messages
 
 from .errors import OperationRejectedError
+from .forms import EquipmentAdminForm
 from .history import change_status
 from .models import Equipment, Rental, StatusChange
 from .renting import cancel_rental
@@ -14,14 +15,15 @@ admin.site.index_title = "Panel del administrador"
 
 @admin.register(Equipment)
 class EquipmentAdmin(admin.ModelAdmin):
-    """Lista de equipos con las acciones que corrigen su estado (CU-07)."""
+    """Equipos: el admin los registra con las reglas del modelo (CU-12) y corrige su estado con acciones (CU-13)."""
 
+    form = EquipmentAdminForm
     list_display = ["inventory_id", "name", "serial_number", "value", "status"]
     list_filter = ["status"]
     search_fields = ["inventory_id", "serial_number", "name"]
     # El estado solo cambia con las acciones, que pasan por history.change_status
     # y dejan cada cambio en el historial (ENT-34).
-    readonly_fields = ["status"]
+    readonly_fields = ["status", "created_at"]
     actions = ["mark_available", "send_to_repair", "retire"]
 
     @admin.action(description="Marcar disponible")

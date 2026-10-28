@@ -23,21 +23,30 @@ class Equipment(models.Model):
                 "El código debe tener 3 letras, un guion y 5 números, por ejemplo MES-00001.",
             )
         ],
-        error_messages={"unique": "Ya existe un equipo con este código."},
+        error_messages={
+            "unique": "Ya existe un equipo con este código.",
+            "blank": "Falta el campo Código.",
+        },
     )
     serial_number = models.CharField(
         verbose_name="Número de serie",
         max_length=50,
         unique=True,
-        error_messages={"unique": "Ya existe un equipo con este número de serie."},
+        error_messages={
+            "unique": "Ya existe un equipo con este número de serie.",
+            "blank": "Falta el campo Número de serie.",
+        },
     )
-    name = models.CharField(verbose_name="Nombre", max_length=100)
+    name = models.CharField(
+        verbose_name="Nombre", max_length=100, error_messages={"blank": "Falta el campo Nombre."}
+    )
     # Precio de compra: de aquí salen el precio por día y los cargos por daño (ENT-71, ENT-74).
     value = models.DecimalField(
         verbose_name="Valor (Bs)",
         max_digits=10,
         decimal_places=2,
         validators=[MinValueValidator(Decimal("0.01"), "El valor debe ser mayor que 0.")],
+        error_messages={"null": "Falta el campo Valor."},
     )
     status = models.CharField(
         verbose_name="Estado",

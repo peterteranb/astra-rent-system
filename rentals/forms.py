@@ -1,11 +1,12 @@
-"""Formularios de la renta en línea (CU-01), la renta en tienda (CU-02) y la observación de la devolución (CU-04)."""
+"""Formularios de la renta en línea (CU-04) y en tienda (CU-05), la devolución (CU-09) y el registro de equipos (CU-12)."""
 from datetime import datetime
 
 from django import forms
 from django.utils import timezone
 
 from . import rules
-from .models import Rental
+from .inventory import normalize_inventory_id
+from .models import Equipment, Rental
 from .renting import client_accounts, list_catalog
 
 
@@ -86,3 +87,32 @@ class ReturnForm(forms.Form):
         max_length=Rental._meta.get_field("return_note").max_length,
         widget=forms.Textarea(attrs={"rows": 3}),
     )
+
+
+class EquipmentForm(forms.Form):
+    """Datos de un equipo nuevo que escribe el administrador (CU-12).
+
+    Los campos no son obligatorios aquí: register_equipment revisa todo y junta las causas.
+    """
+
+    inventory_id = forms.CharField(
+        label="Código",
+        required=False,
+        max_length=20,
+        help_text="3 letras, un guion y 5 números, por ejemplo MES-00021.",
+    )
+    serial_number = forms.CharField(label="Número de serie", required=False, max_length=50)
+    name = forms.CharField(label="Nombre", required=False, max_length=100)
+    value = forms.DecimalField(label="Valor de compra (Bs)", required=False, decimal_places=2)
+
+
+class EquipmentAdminForm(forms.ModelForm):
+    """Equipo en el admin de Django: valida igual que el modelo y guarda el código en mayúsculas (ENT-83)."""
+
+    class Meta:
+        model = Equipment
+        fields = ["inventory_id", "serial_number", "name", "value"]
+
+    def clean_inventory_id(self):
+        """Devuelve el código sin espacios y en mayúsculas, antes de revisar su formato."""
+        return normalize_inventory_id(self.cleaned_data["inventory_id"])

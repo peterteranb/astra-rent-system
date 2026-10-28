@@ -1,0 +1,11 @@
+{# Rechazo con varias causas: el título dice qué no se hizo y la lista, todas las causas juntas (RC-04). #}
+{% if form.non_field_errors %}
+  <div class="form-errors">
+    <p class="form-errors__title">{{ title }}</p>
+    <ul class="form-errors__list">
+      {% for error in form.non_field_errors %}
+        <li class="form-errors__item">{{ error }}</li>
+      {% endfor %}
+    </ul>
+  </div>
+{% endif %}
