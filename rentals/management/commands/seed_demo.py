@@ -63,6 +63,10 @@ DEMO_MODELS = {
         ("Silla acolchada negra", "120.00"),
         ("Silla acolchada negra", "120.00"),
     ],
+    # ENT-96: un combo es un equipo más, con su código y su valor; no descuenta las sillas y mesas sueltas.
+    "CMB": [
+        ("Combo 6 sillas y 1 mesa", "3000.00"),
+    ],
 }
 
 DEMO_PURPOSE = {
@@ -78,6 +82,7 @@ DEMO_PURPOSE = {
     "SIL-00005": "CU-13: una baja ya no cambia",
     "SIL-00006": "CU-11: volvió con atraso; deuda pendiente de cl02",
     "SIL-00007": "CU-09: rentada, se devuelve a tiempo",
+    "CMB-00001": "Combo: un equipo más, 150 Bs por día (ENT-96)",
 }
 
 
@@ -148,7 +153,7 @@ def reset_user(username, first_name, last_name, email, phone, role_code):
 
 
 def create_equipment():
-    """Crea las 8 mesas y 12 sillas de la demo, disponibles, y las devuelve por código."""
+    """Crea las 8 mesas, las 12 sillas y el combo de la demo, disponibles, y los devuelve por código."""
     equipment = {}
     for prefix, models in DEMO_MODELS.items():
         for number, (name, value) in enumerate(models, start=1):

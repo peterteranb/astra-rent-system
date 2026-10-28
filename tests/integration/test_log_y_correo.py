@@ -105,5 +105,5 @@ def test_volver_a_cero_la_demo_vacia_el_log_y_empieza_con_demo_reset(db, setting
     call_command("seed_demo", stdout=StringIO())
     # Comprueba que no quedó la línea vieja (en las pruebas el log va solo a la consola)
     assert log_viejo.read_text(encoding="utf-8") == ""
-    # Comprueba que DEMO_RESET va primero y que el escenario se creó
-    assert (caplog.messages[0], Equipment.objects.count()) == ("DEMO_RESET", 20)
+    # Comprueba que DEMO_RESET va primero y que el escenario se creó con sus 21 equipos, el combo incluido
+    assert (caplog.messages[0], Equipment.objects.count()) == ("DEMO_RESET", 21)
