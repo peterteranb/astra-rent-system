@@ -9,37 +9,15 @@ Sistema web de renta de mesas y sillas para eventos de SergioCorp (cliente simul
 
 La documentación está en [docs/README.md](docs/README.md): casos de uso, arquitectura, base de datos y respuestas del cliente.
 
-## Camino A: con Docker (recomendado)
+## Instalar en Windows con PowerShell
 
-Necesitas [Docker Desktop](https://www.docker.com/products/docker-desktop/) abierto y Git.
+Necesitas Python 3.12 o superior (lo exige Django 6.1), PostgreSQL 15 o superior en el puerto 5432 y Git.
 
 1. Clonar el repositorio:
    ```powershell
    git clone https://github.com/peterteranb/astra-rent-system.git
    cd astra-rent-system
    ```
-2. Crear el archivo de configuración. Ya funciona tal cual para probar; antes de publicar el sitio cambia `DB_PASSWORD` y `SECRET_KEY`:
-   ```powershell
-   copy .env.example .env
-   ```
-   Si Windows tiene reservado el puerto 8000, pon `WEB_PORT=8080` en `.env`.
-3. Levantar la base y la web (la primera vez descarga las imágenes y tarda unos minutos). Está lista cuando dice `Listening at: http://0.0.0.0:8000`:
-   ```powershell
-   docker compose up --build
-   ```
-4. En otra terminal, cargar la demo:
-   ```powershell
-   docker compose exec web python manage.py seed_demo
-   ```
-5. Abrir http://localhost:8000 (o el puerto que pusiste en `WEB_PORT`).
-
-Para detener: `Ctrl+C` o `docker compose down`. Los datos quedan en el volumen `pgdata`; para borrarlos: `docker compose down -v`.
-
-## Camino B: a mano en Windows con PowerShell
-
-Necesitas Python 3.12 o superior (lo exige Django 6.1), PostgreSQL 15 o superior en el puerto 5432 y Git.
-
-1. Clonar el repositorio (igual que en el camino A).
 2. Crear y activar el entorno virtual. Si PowerShell no deja activarlo, ejecuta una vez `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`:
    ```powershell
    python -m venv .venv
@@ -63,13 +41,27 @@ Necesitas Python 3.12 o superior (lo exige Django 6.1), PostgreSQL 15 o superior
    python manage.py migrate
    python manage.py seed_demo
    ```
-7. Arrancar el servidor y abrir http://127.0.0.1:8080/:
+7. Arrancar el servidor de desarrollo y abrir http://127.0.0.1:8080/:
    ```powershell
    python manage.py runserver 8080
    ```
 
-Con `DEBUG=False` corre antes `python manage.py collectstatic --noinput`, para que se vean los estilos.
-Después de cada `git pull`, vuelve a ejecutar `python manage.py migrate`.
+Después de cada `git pull`, vuelve a ejecutar `python -m pip install -r requirements.txt` y `python manage.py migrate`.
+
+## Correr como en producción
+
+`runserver` es solo para programar. En producción la web corre con waitress, un servidor web de producción en Python puro que funciona en Windows, y whitenoise sirve los estilos:
+
+```powershell
+# en .env: DEBUG=False, una SECRET_KEY propia y ALLOWED_HOSTS=localhost,127.0.0.1
+python manage.py collectstatic --noinput
+python -m waitress --port=8080 config.wsgi:application
+```
+
+- Abre http://localhost:8080/. El log de negocio sale en esa terminal y en `logs/negocio.log`. Para detenerlo: `Ctrl+C`.
+- Vuelve a correr `collectstatic` cada vez que cambie algo en `static/`.
+- `USE_HTTPS=True` activa las cookies seguras, la redirección a HTTPS y HSTS; úsalo solo si el sitio está detrás de HTTPS.
+- Las páginas de error 403, 404 y 500 están en español y nunca muestran detalles técnicos.
 
 ## Usuarios de la demo
 
@@ -85,7 +77,7 @@ Todos usan la clave `Demo1234`.
 
 `seed_demo` crea 8 mesas (`MES-00001` a `MES-00008`) y 12 sillas (`SIL-00001` a `SIL-00012`) y deja listo un caso para cada demostración: una reserva pagada para hoy, una con el pago pendiente, una devolución atrasada, una renta vencida, un equipo en revisión, uno en reparación, uno de baja y la deuda de `cl02`. Al terminar imprime para qué sirve cada equipo.
 
-**Volver a cero:** `python manage.py seed_demo` (con Docker: `docker compose exec web python manage.py seed_demo`). Es solo para la demo: borra deudas, rentas, historial y equipos y crea el mismo escenario con fechas relativas a hoy. No manda correos.
+**Volver a cero:** `python manage.py seed_demo`. Es solo para la demo: borra deudas, rentas, historial y equipos y crea el mismo escenario con fechas relativas a hoy. No manda correos.
 
 ## Ver los logs
 
@@ -96,8 +88,7 @@ Cada operación escribe una línea, aceptada o rechazada:
 2026-10-29 10:16:40 | WARNING | RENTAL_REJECTED reason="Tienes una deuda pendiente de 22,50 Bs. Págala en la tienda para volver a rentar."
 ```
 
-- Con Docker: `docker compose logs -f web`
-- A mano: `Get-Content logs\negocio.log -Wait`
+Se ven en la terminal del servidor y en `logs\negocio.log`. Para seguir el archivo desde otra terminal: `Get-Content logs\negocio.log -Wait`.
 
 ## Correo
 
@@ -124,13 +115,6 @@ Usan una base temporal que crea pytest-django; la base de la demo y `logs/negoci
 
 Los tiempos de integración y sistema incluyen crear la base de pruebas.
 
-## Producción
-
-- `.env` define `SECRET_KEY` (obligatoria con `DEBUG=False`), `DEBUG` (por defecto `False`), `ALLOWED_HOSTS`, `CSRF_TRUSTED_ORIGINS` y los datos de la base.
-- `USE_HTTPS=True` activa las cookies seguras, la redirección a HTTPS y HSTS; úsalo solo si el sitio está detrás de HTTPS.
-- Los estáticos los sirve whitenoise y la web corre con gunicorn dentro de Docker.
-- Las páginas de error 403, 404 y 500 están en español y nunca muestran detalles técnicos.
-
 ## Estructura
 
 | Carpeta | Qué tiene |
@@ -142,7 +126,7 @@ Los tiempos de integración y sistema incluyen crear la base de pruebas.
 | `templates/` | Páginas HTML; `includes/` tiene las partes que se repiten |
 | `static/` | Estilos del sitio y del admin, y el logo |
 | `tests/` | Pruebas unitarias, de integración y de sistema |
-| `scripts/` | SQL que crea el usuario y la base de PostgreSQL (camino B) |
+| `scripts/` | SQL que crea el usuario y la base de PostgreSQL |
 | `docs/` | Documentación: ver [docs/README.md](docs/README.md) |
 
 ## Equipo

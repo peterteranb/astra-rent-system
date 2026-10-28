@@ -4,4 +4,4 @@ Django>=6.1,<6.2
 psycopg[binary]>=3.3,<4
 python-dotenv>=1.2,<2
 whitenoise>=6.12,<7
-gunicorn>=26.2,<27
+waitress>=3.0,<4

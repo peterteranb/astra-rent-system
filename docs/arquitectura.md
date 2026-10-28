@@ -87,27 +87,21 @@ Entre las dos apps no hay importaciones circulares entre módulos (revisado con 
 
 `role_required` revisa el rol en cada página del personal: sin sesión manda al login; sin el rol responde 403 con una página en español. Solo el admin bloquea a un usuario, desactivando su cuenta (`is_active = False`). `AUTHENTICATION_BACKENDS` tiene primero `ModelBackend`, con el que entran las cuentas activas y que deja sin sesión a una cuenta que se desactiva, y después `AllowAllUsersModelBackend`, que solo reconoce una cuenta desactivada con su contraseña correcta para que `LoginForm.confirm_login_allowed` le diga por qué no entra.
 
-## Despliegue con Docker
+## Despliegue
 
 ```mermaid
 flowchart LR
-    U[Navegador] -->|http://localhost:8000| W
-    subgraph Docker Compose
-        W["web<br/>Python 3.12 slim<br/>migrate · collectstatic · gunicorn :8000<br/>whitenoise sirve /static/"]
-        D[("db<br/>postgres:17<br/>volumen pgdata · healthcheck")]
-    end
-    W -->|DB_HOST=db:5432| D
-    W -->|monta ./logs| LOG[logs/negocio.log en la máquina]
-    ENV[.env] -.->|variables| W
-    ENV -.->|POSTGRES_*| D
+    N[Navegador] -->|http://localhost:8080| S["Servidor de la aplicación<br/>Django con waitress<br/>whitenoise sirve /static/"]
+    S -->|DB_HOST:DB_PORT| D[(PostgreSQL)]
 ```
 
-| Nodo | Imagen | Qué hace |
+| Nodo | Qué es | Qué hace |
 |---|---|---|
-| `web` | `Dockerfile` (Python 3.12 slim) | Espera a que `db` esté sana, aplica las migraciones, junta los estáticos y arranca gunicorn en el puerto 8000. |
-| `db` | `postgres:17` | Guarda los datos en el volumen `pgdata`, que sobrevive a `docker compose down`. |
+| Navegador | Chrome o Firefox | Muestra las páginas; cada formulario lleva su token CSRF. |
+| Servidor de la aplicación | waitress, un servidor web de producción en Python puro que funciona en Windows, corre `config.wsgi:application` | Atiende las peticiones con Django, sirve los estilos ya juntados por `collectstatic` (whitenoise) y escribe el log de negocio en la consola y en `logs/negocio.log`. Lee su configuración de `.env`. Para programar, `runserver` ocupa su lugar. |
+| PostgreSQL | PostgreSQL 15 o superior | Guarda los datos. |
 
-Las opciones que exigen HTTPS (cookies seguras, redirección y HSTS) se activan con `USE_HTTPS=True` en `.env`.
+Los pasos están en el README, en «Correr como en producción». Las opciones que exigen HTTPS (cookies seguras, redirección y HSTS) se activan con `USE_HTTPS=True` en `.env`.
 
 ## Cómo viaja una línea del log
 
@@ -116,7 +110,7 @@ sequenceDiagram
     participant U as Caso de uso (renting.create_rental)
     participant E as events.log_event
     participant L as logger «rentals»
-    participant C as Consola (docker compose logs)
+    participant C as Consola (la terminal del servidor)
     participant F as logs/negocio.log
     U->>E: log_event("RENTAL_CREATED", id=12, equipment="SIL-00001", client="cl01", paid="no")
     E->>L: info("RENTAL_CREATED id=12 equipment=SIL-00001 client=cl01 paid=no")

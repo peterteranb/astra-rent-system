@@ -5,7 +5,7 @@
 | Documento | Qué tiene |
 |---|---|
 | [casos-de-uso.md](casos-de-uso.md) | Mapa de actores, requisitos funcionales y de calidad, historias de usuario, los 16 casos de uso con sus diagramas de secuencia, y lo que queda fuera de alcance. |
-| [arquitectura.md](arquitectura.md) | Capas, roles, despliegue con Docker, cómo viaja una línea del log, correo, pruebas y CI. |
+| [arquitectura.md](arquitectura.md) | Capas, roles, despliegue, cómo viaja una línea del log, correo, pruebas y CI. |
 | [base-de-datos.md](base-de-datos.md) | Las seis tablas, el porqué de cada una, lo que se calcula y las restricciones. Diagrama editable en [base-de-datos.dbml](base-de-datos.dbml). |
 | [respuestas-del-cliente.md](respuestas-del-cliente.md) | Lo que respondió el cliente (ENT-01 a ENT-87). El código cita estos números. |
 | [decisiones-pendientes.md](decisiones-pendientes.md) | Decisiones tomadas sin respuesta del cliente, lo que quedó sin hacer y los comandos que el equipo debe correr. |

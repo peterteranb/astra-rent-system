@@ -91,7 +91,7 @@ flowchart LR
 | RC-04 | Usabilidad | Todo rechazo dice en una frase qué pasó y qué hacer, sin términos técnicos; los formularios muestran los requisitos antes de enviar; las páginas se usan sin desplazamiento horizontal en un celular de 360 px y una tablet de 600 px (ENT-01, ENT-42). | Mensajes exactos en las pruebas; revisión en el navegador con el modo de dispositivo. |
 | RC-05 | Trazabilidad | Cada operación, aceptada o rechazada, escribe una línea en `logs/negocio.log`; cada cambio de estado de un equipo queda en el historial. | Pruebas con `caplog`; admin «Cambios de estado». |
 | RC-06 | Mantenibilidad | Tasas y formatos en `settings.py`; cada regla tiene prueba de aceptación, límite y rechazo; el CI corre todo en cada push. | `python -m pytest -q`, GitHub Actions |
-| RC-07 | Despliegue | Desde cero, el sistema queda funcionando con `docker compose up --build` siguiendo el README, o a mano en Windows. | README, caminos A y B |
+| RC-07 | Despliegue | Desde cero, el sistema queda funcionando en Windows siguiendo el README: con `runserver` para programar o con waitress como en producción (`DEBUG=False`, estilos con whitenoise). | Seguir el README en una máquina limpia: «Instalar en Windows con PowerShell» y «Correr como en producción». |
 | RC-08 | Compatibilidad | Funciona en las versiones actuales de Chrome y Firefox. | Revisión manual antes de la entrega |
 
 ## 4. Historias de usuario

@@ -47,7 +47,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
-    # whitenoise sirve /static/ con gunicorn, sin un servidor web aparte.
+    # whitenoise sirve /static/ también con DEBUG=False, sin un servidor web aparte.
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
