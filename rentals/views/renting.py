@@ -1,6 +1,6 @@
 """Páginas de CU-03 a CU-07 y CU-16: catálogo, renta en línea con QR y en tienda, confirmación, modificar, cancelar y «Mis rentas».
 
-Leen la petición, llaman a renting.py y eligen la plantilla; las reglas están en renting.py y rules.py.
+Leen la petición, llaman a use_cases/ (catalog, renting y payments) y eligen la plantilla; las reglas están ahí y en rules.py.
 """
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -8,14 +8,16 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
+from accounts.roles import OPERATOR, has_role, role_required
+
 from .. import rules
 from ..errors import EquipmentNotAvailableError, OperationRejectedError
-from ..formatting import local_text
 from ..forms import CatalogFilterForm, RentalForm, WalkInRentalForm
 from ..models import Equipment
-from ..payments import online_rentals_of, pay_with_qr
-from ..renting import (
-    browse_catalog,
+from ..services.formatting import local_text
+from ..use_cases.catalog import browse_catalog
+from ..use_cases.payments import online_rentals_of, pay_with_qr
+from ..use_cases.renting import (
     cancel_rental,
     create_rental,
     find_clients,
@@ -23,7 +25,6 @@ from ..renting import (
     my_rentals,
     rentals_visible_to,
 )
-from ..roles import OPERATOR, has_role, role_required
 
 
 @login_required

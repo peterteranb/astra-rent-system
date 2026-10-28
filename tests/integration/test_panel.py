@@ -1,14 +1,14 @@
-"""Prueba rentals/dashboard.py con la base: manager_summary(), el panel del responsable (CU-15, ENT-87),
+"""Prueba rentals/use_cases/dashboard.py con la base: manager_summary(), el panel del responsable (CU-15, ENT-87),
 y el filtro «situación» del admin al que enlaza cada lista."""
 from decimal import Decimal
 
 from django.utils import timezone
 from pytest_django.asserts import assertContains, assertNotContains
 
-from rentals.dashboard import manager_summary
 from rentals.models import Debt
-from rentals.renting import create_rental
 from rentals.statuses import DebtReason
+from rentals.use_cases.dashboard import manager_summary
+from rentals.use_cases.renting import create_rental
 from tests.helpers import dentro_de
 
 

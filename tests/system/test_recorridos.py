@@ -5,8 +5,8 @@ from decimal import Decimal
 from pytest_django.asserts import assertContains, assertNotContains, assertRedirects
 
 from rentals.models import Debt, Equipment, Rental, StatusChange
-from rentals.renting import create_rental
 from rentals.statuses import DebtReason, EquipmentStatus, RentalStatus
+from rentals.use_cases.renting import create_rental
 from tests.helpers import dentro_de, foto_de_la_base
 
 

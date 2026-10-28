@@ -2,9 +2,9 @@
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
 
-from .errors import EquipmentRegistrationError
-from .events import log_event, logs_rejection
-from .models import Equipment
+from ..errors import EquipmentRegistrationError
+from ..models import Equipment
+from ..services.events import log_event, logs_rejection
 
 REJECTION_TITLE = "No se registró el equipo:"
 

@@ -3,7 +3,7 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as DjangoUserAdmin
 from django.db.models import Q, Sum
 
-from rentals.events import log_event
+from rentals.services.events import log_event
 
 from .forms import UserChangeAdminForm, UserCreationAdminForm
 from .models import Role, User

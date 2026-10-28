@@ -1,4 +1,4 @@
-"""Prueba rentals/renting.py con la base: search_catalog() y catalog_page(), el catálogo filtrado y
+"""Prueba rentals/use_cases/catalog.py con la base: search_catalog() y catalog_page(), el catálogo filtrado y
 paginado (CU-03, ENT-64, ENT-86) y que con 1000 equipos haga las mismas consultas (RC-01)."""
 from decimal import Decimal
 
@@ -7,8 +7,9 @@ from django.test.utils import CaptureQueriesContext
 from django.utils import timezone
 
 from rentals.models import Equipment
-from rentals.renting import CatalogFilters, cancel_rental, catalog_page, create_rental, search_catalog
 from rentals.statuses import EquipmentStatus
+from rentals.use_cases.catalog import CatalogFilters, catalog_page, search_catalog
+from rentals.use_cases.renting import cancel_rental, create_rental
 from tests.helpers import dentro_de
 
 

@@ -1,8 +1,8 @@
 """Prueba la cuenta desactivada (ENT-79): accounts/forms.py LoginForm, los backends de config/settings.py,
-el log de accounts/admin.py al cambiar «Activo» y la búsqueda de clientes de la tienda (rentals/renting.py)."""
+el log de accounts/admin.py al cambiar «Activo» y la búsqueda de clientes de la tienda (rentals/use_cases/renting.py)."""
 from pytest_django.asserts import assertContains, assertRedirects
 
-from rentals.renting import find_clients
+from rentals.use_cases.renting import find_clients
 from tests.helpers import foto_de_la_base
 
 

@@ -4,12 +4,12 @@ from django.utils import timezone
 
 from .errors import OperationRejectedError
 from .forms import EquipmentAdminForm
-from .history import change_status
-from .inventory import log_equipment_registered
 from .models import Debt, Equipment, Rental, StatusChange
-from .payments import pay_debt
-from .renting import cancel_rental
 from .statuses import EquipmentStatus
+from .use_cases.history import change_status
+from .use_cases.inventory import log_equipment_registered
+from .use_cases.payments import pay_debt
+from .use_cases.renting import cancel_rental
 
 admin.site.site_header = "SergioCorp · Administración"
 admin.site.site_title = "SergioCorp"

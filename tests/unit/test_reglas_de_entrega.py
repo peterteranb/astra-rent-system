@@ -1,10 +1,10 @@
-"""Prueba rentals/handover.py: check_can_pick_up() y check_can_return(), cuándo se rechaza
+"""Prueba rentals/use_cases/handover.py: check_can_pick_up() y check_can_return(), cuándo se rechaza
 una entrega o una devolución, con rentas sin guardar del 09/10/2026 18:00 al 12/10/2026 09:00."""
 import pytest
 
 from rentals.errors import RentalStateError
-from rentals.handover import check_can_pick_up, check_can_return
 from rentals.models import Equipment, Rental
+from rentals.use_cases.handover import check_can_pick_up, check_can_return
 from tests.helpers import local_datetime
 
 EQ01 = Equipment(inventory_id="MES-00001")

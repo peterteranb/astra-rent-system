@@ -9,12 +9,12 @@ from django.db import transaction
 from django.db.models import Sum
 from django.utils import timezone
 
-from .errors import DebtStateError, RentalStateError
-from .events import log_event, logs_rejection
-from .formatting import local_text, rental_state_message
-from .models import Debt, Rental
-from .notifications import send_debt_created, send_rental_confirmed
-from .statuses import PaymentMethod, RentalStatus
+from ..errors import DebtStateError, RentalStateError
+from ..models import Debt, Rental
+from ..services.events import log_event, logs_rejection
+from ..services.formatting import local_text, rental_state_message
+from ..services.notifications import send_debt_created, send_rental_confirmed
+from ..statuses import PaymentMethod, RentalStatus
 
 
 @dataclass(frozen=True)

@@ -13,12 +13,12 @@ from django.test.utils import override_settings
 from django.utils import timezone
 
 from accounts.models import Role
-from rentals.history import change_status
+from accounts.roles import ADMINISTRATOR, CLIENT, MAINTENANCE, OPERATOR
 from rentals.models import Debt, Equipment, EquipmentStatus, Rental, StatusChange
-from rentals.payments import charge_debt, pay_with_qr
-from rentals.renting import cancel_rental, create_rental
-from rentals.roles import ADMINISTRATOR, CLIENT, MAINTENANCE, OPERATOR
 from rentals.statuses import DebtReason
+from rentals.use_cases.history import change_status
+from rentals.use_cases.payments import charge_debt, pay_with_qr
+from rentals.use_cases.renting import cancel_rental, create_rental
 
 # La demo no manda correos: sus clientes tienen direcciones inventadas.
 NO_EMAIL = {"default": {"BACKEND": "django.core.mail.backends.dummy.EmailBackend"}}

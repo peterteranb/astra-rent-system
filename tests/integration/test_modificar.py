@@ -1,4 +1,4 @@
-"""Prueba rentals/renting.py con la base: modify_rental(), cambiar las fechas de una reserva con la
+"""Prueba rentals/use_cases/renting.py con la base: modify_rental(), cambiar las fechas de una reserva con la
 misma cantidad de días (CU-06, ENT-81)."""
 from decimal import Decimal
 
@@ -6,7 +6,7 @@ import pytest
 
 from rentals.errors import EquipmentNotAvailableError, InvalidModificationError
 from rentals.models import Rental
-from rentals.renting import create_rental, modify_rental
+from rentals.use_cases.renting import create_rental, modify_rental
 from tests.helpers import dentro_de, foto_de_la_base
 
 

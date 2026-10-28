@@ -3,11 +3,12 @@ from django.contrib import messages
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
+from accounts.roles import MAINTENANCE, role_required
+
 from ..errors import OperationRejectedError
-from ..formatting import money_text
 from ..models import Equipment
-from ..review import review_equipment, review_queue
-from ..roles import MAINTENANCE, role_required
+from ..services.formatting import money_text
+from ..use_cases.review import review_equipment, review_queue
 
 
 @role_required(MAINTENANCE)

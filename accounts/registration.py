@@ -12,8 +12,8 @@ from django.core.validators import validate_email
 from django.db import IntegrityError, transaction
 
 from rentals.errors import RegistrationRejectedError
-from rentals.events import log_event, logs_rejection
-from rentals.notifications import send_welcome
+from rentals.services.events import log_event, logs_rejection
+from rentals.services.notifications import send_welcome
 
 from .models import PHONE_FORMAT, PHONE_FORMAT_MESSAGE, Role, User
 

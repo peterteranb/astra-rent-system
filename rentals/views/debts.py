@@ -1,16 +1,17 @@
 """Páginas del operador para CU-11: las deudas pendientes y el registro de su pago.
 
-Leen la petición, llaman a payments.py y eligen la plantilla; las reglas están en payments.py.
+Leen la petición, llaman a use_cases/payments.py y eligen la plantilla; las reglas están ahí.
 """
 from django.contrib import messages
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
+from accounts.roles import OPERATOR, role_required
+
 from ..errors import OperationRejectedError
-from ..formatting import money_text
 from ..models import Debt
-from ..payments import debts_overview, pay_debt
-from ..roles import OPERATOR, role_required
+from ..services.formatting import money_text
+from ..use_cases.payments import debts_overview, pay_debt
 
 
 @role_required(OPERATOR)

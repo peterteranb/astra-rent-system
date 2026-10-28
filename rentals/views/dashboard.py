@@ -2,8 +2,9 @@
 from django.shortcuts import render
 from django.utils import timezone
 
-from ..dashboard import manager_summary
-from ..roles import ADMINISTRATOR, role_required
+from accounts.roles import ADMINISTRATOR, role_required
+
+from ..use_cases.dashboard import manager_summary
 
 
 @role_required(ADMINISTRATOR)

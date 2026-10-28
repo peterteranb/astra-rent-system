@@ -6,7 +6,7 @@ Nunca se escribe una contraseña.
 import logging
 from functools import wraps
 
-from .errors import OperationRejectedError
+from ..errors import OperationRejectedError
 
 logger = logging.getLogger("rentals")
 

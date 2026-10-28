@@ -5,12 +5,12 @@ from decimal import Decimal
 import pytest
 
 from rentals.errors import DebtPendingError, DebtStateError
-from rentals.handover import register_return
 from rentals.models import Debt
-from rentals.payments import pay_debt
-from rentals.renting import create_rental
-from rentals.review import review_equipment
 from rentals.statuses import DebtReason, EquipmentStatus, RentalStatus
+from rentals.use_cases.handover import register_return
+from rentals.use_cases.payments import pay_debt
+from rentals.use_cases.renting import create_rental
+from rentals.use_cases.review import review_equipment
 from tests.helpers import con_la_hora, dentro_de, foto_de_la_base, local_datetime
 
 INICIO = local_datetime(2026, 10, 1, 18, 0)

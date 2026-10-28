@@ -2,7 +2,7 @@
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import redirect
 
-from ..roles import ADMINISTRATOR, MAINTENANCE, OPERATOR, has_role
+from accounts.roles import ADMINISTRATOR, MAINTENANCE, OPERATOR, has_role
 
 
 @login_required

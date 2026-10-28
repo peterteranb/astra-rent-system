@@ -1,11 +1,11 @@
-"""Prueba rentals/renting.py: check_can_cancel() y check_can_modify(), quién cancela o modifica una reserva
+"""Prueba rentals/use_cases/renting.py: check_can_cancel() y check_can_modify(), quién cancela o modifica una reserva
 y hasta cuándo (ENT-80), con rentas sin guardar del 09/10/2026 18:00 al 12/10/2026 09:00."""
 import pytest
 
 from accounts.models import User
 from rentals.errors import DeadlinePassedError, RentalStateError
 from rentals.models import Equipment, Rental
-from rentals.renting import check_can_cancel, check_can_modify
+from rentals.use_cases.renting import check_can_cancel, check_can_modify
 from tests.helpers import local_datetime
 
 MES01 = Equipment(inventory_id="MES-00001")

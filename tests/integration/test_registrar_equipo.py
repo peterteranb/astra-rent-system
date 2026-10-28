@@ -1,4 +1,4 @@
-"""Prueba rentals/inventory.py con la base: register_equipment(), el administrador registra un equipo
+"""Prueba rentals/use_cases/inventory.py con la base: register_equipment(), el administrador registra un equipo
 nuevo (CU-12, ENT-83), y el admin de Django, que valida igual."""
 from decimal import Decimal
 
@@ -6,9 +6,9 @@ import pytest
 from pytest_django.asserts import assertContains
 
 from rentals.errors import EquipmentRegistrationError
-from rentals.inventory import register_equipment
 from rentals.models import Equipment
 from rentals.statuses import EquipmentStatus
+from rentals.use_cases.inventory import register_equipment
 from tests.helpers import foto_de_la_base
 
 

@@ -1,12 +1,12 @@
-"""Prueba rentals/review.py: check_review_result() y rentals/history.py: check_status_can_change(),
+"""Prueba rentals/use_cases/review.py: check_review_result() y rentals/use_cases/history.py: check_status_can_change(),
 qué estados puede elegir mantenimiento y qué cambios se rechazan (RF-10, ENT-49)."""
 import pytest
 
 from rentals.errors import InvalidStatusChangeError
-from rentals.history import check_status_can_change
 from rentals.models import Equipment
-from rentals.review import check_review_result
 from rentals.statuses import EquipmentStatus
+from rentals.use_cases.history import check_status_can_change
+from rentals.use_cases.review import check_review_result
 
 
 def test_disponible_es_un_resultado_valido_de_la_revision():

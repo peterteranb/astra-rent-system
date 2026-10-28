@@ -1,12 +1,12 @@
-"""Prueba rentals/payments.py con la base: pay_with_qr(), el QR simulado de la renta en línea (CU-04,
+"""Prueba rentals/use_cases/payments.py con la base: pay_with_qr(), el QR simulado de la renta en línea (CU-04,
 ENT-66, ENT-67), y create_rental() en tienda, que nace pagada en efectivo (CU-05, ENT-70)."""
 import pytest
 
 from rentals.errors import RentalStateError
 from rentals.models import Rental
-from rentals.payments import pay_with_qr
-from rentals.renting import create_rental
 from rentals.statuses import PaymentMethod, RentalStatus
+from rentals.use_cases.payments import pay_with_qr
+from rentals.use_cases.renting import create_rental
 from tests.helpers import dentro_de, foto_de_la_base
 
 

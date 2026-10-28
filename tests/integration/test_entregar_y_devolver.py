@@ -1,14 +1,14 @@
-"""Prueba rentals/handover.py con la base: register_pickup() y register_return(),
+"""Prueba rentals/use_cases/handover.py con la base: register_pickup() y register_return(),
 entregar el equipo, cobrando si el pago está pendiente, y recibirlo de vuelta (CU-08, CU-09)."""
 import pytest
 
 from rentals.errors import IncompleteReturnError, PaymentRequiredError
-from rentals.handover import register_pickup, register_return
-from rentals.history import change_status
 from rentals.models import Rental, StatusChange
-from rentals.payments import pay_with_qr
-from rentals.renting import create_rental
 from rentals.statuses import EquipmentStatus, PaymentMethod, RentalStatus
+from rentals.use_cases.handover import register_pickup, register_return
+from rentals.use_cases.history import change_status
+from rentals.use_cases.payments import pay_with_qr
+from rentals.use_cases.renting import create_rental
 from tests.helpers import dentro_de, foto_de_la_base
 
 

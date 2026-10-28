@@ -1,4 +1,4 @@
-"""Casos de uso CU-03 a CU-07 y CU-16: catálogo, renta en línea y en tienda, modificar y cancelar una reserva, y «Mis rentas».
+"""Casos de uso CU-04 a CU-07 y CU-16: renta en línea y en tienda, modificar y cancelar una reserva, y «Mis rentas».
 
 Las vistas llaman a este módulo; aplica las reglas de rules.py y habla con la base. No lee la petición ni elige páginas.
 """
@@ -6,13 +6,14 @@ from dataclasses import dataclass
 from decimal import Decimal
 
 from django.contrib.auth import get_user_model
-from django.core.paginator import Paginator
 from django.db import transaction
-from django.db.models import Prefetch, Q
+from django.db.models import Q
 from django.utils import timezone
 
-from . import rules
-from .errors import (
+from accounts.roles import CLIENT, OPERATOR, has_role
+
+from .. import rules
+from ..errors import (
     DeadlinePassedError,
     DebtPendingError,
     EquipmentNotAvailableError,
@@ -20,40 +21,15 @@ from .errors import (
     InvalidPeriodError,
     RentalStateError,
 )
-from .events import log_event, logs_rejection
-from .formatting import client_debt_message, days_text, local_text, money_text, rental_state_message
-from .models import Debt, Equipment, EquipmentStatus, Rental
-from .notifications import send_rental_cancelled, send_rental_confirmed
+from ..models import Debt, Equipment, Rental
+from ..services.events import log_event, logs_rejection
+from ..services.formatting import client_debt_message, days_text, local_text, money_text, rental_state_message
+from ..services.notifications import send_rental_cancelled, send_rental_confirmed
+from ..statuses import PaymentMethod, RentalStatus
 from .payments import debt_total_of, pending_debts_of
-from .roles import CLIENT, OPERATOR, has_role, is_store_staff
-from .statuses import PaymentMethod, RentalStatus
-
-# ENT-64: el catálogo dice cuándo está ocupado cada equipo; con 3 periodos basta para elegir fechas.
-MAX_BUSY_PERIODS_SHOWN = 3
-
-# ENT-02 y ENT-86: con unos 1000 equipos, el catálogo se muestra de 20 en 20.
-CATALOG_PAGE_SIZE = 20
 
 # ENT-54: el operador busca al cliente y lo elige de una lista corta, no de todos los clientes.
 MAX_CLIENTS_FOUND = 10
-
-
-@dataclass(frozen=True)
-class CatalogFilters:
-    """Lo que se busca en el catálogo: texto del código o nombre, un periodo libre y, para el personal, un estado."""
-
-    text: str = ""
-    free_start: object = None
-    free_end: object = None
-    status: str = ""
-
-
-@dataclass(frozen=True)
-class CatalogEntry:
-    """Un equipo del catálogo con las rentas que lo ocupan desde ahora."""
-
-    equipment: Equipment
-    busy_rentals: list[Rental]
 
 
 @dataclass(frozen=True)
@@ -68,84 +44,6 @@ class ClientRentals:
     def debt_message(self):
         """El aviso de deuda que el cliente ve arriba de sus rentas."""
         return client_debt_message(self.debt_total)
-
-
-def list_catalog():
-    """Devuelve los equipos que muestra el catálogo: solo los «Disponibles».
-
-    ENT-61 y ENT-64: un equipo con rentas futuras sigue disponible y el
-    catálogo dice cuándo está ocupado. create_rental vuelve a revisar el equipo.
-    """
-    return Equipment.objects.filter(status=EquipmentStatus.AVAILABLE)
-
-
-def catalog_filters(text, free_from, free_to, status):
-    """Arma los filtros del catálogo con lo que escribió la persona.
-
-    Las dos fechas se buscan como una renta: desde las 18:00 del primer día
-    hasta las 09:00 del último (D-13), así lo que se ve libre se puede rentar.
-    """
-    return CatalogFilters(
-        text=text.strip(),
-        free_start=free_from and rules.combine_local(free_from, rules.EARLIEST_PICKUP_TIME),
-        free_end=free_to and rules.combine_local(free_to, rules.LATEST_RETURN_TIME),
-        status=status,
-    )
-
-
-def browse_catalog(user, filters, page_number, now):
-    """Devuelve la página del catálogo que ve user con esos filtros (CU-03)."""
-    equipment = search_catalog(filters, now, staff=is_store_staff(user))
-    return catalog_page(equipment, page_number, now)
-
-
-def search_catalog(filters, now, staff=False):
-    """Devuelve los equipos que cumplen los filtros (ENT-86); el cliente solo ve los «Disponibles»."""
-    equipment = Equipment.objects.all() if staff else list_catalog()
-    if staff and filters.status:
-        equipment = equipment.filter(status=filters.status)
-    if filters.text:
-        equipment = equipment.filter(
-            Q(inventory_id__icontains=filters.text) | Q(name__icontains=filters.text)
-        )
-    if filters.free_start and filters.free_end:
-        equipment = equipment.exclude(pk__in=busy_equipment(filters.free_start, filters.free_end, now))
-    return equipment
-
-
-def busy_equipment(start, end, now):
-    """Devuelve los ids de los equipos con una renta que en now ocupa algún momento entre start y end (RF-01)."""
-    # Mismo cruce que rules.periods_overlap, pero en SQL para no traer las rentas de 1000 equipos.
-    return (
-        Rental.objects.occupying_at(now)
-        .filter(start_datetime__lt=end, end_datetime__gt=start)
-        .values("equipment")
-    )
-
-
-def catalog_page(equipment, page_number, now):
-    """Devuelve una página de 20 equipos, cada uno con sus próximos periodos ocupados (RC-01).
-
-    Siempre son tres consultas: contar, traer la página y traer sus rentas, con 20 o con 1000 equipos.
-    """
-    # Solo las rentas que no terminaron pueden ocupar el equipo desde ahora.
-    upcoming = Prefetch(
-        "rentals",
-        queryset=Rental.objects.filter(end_datetime__gt=now),
-        to_attr="upcoming_rentals",
-    )
-    paginator = Paginator(equipment.prefetch_related(upcoming), CATALOG_PAGE_SIZE)
-    page = paginator.get_page(page_number)
-    page.object_list = [
-        CatalogEntry(unit, busy_rentals_at(unit.upcoming_rentals, now)) for unit in page.object_list
-    ]
-    return page
-
-
-def busy_rentals_at(rentals, now) -> list[Rental]:
-    """Devuelve las primeras rentas que todavía ocupan el equipo en now, hasta MAX_BUSY_PERIODS_SHOWN."""
-    busy = [rental for rental in rentals if rental.occupies_equipment_at(now)]
-    return busy[:MAX_BUSY_PERIODS_SHOWN]
 
 
 def client_accounts():

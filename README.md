@@ -120,8 +120,11 @@ Los tiempos de integración y sistema incluyen crear la base de pruebas.
 | Carpeta | Qué tiene |
 |---|---|
 | `config/` | Configuración de Django, URLs raíz y la configuración de las pruebas |
-| `accounts/` | Usuario con rol y teléfono, roles, registro de clientes y login |
-| `rentals/` | Modelos, reglas puras (`rules.py`), casos de uso (`renting.py`, `payments.py`, `handover.py`, `review.py`, `inventory.py`, `dashboard.py`, `history.py`), log (`events.py`), correos (`notifications.py`), vistas y admin |
+| `accounts/` | Usuario con rol y teléfono, roles (`roles.py`), registro de clientes y login |
+| `rentals/` | Modelos, reglas puras (`rules.py`), estados y errores, formularios y admin |
+| `rentals/use_cases/` | Un archivo por grupo de casos de uso: `catalog`, `renting`, `payments`, `handover`, `review`, `inventory`, `history` y `dashboard` |
+| `rentals/services/` | Log de negocio (`events.py`), correos (`notifications.py`) y textos para mostrar (`formatting.py`) |
+| `rentals/views/` | Las páginas de cada caso de uso |
 | `rentals/management/commands/` | `seed_demo`, el escenario de la demo |
 | `templates/` | Páginas HTML; `includes/` tiene las partes que se repiten |
 | `static/` | Estilos del sitio y del admin, y el logo |

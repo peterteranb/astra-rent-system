@@ -1,4 +1,4 @@
-"""Prueba rentals/renting.py con la base: create_rental() en línea y en tienda (CU-04, CU-05)
+"""Prueba rentals/use_cases/renting.py con la base: create_rental() en línea y en tienda (CU-04, CU-05)
 y find_clients(), la búsqueda de clientes del operador (ENT-54)."""
 from decimal import Decimal
 
@@ -6,8 +6,8 @@ import pytest
 
 from rentals.errors import EquipmentNotAvailableError
 from rentals.models import Equipment, Rental
-from rentals.renting import cancel_rental, create_rental, find_clients
 from rentals.statuses import RentalStatus
+from rentals.use_cases.renting import cancel_rental, create_rental, find_clients
 from tests.helpers import dentro_de, foto_de_la_base
 
 

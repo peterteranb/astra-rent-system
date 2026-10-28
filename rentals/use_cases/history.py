@@ -1,10 +1,10 @@
-"""Cambia el estado de un equipo y guarda su historial (ENT-34: cada cambio queda con quién, cuándo y por qué)."""
+"""Caso de uso CU-13, y un paso de CU-09 y CU-10: cambia el estado de un equipo y guarda su historial (ENT-34: quién, cuándo y por qué)."""
 from django.db import transaction
 
-from .errors import InvalidStatusChangeError
-from .events import log_event, logs_rejection
-from .models import Equipment, StatusChange
-from .statuses import EquipmentStatus
+from ..errors import InvalidStatusChangeError
+from ..models import Equipment, StatusChange
+from ..services.events import log_event, logs_rejection
+from ..statuses import EquipmentStatus
 
 
 @logs_rejection("STATUS_CHANGE_REJECTED")

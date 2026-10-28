@@ -9,8 +9,8 @@ import pytest
 from django.contrib.auth import get_user_model
 
 from accounts.models import Role
+from accounts.roles import CLIENT, MAINTENANCE, OPERATOR
 from rentals.models import Equipment, EquipmentStatus
-from rentals.roles import CLIENT, MAINTENANCE, OPERATOR
 
 DEMO_PASSWORD = "Demo1234"
 

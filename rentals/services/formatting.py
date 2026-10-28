@@ -2,7 +2,7 @@
 from django.utils import timezone
 from django.utils.formats import number_format
 
-from .statuses import RentalStatus
+from ..statuses import RentalStatus
 
 
 def local_text(moment):

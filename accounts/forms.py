@@ -4,7 +4,7 @@ import logging
 from django import forms
 from django.contrib.auth.forms import AdminUserCreationForm, AuthenticationForm, UserChangeForm
 
-from rentals.events import log_event
+from rentals.services.events import log_event
 
 from .registration import normalize_phone
 

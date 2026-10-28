@@ -2,10 +2,11 @@
 from django import forms
 
 from . import rules
-from .inventory import normalize_inventory_id
 from .models import Equipment, Rental
-from .renting import CatalogFilters, catalog_filters, client_accounts, list_catalog
 from .statuses import EquipmentStatus
+from .use_cases.catalog import CatalogFilters, catalog_filters, list_catalog
+from .use_cases.inventory import normalize_inventory_id
+from .use_cases.renting import client_accounts
 
 
 class CatalogFilterForm(forms.Form):
@@ -37,7 +38,7 @@ class CatalogFilterForm(forms.Form):
         return cleaned_data
 
     def filters(self):
-        """Devuelve los filtros listos para renting.search_catalog; sin filtros si el formulario tiene errores."""
+        """Devuelve los filtros listos para catalog.search_catalog; sin filtros si el formulario tiene errores."""
         if not self.is_valid():
             return CatalogFilters()
         data = self.cleaned_data

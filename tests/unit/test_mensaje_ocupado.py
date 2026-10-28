@@ -1,7 +1,7 @@
-"""Prueba rentals/renting.py: busy_message(), lo que se le dice al cliente cuando las fechas chocan
+"""Prueba rentals/use_cases/renting.py: busy_message(), lo que se le dice al cliente cuando las fechas chocan
 (ENT-36 y ENT-51: el sistema dice cuándo está ocupado y hasta cuándo está libre)."""
 from rentals.models import Equipment, Rental
-from rentals.renting import busy_message
+from rentals.use_cases.renting import busy_message
 from tests.helpers import local_datetime
 
 EQ01 = Equipment(inventory_id="MES-00001")

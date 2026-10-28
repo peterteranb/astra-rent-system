@@ -1,23 +1,24 @@
 """Páginas del operador para CU-08 y CU-09: entregar los equipos reservados y recibirlos de vuelta.
 
-Leen la petición, llaman a handover.py y eligen la plantilla; las reglas están en handover.py y rules.py.
+Leen la petición, llaman a use_cases/handover.py y eligen la plantilla; las reglas están ahí y en rules.py.
 """
 from django.contrib import messages
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
+from accounts.roles import OPERATOR, role_required
+
 from ..errors import OperationRejectedError
-from ..formatting import days_text, money_text
 from ..forms import ReturnForm
-from ..handover import (
+from ..models import Rental
+from ..services.formatting import days_text, money_text
+from ..statuses import ReturnResult
+from ..use_cases.handover import (
     register_pickup,
     register_return,
     rentals_to_receive,
     reservations_to_hand_over,
 )
-from ..models import Rental
-from ..roles import OPERATOR, role_required
-from ..statuses import ReturnResult
 
 
 @role_required(OPERATOR)

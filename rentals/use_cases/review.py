@@ -5,14 +5,14 @@ from decimal import Decimal
 from django.db import transaction
 from django.utils import timezone
 
-from . import rules
-from .errors import InvalidStatusChangeError
-from .events import logs_rejection
+from .. import rules
+from ..errors import InvalidStatusChangeError
+from ..models import Debt, Equipment, Rental, StatusChange
+from ..services.events import logs_rejection
+from ..statuses import DebtReason, EquipmentStatus
 from .history import change_status
-from .models import Debt, Equipment, Rental, StatusChange
 from .payments import charge_debt
 from .renting import cancel_rental
-from .statuses import DebtReason, EquipmentStatus
 
 # ENT-49: desde revisión o reparación un equipo pasa a disponible, a
 # reparación o a baja, y la baja es definitiva.

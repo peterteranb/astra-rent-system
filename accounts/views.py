@@ -7,10 +7,10 @@ from django.shortcuts import redirect, render
 from django.urls import reverse
 
 from rentals.errors import RejectedWithCausesError
-from rentals.roles import OPERATOR, role_required
 
 from .forms import SignUpForm
 from .registration import REJECTION_TITLE, SignUpData, register_client
+from .roles import OPERATOR, role_required
 
 
 def sign_up(request):

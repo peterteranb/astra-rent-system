@@ -1,8 +1,8 @@
-"""Prueba rentals/roles.py: has_role(), quién tiene cada rol (ENT-13: el administrador puede hacer todo)."""
+"""Prueba accounts/roles.py: has_role(), quién tiene cada rol (ENT-13: el administrador puede hacer todo)."""
 from django.contrib.auth.models import AnonymousUser
 
 from accounts.models import Role, User
-from rentals.roles import ADMINISTRATOR, MAINTENANCE, OPERATOR, has_role
+from accounts.roles import ADMINISTRATOR, MAINTENANCE, OPERATOR, has_role
 
 
 def test_el_administrador_tiene_todos_los_roles():

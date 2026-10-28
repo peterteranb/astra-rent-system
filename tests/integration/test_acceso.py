@@ -1,4 +1,4 @@
-"""Prueba rentals/roles.py: role_required() en las páginas del personal (RF-19), la página de
+"""Prueba accounts/roles.py: role_required() en las páginas del personal (RF-19), la página de
 inicio de cada rol y accounts/forms.py: LoginForm, el mensaje de un login incorrecto (RC-04)."""
 from pytest_django.asserts import assertContains, assertRedirects
 

@@ -1,14 +1,15 @@
 """Página del administrador para CU-12: registrar un equipo nuevo.
 
-Lee la petición, llama a inventory.py y elige la plantilla; las reglas están en el modelo Equipment.
+Lee la petición, llama a use_cases/inventory.py y elige la plantilla; las reglas están en el modelo Equipment.
 """
 from django.contrib import messages
 from django.shortcuts import redirect, render
 
+from accounts.roles import ADMINISTRATOR, role_required
+
 from ..errors import RejectedWithCausesError
 from ..forms import EquipmentForm
-from ..inventory import REJECTION_TITLE, register_equipment
-from ..roles import ADMINISTRATOR, role_required
+from ..use_cases.inventory import REJECTION_TITLE, register_equipment
 
 
 @role_required(ADMINISTRATOR)

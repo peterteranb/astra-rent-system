@@ -1,10 +1,10 @@
-"""Prueba rentals/inventory.py: normalize_inventory_id(), y el formato del código del modelo Equipment
+"""Prueba rentals/use_cases/inventory.py: normalize_inventory_id(), y el formato del código del modelo Equipment
 (ENT-83: 3 letras, un guion y 5 números, por ejemplo MES-00001)."""
 import pytest
 from django.core.exceptions import ValidationError
 
-from rentals.inventory import normalize_inventory_id
 from rentals.models import Equipment
+from rentals.use_cases.inventory import normalize_inventory_id
 
 MENSAJE = "El código debe tener 3 letras, un guion y 5 números, por ejemplo MES-00001."
 

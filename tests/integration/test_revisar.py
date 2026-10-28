@@ -1,4 +1,4 @@
-"""Prueba rentals/review.py con la base: review_equipment(), la decisión de mantenimiento
+"""Prueba rentals/use_cases/review.py con la base: review_equipment(), la decisión de mantenimiento
 sobre un equipo devuelto y su fila de historial (CU-10)."""
 from decimal import Decimal
 
@@ -6,8 +6,8 @@ import pytest
 
 from rentals.errors import InvalidStatusChangeError
 from rentals.models import Equipment, StatusChange
-from rentals.review import review_equipment
 from rentals.statuses import EquipmentStatus
+from rentals.use_cases.review import review_equipment
 from tests.helpers import foto_de_la_base
 
 

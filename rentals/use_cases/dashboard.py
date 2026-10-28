@@ -2,7 +2,7 @@
 from dataclasses import dataclass
 from decimal import Decimal
 
-from .models import Debt, Rental
+from ..models import Debt, Rental
 from .payments import pending_totals_by_client
 from .review import equipment_to_review
 

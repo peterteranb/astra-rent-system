@@ -1,4 +1,4 @@
-"""Prueba rentals/events.py y rentals/notifications.py con la base: el log de negocio de cada operación,
+"""Prueba rentals/services/events.py y rentals/services/notifications.py con la base: el log de negocio de cada operación,
 aceptada o rechazada (RC-05), y los correos al cliente, que no tumban la operación si fallan (ENT-85)."""
 import smtplib
 from unittest import mock
@@ -9,12 +9,12 @@ from django.core import mail
 
 from accounts.registration import SignUpData, register_client
 from rentals.errors import EquipmentNotAvailableError, InvalidStatusChangeError, RegistrationRejectedError
-from rentals.handover import register_return
 from rentals.models import Equipment
-from rentals.payments import pay_with_qr
-from rentals.renting import create_rental
-from rentals.review import review_equipment
 from rentals.statuses import EquipmentStatus
+from rentals.use_cases.handover import register_return
+from rentals.use_cases.payments import pay_with_qr
+from rentals.use_cases.renting import create_rental
+from rentals.use_cases.review import review_equipment
 from tests.helpers import con_la_hora, dentro_de, local_datetime
 
 DATOS = SignUpData("Lucía", "Quispe", "lucia@correo.com", "71234567", "cl03", "Montaña2026", "Montaña2026")
@@ -87,7 +87,7 @@ def test_la_devolucion_tardia_manda_el_correo_de_la_deuda(cl01, op01, mes01, dja
 def test_si_el_correo_falla_la_cuenta_se_crea_y_el_log_dice_email_failed(db, caplog, django_capture_on_commit_callbacks):
     # El servidor de correo no responde al crear la cuenta de Lucía -> la cuenta queda creada y el log escribe EMAIL_FAILED
     sin_conexion = smtplib.SMTPException("sin conexión")
-    with mock.patch("rentals.notifications.send_mail", side_effect=sin_conexion):
+    with mock.patch("rentals.services.notifications.send_mail", side_effect=sin_conexion):
         with django_capture_on_commit_callbacks(execute=True):
             register_client(DATOS)
     # Comprueba que la cuenta se creó

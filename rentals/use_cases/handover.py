@@ -2,13 +2,13 @@
 from django.db import transaction
 from django.utils import timezone
 
+from ..errors import IncompleteReturnError, PaymentRequiredError, RentalStateError
+from ..models import Rental
+from ..services.events import log_event, logs_rejection
+from ..services.formatting import money_text, rental_state_message
+from ..statuses import DebtReason, EquipmentStatus, PaymentMethod, RentalStatus
 from . import history
-from .errors import IncompleteReturnError, PaymentRequiredError, RentalStateError
-from .events import log_event, logs_rejection
-from .formatting import money_text, rental_state_message
-from .models import Rental
 from .payments import charge_debt
-from .statuses import DebtReason, EquipmentStatus, PaymentMethod, RentalStatus
 
 
 def reservations_to_hand_over():
