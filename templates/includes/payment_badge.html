@@ -1,0 +1,2 @@
+{# Cómo está el pago de una renta: «Pagado (QR)», «Pagado (efectivo)» o «Pago pendiente». #}
+<span class="badge badge--{% if rental.is_paid %}paid{% else %}pending{% endif %}">{{ rental.payment_label }}</span>

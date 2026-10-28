@@ -1,5 +1,7 @@
 # Sesiones 8 y 9 — Plan del siguiente incremento
 
+> **Documento histórico** de una iteración anterior: se conserva como evidencia y no se actualiza. Lo vigente está en el [índice de la documentación](README.md).
+
 - Proyecto: SergioCorp / astra-rent-system
 - Integrantes: Sofia Arduz Rengel, Andres Laura Vargas, Peter Uriel Terán Bedregal
 - Fecha: 06/10/2026
@@ -29,7 +31,7 @@
 - **Supuestos:**
   - Datos fijos de demostración: EQ-01, C-01 y C-02, cargados desde un archivo de datos.
   - Sin inicio de sesión: en la pantalla, el cliente se elige de una lista.
-  - PostgreSQL se instala directamente, sin Docker.
+  - PostgreSQL se instala directamente en cada máquina.
   - Disponibilidad: los tres, de noche desde las 20:00. Se calcula con una ventana continua en horas desde t = 0, sin fechas prometidas.
 - **Dudas pendientes del cliente:**
   - ¿Qué texto ve el cliente que no consigue el equipo? (PRE-RC-01, ENT-21)
@@ -89,7 +91,7 @@ Tiempos en horas desde t = 0. Meta del recorrido hacia atrás: 11 h.
 
 | Riesgo | Probabilidad y razón | Consecuencia | Respuesta previa | Señal y contingencia | Responsable |
 |---|---|---|---|---|---|
-| La instalación de Django o PostgreSQL falla en alguna máquina | Alta: nadie la hizo antes y son tres máquinas con dos sistemas operativos | A se alarga y retrasa todo, porque está en la ruta crítica | Instalar juntos en la llamada de A siguiendo una sola guía, sin Docker | Si al cerrar A alguien no levanta el proyecto, trabaja en par con otro integrante y se actualiza el calendario | Peter |
+| La instalación de Django o PostgreSQL falla en alguna máquina | Alta: nadie la hizo antes y son tres máquinas con dos sistemas operativos | A se alarga y retrasa todo, porque está en la ruta crítica | Instalar juntos en la llamada de A siguiendo una sola guía | Si al cerrar A alguien no levanta el proyecto, trabaja en par con otro integrante y se actualiza el calendario | Peter |
 | El cliente responde una regla distinta a la supuesta (texto del rechazo, horarios, revisión) | Media: esas preguntas siguen sin respuesta | Cambian las pruebas de C y el mensaje de D | Preguntar a Sergio el jueves; marcar lo pendiente con `skip`, como en la Sesión 04 | Si cambia un caso acordado en A, se corrigen los casos y las estimaciones antes de cerrar C | Andrew |
 
 ## 7. Entregable, hito y estado real

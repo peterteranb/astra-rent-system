@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+
+{% block title %}Pagar con QR{% endblock %}
+{% block heading %}Pagar con QR{% endblock %}
+
+{% block content %}
+  <section class="card">
+    <dl class="details">
+      <dt>Equipo</dt>
+      <dd>{{ rental.equipment }}</dd>
+      <dt>Recojo</dt>
+      <dd>{{ rental.start_datetime|date:"d/m/Y H:i" }}</dd>
+      <dt>Devolución</dt>
+      <dd>{{ rental.end_datetime|date:"d/m/Y H:i" }}</dd>
+      <dt>Total</dt>
+      <dd>{{ rental.rental_days }} día{{ rental.rental_days|pluralize }} × {{ rental.daily_price|floatformat:"2g" }} Bs = <strong>{{ rental.total_price|floatformat:"2g" }} Bs</strong></dd>
+    </dl>
+
+    {# QR simulado (ENT-66): no hay pasarela real; cada botón envía el resultado que daría el banco. #}
+    <div class="qr" aria-hidden="true">QR</div>
+    <p class="hint">Este QR es una simulación: elige qué respondería el banco.</p>
+
+    <form class="form__actions" method="post" action="{% url 'pay_rental' rental.pk %}">
+      {% csrf_token %}
+      <button class="button" type="submit" name="result" value="approved">Simular pago exitoso</button>
+      <button class="button button--secondary" type="submit" name="result" value="failed">Simular pago fallido</button>
+    </form>
+  </section>
+{% endblock %}

@@ -98,6 +98,16 @@ body {
   border-radius: 0.5rem;
 }
 
+.card__title {
+  margin: 0 0 0.5rem;
+  font-size: 1.1rem;
+}
+
+.totals {
+  margin: 0;
+  padding-left: 1.25rem;
+}
+
 .card + .card {
   margin-top: 1rem;
 }
@@ -153,6 +163,16 @@ body {
 
 .form-errors__item {
   margin: 0;
+}
+
+.form-errors__title {
+  margin: 0 0 0.25rem;
+  font-weight: 600;
+}
+
+.form-errors__list {
+  margin: 0;
+  padding-left: 1.25rem;
 }
 
 .errorlist {
@@ -268,7 +288,7 @@ body {
   font-weight: 600;
 }
 
-.list__description {
+.list__name {
   flex: 1 1 10rem;
 }
 
@@ -298,6 +318,23 @@ body {
   width: auto;
 }
 
+/* La casilla de cobro solo se ve si el estado elegido es reparación o baja (ENT-90). */
+.review-form__charge {
+  display: none;
+  flex-basis: 100%;
+  margin: 0;
+}
+
+.review-form:has(option[value="in_repair"]:checked) .review-form__charge,
+.review-form:has(option[value="retired"]:checked) .review-form__charge {
+  display: flex;
+}
+
+.review-form__charge input {
+  flex: none;
+  width: auto;
+}
+
 /* Etiquetas de estado: un color por estado de renta y de equipo. */
 
 .badge {
@@ -323,14 +360,16 @@ body {
 }
 
 .badge--returned,
-.badge--available {
+.badge--available,
+.badge--paid {
   color: var(--color-success);
   background: var(--color-success-background);
 }
 
 .badge--cancelled,
 .badge--in_repair,
-.badge--retired {
+.badge--retired,
+.badge--pending {
   color: var(--color-error);
   background: var(--color-error-background);
 }
@@ -427,4 +466,79 @@ body {
 
 .details dd {
   margin: 0;
+}
+
+/* QR simulado del pago en línea (ENT-66) */
+
+.qr {
+  display: grid;
+  place-items: center;
+  width: 10rem;
+  height: 10rem;
+  margin: 1rem auto 0.5rem;
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--color-muted);
+  background: var(--color-neutral-background);
+  border: 0.4rem dashed var(--color-text);
+  border-radius: 0.5rem;
+}
+
+/* Filtros y páginas del catálogo (ENT-86) */
+
+.filters {
+  display: grid;
+  gap: 0.75rem;
+}
+
+@media (min-width: 600px) {
+  .filters {
+    grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+    align-items: end;
+  }
+}
+
+.filters .form__field {
+  margin: 0;
+}
+
+.pagination {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+  justify-content: center;
+  margin-top: 1rem;
+}
+
+.pagination__current {
+  color: var(--color-muted);
+}
+
+/* Avisos y panel del responsable */
+
+.card--warning {
+  color: var(--color-warning);
+  background: var(--color-warning-background);
+}
+
+.dashboard {
+  display: grid;
+  gap: 1rem;
+}
+
+@media (min-width: 600px) {
+  .dashboard {
+    grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  }
+}
+
+.dashboard .card + .card {
+  margin-top: 0;
+}
+
+.card__count {
+  float: right;
+  font-size: 1.5rem;
+  font-weight: 700;
 }

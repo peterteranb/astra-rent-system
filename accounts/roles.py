@@ -1,18 +1,30 @@
-"""Roles del personal y el decorador que reserva cada página para su rol (RF-11)."""
+"""Roles del sistema y el decorador que reserva cada página para su rol (RF-19)."""
 from functools import wraps
 
 from django.contrib.auth.views import redirect_to_login
 from django.core.exceptions import PermissionDenied
 
-OPERATOR = "operador"
-MAINTENANCE = "mantenimiento"
+from .models import Role
+
+CLIENT = Role.CLIENT
+OPERATOR = Role.OPERATOR
+MAINTENANCE = Role.MAINTENANCE
+ADMINISTRATOR = Role.ADMINISTRATOR
 
 
 def has_role(user, role) -> bool:
-    """Devuelve True si el usuario es superusuario o está en el grupo del rol (ENT-13: el superusuario puede todo)."""
-    if user.is_superuser:
-        return True
-    return user.is_authenticated and user.groups.filter(name=role).exists()
+    """Devuelve True si el usuario tiene el rol o es administrador (ENT-13: el administrador puede todo)."""
+    if not user.is_authenticated:
+        return False
+    return user.role.code in (role, ADMINISTRATOR)
+
+
+def is_store_staff(user) -> bool:
+    """Devuelve True si el usuario es del personal: operador, mantenimiento o administrador.
+
+    El personal ve todos los equipos con su estado; el cliente, solo los disponibles.
+    """
+    return has_role(user, OPERATOR) or has_role(user, MAINTENANCE)
 
 
 def role_required(*roles):

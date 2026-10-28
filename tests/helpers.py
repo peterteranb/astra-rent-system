@@ -1,9 +1,13 @@
-"""Funciones de ayuda para las pruebas: fechas en hora de La Paz y una foto de la base para los rechazos."""
+"""Funciones de ayuda para las pruebas: fechas en hora de La Paz, una hora fija, una renta ya entregada y una foto de la base."""
 from datetime import datetime, timedelta
+from unittest import mock
 
+from django.contrib.auth import get_user_model
 from django.utils import timezone
 
-from rentals.models import Equipment, Rental, StatusChange
+from rentals.models import Debt, Equipment, Rental, StatusChange
+from rentals.use_cases.handover import register_pickup
+from rentals.use_cases.renting import create_rental
 
 
 def local_datetime(year, month, day, hour, minute=0):
@@ -14,16 +18,31 @@ def local_datetime(year, month, day, hour, minute=0):
 def dentro_de(dias, hora, minuto=0):
     """Crea la fecha y hora de La Paz que cae dias después de hoy, a esa hora.
 
-    Hace falta porque una reserva vence a las 12:00 del día siguiente: con una
-    fecha fija que ya pasó, la reserva ya no ocuparía el equipo.
+    Hace falta porque una reserva vence a la medianoche de su día de inicio: con
+    una fecha fija que ya pasó, la reserva ya no ocuparía el equipo.
     """
     dia = timezone.localdate() + timedelta(days=dias)
     return local_datetime(dia.year, dia.month, dia.day, hora, minuto)
 
 
+def con_la_hora(momento):
+    """Hace que timezone.now() devuelva momento dentro de un bloque with, para probar horas exactas."""
+    return mock.patch("django.utils.timezone.now", return_value=momento)
+
+
+def renta_entregada(cliente, equipo, inicio, fin, operador):
+    """Renta en tienda que el operador registra y entrega a la hora inicio, como si fuera ese momento."""
+    with con_la_hora(inicio):
+        return register_pickup(create_rental(cliente, equipo, inicio, fin, registered_by=operador), operador)
+
+
 def foto_de_la_base():
-    """Copia de todo lo que cambian las operaciones: rentas, equipos e historial."""
+    """Copia de todo lo que cambian las operaciones: usuarios, rentas, equipos, deudas e historial."""
+    # last_login cambia al iniciar sesión, no con una operación del negocio.
+    campos = [campo.attname for campo in get_user_model()._meta.concrete_fields if campo.name != "last_login"]
+    usuarios = list(get_user_model().objects.order_by("pk").values(*campos))
     rentas = list(Rental.objects.order_by("pk").values())
     equipos = list(Equipment.objects.order_by("pk").values())
+    deudas = list(Debt.objects.order_by("pk").values())
     historial = list(StatusChange.objects.order_by("pk").values())
-    return rentas, equipos, historial
+    return usuarios, rentas, equipos, deudas, historial

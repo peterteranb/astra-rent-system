@@ -1,5 +1,7 @@
 # Sesiones 13–14 — Revisión del estado del proyecto
 
+> **Documento histórico** de una iteración anterior: se conserva como evidencia y no se actualiza. Lo vigente está en el [índice de la documentación](README.md).
+
 ## 1. Proyecto y versión revisada
 
 - Proyecto: astra-rent-system — SergioCorp (renta de mesas y sillas).

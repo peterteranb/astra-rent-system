@@ -1,5 +1,7 @@
 # SergioCorp · astra-rent-system — Avance del proyecto
 
+> **Documento histórico** de una iteración anterior: se conserva como evidencia y no se actualiza. Lo vigente está en el [índice de la documentación](README.md).
+
 - **Integrantes:** Sofia Arduz Rengel, Andrés Laura Vargas, Peter Uriel Terán Bedregal
 - **Proyecto:** renta de mesas y sillas para eventos (encargo P01, "Gestión de préstamos de equipos")
 - **Qué mostramos:** el caso de uso PRE-CU-01 (el cliente renta un equipo en línea), funcionando con PostgreSQL y respaldado por pruebas

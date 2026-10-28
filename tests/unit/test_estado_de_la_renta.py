@@ -1,5 +1,5 @@
 """Prueba rentals/models.py: Rental.status_at(), Rental.return_result y Rental.occupies_equipment_at()
-con rentas sin guardar del 09/10/2026 18:00 al 12/10/2026 09:00 (RF-07)."""
+con rentas sin guardar del 09/10/2026 18:00 al 12/10/2026 09:00 (RF-08)."""
 from rentals.models import Rental
 from rentals.statuses import RentalStatus, ReturnResult
 from tests.helpers import local_datetime
@@ -10,7 +10,7 @@ ANTES_DEL_INICIO = local_datetime(2026, 10, 9, 12, 0)
 RECOJO = local_datetime(2026, 10, 9, 18, 30)
 DEVOLUCION = local_datetime(2026, 10, 12, 8, 30)
 CANCELACION = local_datetime(2026, 10, 8, 10, 0)
-VENCIDA = local_datetime(2026, 10, 10, 12, 1)
+VENCIDA = local_datetime(2026, 10, 10, 0, 0)
 
 
 def test_sin_momentos_la_renta_esta_reservada():
@@ -38,7 +38,7 @@ def test_la_cancelacion_gana_aunque_tenga_recojo():
 
 
 def test_vencida_sin_recojo_queda_no_recogida():
-    # Nadie la recogió y son las 12:01 del 10/10 -> no recogida (ENT-59)
+    # Nadie la recogió y es la medianoche del 10/10 -> no recogida (ENT-69)
     renta = Rental(start_datetime=INICIO, end_datetime=FIN)
     assert renta.status_at(VENCIDA) == RentalStatus.NOT_PICKED_UP
 
@@ -80,6 +80,6 @@ def test_una_renta_devuelta_no_ocupa_el_equipo():
 
 
 def test_una_renta_no_recogida_no_ocupa_el_equipo():
-    # Venció sin recojo a las 12:01 del 10/10 -> sus fechas quedan libres (ENT-59)
+    # Venció sin recojo a la medianoche del 10/10 -> sus fechas quedan libres (ENT-69)
     renta = Rental(start_datetime=INICIO, end_datetime=FIN)
     assert renta.occupies_equipment_at(VENCIDA) is False

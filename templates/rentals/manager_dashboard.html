@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+
+{% block title %}Panel del responsable{% endblock %}
+{% block heading %}Panel del responsable{% endblock %}
+
+{% block content %}
+  <div class="dashboard">
+    {% include "rentals/dashboard_rentals.html" with title="Rentas activas" list=summary.active situation="activas" %}
+    {% include "rentals/dashboard_rentals.html" with title="Rentas vencidas" list=summary.overdue situation="vencidas" %}
+    {% include "rentals/dashboard_rentals.html" with title="Reservas de hoy" list=summary.today situation="hoy" %}
+    {% include "rentals/dashboard_rentals.html" with title="Reservas con pago pendiente" list=summary.pending_payment situation="pago_pendiente" %}
+
+    <section class="card">
+      <span class="card__count">{{ summary.to_review.total }}</span>
+      <h2 class="card__title">Equipos en revisión o reparación</h2>
+      {% if summary.to_review.rows %}
+        <ul class="totals">
+          {% for equipment in summary.to_review.rows %}
+            <li>{{ equipment }} · {{ equipment.get_status_display }}</li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="empty">Nada por aquí.</p>
+      {% endif %}
+      <a href="{% url 'admin:rentals_equipment_changelist' %}?status__in=in_review,in_repair">Ver en el admin</a>
+    </section>
+
+    <section class="card">
+      <span class="card__count">{{ summary.debt_total|floatformat:"2g" }} Bs</span>
+      <h2 class="card__title">Deudas pendientes</h2>
+      {% if summary.debts_by_client.rows %}
+        <ul class="totals">
+          {% for row in summary.debts_by_client.rows %}
+            <li>
+              <a href="{% url 'admin:rentals_debt_changelist' %}?pagada=no&amp;q={{ row.rental__client__username|urlencode }}">{{ row.rental__client__username }}</a>
+              · {{ row.total|floatformat:"2g" }} Bs
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="empty">Nada por aquí.</p>
+      {% endif %}
+      <a href="{% url 'admin:rentals_debt_changelist' %}?pagada=no">Ver en el admin</a>
+    </section>
+  </div>
+{% endblock %}

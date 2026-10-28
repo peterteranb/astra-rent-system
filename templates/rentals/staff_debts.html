@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+
+{% block title %}Deudas{% endblock %}
+{% block heading %}Deudas pendientes{% endblock %}
+
+{% block content %}
+  {% if overview.debts %}
+    <section class="card">
+      <h2 class="card__title">Total por cliente</h2>
+      <ul class="totals">
+        {% for row in overview.totals %}
+          <li>
+            {{ row.rental__client__first_name }} {{ row.rental__client__last_name }} ({{ row.rental__client__username }}):
+            <strong>{{ row.total|floatformat:"2g" }} Bs</strong>
+          </li>
+        {% endfor %}
+      </ul>
+    </section>
+
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Cliente</th>
+          <th>Equipo</th>
+          <th>Motivo</th>
+          <th>Monto</th>
+          <th>Desde</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for debt in overview.debts %}
+          <tr>
+            <td data-label="Cliente">{{ debt.rental.client.get_full_name|default:debt.rental.client.username }}</td>
+            <td data-label="Equipo">{{ debt.rental.equipment }}</td>
+            <td data-label="Motivo">{{ debt.get_reason_display }}</td>
+            <td data-label="Monto">{{ debt.amount|floatformat:"2g" }} Bs</td>
+            <td data-label="Desde">{{ debt.created_at|date:"d/m/Y H:i" }}</td>
+            <td class="table__actions">
+              <form method="post" action="{% url 'pay_debt' debt.pk %}">
+                {% csrf_token %}
+                <button class="button" type="submit">Registrar pago</button>
+              </form>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p class="empty">No hay deudas pendientes.</p>
+  {% endif %}
+{% endblock %}

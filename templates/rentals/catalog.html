@@ -1,16 +1,50 @@
 {% extends "base.html" %}
 
 {% block title %}Catálogo{% endblock %}
-{% block heading %}Catálogo de equipos disponibles{% endblock %}
+{% block heading %}{% if is_store_staff %}Catálogo de equipos{% else %}Catálogo de equipos disponibles{% endif %}{% endblock %}
 
 {% block content %}
-  {% if catalog_entries %}
+  <section class="card">
+    {% include "includes/form_errors.html" %}
+    <form class="filters" method="get" action="{% url 'catalog' %}">
+      <div class="form__field">
+        {{ form.q.label_tag }}
+        {{ form.q }}
+      </div>
+      <div class="form__field">
+        {{ form.free_from.label_tag }}
+        {{ form.free_from }}
+      </div>
+      <div class="form__field">
+        {{ form.free_to.label_tag }}
+        {{ form.free_to }}
+      </div>
+      {% if is_store_staff %}
+        <div class="form__field">
+          {{ form.status.label_tag }}
+          {{ form.status }}
+        </div>
+      {% endif %}
+      <div class="form__actions">
+        <button class="button" type="submit">Buscar</button>
+        <a class="button button--secondary" href="{% url 'catalog' %}">Limpiar</a>
+      </div>
+    </form>
+    <p class="hint">Con las dos fechas ves solo los equipos libres desde las {{ earliest_pickup_time|time:"H:i" }} del primer día hasta las {{ latest_return_time|time:"H:i" }} del último.</p>
+  </section>
+
+  {% if page.object_list %}
+    <p class="hint">{{ page.paginator.count }} equipo{{ page.paginator.count|pluralize }} · página {{ page.number }} de {{ page.paginator.num_pages }}</p>
     <ul class="list">
-      {% for entry in catalog_entries %}
+      {% for entry in page.object_list %}
         <li class="list__item">
           <span class="list__id">{{ entry.equipment.inventory_id }}</span>
-          <span class="list__description">{{ entry.equipment.description }}</span>
-          <a class="button" href="{% url 'rent_equipment' entry.equipment.inventory_id %}">Rentar</a>
+          <span class="list__name">{{ entry.equipment.name }} · {{ entry.equipment.daily_price|floatformat:"2g" }} Bs por día</span>
+          {% if is_store_staff %}
+            <span class="badge badge--{{ entry.equipment.status }}">{{ entry.equipment.get_status_display }}</span>
+          {% else %}
+            <a class="button" href="{% url 'rent_equipment' entry.equipment.inventory_id %}">Rentar</a>
+          {% endif %}
           {% if entry.busy_rentals %}
             <ul class="list__detail">
               {% for rental in entry.busy_rentals %}
@@ -23,7 +57,19 @@
         </li>
       {% endfor %}
     </ul>
+
+    {% if page.has_other_pages %}
+      <nav class="pagination" aria-label="Páginas del catálogo">
+        {% if page.has_previous %}
+          <a class="button button--secondary" href="{% querystring page=page.previous_page_number %}">Anterior</a>
+        {% endif %}
+        <span class="pagination__current">Página {{ page.number }} de {{ page.paginator.num_pages }}</span>
+        {% if page.has_next %}
+          <a class="button button--secondary" href="{% querystring page=page.next_page_number %}">Siguiente</a>
+        {% endif %}
+      </nav>
+    {% endif %}
   {% else %}
-    <p class="empty">No hay equipos disponibles por ahora.</p>
+    <p class="empty">No hay equipos que coincidan con la búsqueda.</p>
   {% endif %}
 {% endblock %}

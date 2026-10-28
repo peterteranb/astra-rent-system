@@ -5,7 +5,7 @@
 
 {% block content %}
   <section class="card">
-    <p>{{ equipment.description }}</p>
+    <p>{{ equipment.name }} · {{ equipment.daily_price|floatformat:"2g" }} Bs por día</p>
     <p class="hint">
       Recojo desde las {{ earliest_pickup_time|time:"H:i" }}.
       Devolución hasta las {{ latest_return_time|time:"H:i" }}.
@@ -19,7 +19,7 @@
       {% include "includes/period_fields.html" %}
 
       <div class="form__actions">
-        <button class="button" type="submit">Aceptar</button>
+        <button class="button" type="submit">Continuar al pago</button>
         <a class="button button--secondary" href="{% url 'catalog' %}">Volver al catálogo</a>
       </div>
     </form>

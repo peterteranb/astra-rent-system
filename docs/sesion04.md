@@ -1,5 +1,7 @@
 # Iteración de la Sesión 04
 
+> **Documento histórico** de una iteración anterior: se conserva como evidencia y no se actualiza. Lo vigente está en el [índice de la documentación](README.md).
+
 ## Equipo y proyecto
 Gestión de préstamos de equipos — astra-rent-system
 

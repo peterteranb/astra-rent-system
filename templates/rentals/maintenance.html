@@ -4,27 +4,53 @@
 {% block heading %}Mantenimiento{% endblock %}
 
 {% block content %}
+  <section class="card">
+    <form class="filters" method="get" action="{% url 'maintenance' %}">
+      <div class="form__field">
+        <label for="status-filter">Estado</label>
+        <select id="status-filter" name="status">
+          <option value="">Todos</option>
+          {% for value, label in filters %}
+            <option value="{{ value }}"{% if value == status %} selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form__actions">
+        <button class="button" type="submit">Filtrar</button>
+      </div>
+    </form>
+  </section>
+
   {% if entries %}
     <ul class="list">
-      {% for equipment, choices in entries %}
-        <li class="list__item">
-          <span class="list__id">{{ equipment.inventory_id }}</span>
-          <span class="list__description">{{ equipment.description }}</span>
-          <span class="badge badge--{{ equipment.status }}">{{ equipment.get_status_display }}</span>
-          <form class="list__form" method="post" action="{% url 'review_unit' equipment.inventory_id %}">
-            {% csrf_token %}
-            <select name="status" aria-label="Nuevo estado de {{ equipment.inventory_id }}">
-              {% for value, label in choices %}
-                <option value="{{ value }}">{{ label }}</option>
-              {% endfor %}
-            </select>
-            <input type="text" name="comment" placeholder="Comentario (opcional)" aria-label="Comentario de {{ equipment.inventory_id }}">
-            <button class="button" type="submit">Guardar</button>
-          </form>
-        </li>
+      {% for entry in entries %}
+        {% with equipment=entry.equipment %}
+          <li class="list__item">
+            <span class="list__id">{{ equipment.inventory_id }}</span>
+            <span class="list__name">{{ equipment.name }}</span>
+            <span class="badge badge--{{ equipment.status }}">{{ equipment.get_status_display }}</span>
+            <form class="list__form review-form" method="post" action="{% url 'review_equipment' equipment.inventory_id %}">
+              {% csrf_token %}
+              <select name="status" aria-label="Nuevo estado de {{ equipment.inventory_id }}">
+                {% for value, label in entry.choices %}
+                  <option value="{{ value }}">{{ label }}</option>
+                {% endfor %}
+              </select>
+              <input type="text" name="comment" placeholder="Comentario (opcional)" aria-label="Comentario de {{ equipment.inventory_id }}">
+              {% if entry.last_rental %}
+                {# Sin marcar por defecto: mantenimiento decide si cobra (ENT-90). #}
+                <label class="form__choice review-form__charge">
+                  <input type="checkbox" name="charge_last_client">
+                  {{ entry.charge_label }}
+                </label>
+              {% endif %}
+              <button class="button" type="submit">Guardar</button>
+            </form>
+          </li>
+        {% endwith %}
       {% endfor %}
     </ul>
   {% else %}
-    <p class="empty">No hay equipos esperando revisión.</p>
+    <p class="empty">No hay equipos con ese estado.</p>
   {% endif %}
 {% endblock %}

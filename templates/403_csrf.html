@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+
+{% block title %}La página caducó{% endblock %}
+{% block heading %}La página caducó{% endblock %}
+
+{% block content %}
+  <section class="card">
+    <p>Por seguridad, no se guardó nada.</p>
+    <p class="hint">Vuelve atrás, recarga la página y envía el formulario otra vez.</p>
+    <a class="button" href="{% url 'home' %}">Volver al inicio</a>
+  </section>
+{% endblock %}
