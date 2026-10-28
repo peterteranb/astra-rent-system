@@ -104,7 +104,7 @@ Respuesta: `data` = el usuario; `message`: `"Cuenta creada. Ya puedes iniciar se
 
 - De 20 en 20 (ENT-86); cada equipo trae hasta 3 periodos ocupados (ENT-64).
 - El cliente ve solo los disponibles; `status` solo filtra para el personal.
-- Errores: `"Elige las dos fechas para ver los equipos libres."` · `"La fecha final debe ser posterior a la inicial."`.
+- Errores: `"Elige las dos fechas para ver los equipos libres."` · `"La fecha final debe ser posterior a la inicial."`. Un combo (`CMB-00001`) aparece como cualquier equipo (ENT-96).
 
 ### CU-04 · Rentar en línea y pagar con QR
 
@@ -116,6 +116,7 @@ Respuesta: `data` = el usuario; `message`: `"Cuenta creada. Ya puedes iniciar se
 
 Respuesta: `data` = la renta «Reservada» con el pago pendiente; `message`: `"Reserva hecha. Paga con el QR para confirmarla."`. Errores:
 
+- `"La fecha de recojo ya pasó. Elige hoy o un día siguiente."` (el recojo de hoy a las 18:00 vale hasta la medianoche, ENT-94)
 - `"La fecha y hora de devolución debe ser posterior a la de recojo."`
 - `"La renta no puede durar más de 5 días."`
 - `"El recojo debe ser desde las 18:00."` · `"La devolución debe ser hasta las 09:00."`
@@ -143,21 +144,22 @@ Sin deuda, `message` viene vacío.
 
 ### CU-06 y CU-07 · Modificar y cancelar
 
-`POST /api/rentals/<id>/modify/` · El cliente de la renta, quien la registró o el operador
+`POST /api/rentals/<id>/modify/` · El cliente de la renta (hasta 24 h antes), quien la registró o el operador (hasta antes del inicio, ENT-95)
 
 ```json
 {"start_date": "2026-11-06", "start_time": "18:00", "end_date": "2026-11-08", "end_time": "09:00"}
 ```
 
-Respuesta: la renta con sus fechas nuevas; `message`: `"Reserva modificada: MES-00005 ahora va del 06/11/2026 18:00 al 08/11/2026 09:00."`. Errores:
+Respuesta: la renta con sus fechas nuevas; `message`: `"Reserva modificada: MES-00005 ahora va del 06/11/2026 18:00 al 08/11/2026 09:00."`. Si la modifica el personal, el cliente recibe un correo con las fechas nuevas. Errores:
 
 - `"La reserva es de 2 días. Elige fechas con la misma cantidad de días; para cambiarla, cancela y renta de nuevo."`
 - `"Ya no puedes modificar en línea; comunícate con la tienda."` (cliente a menos de 24 h, ENT-80)
+- `"La reserva de MES-00005 ya empezó el 06/11/2026 18:00; ya no se puede modificar."` (personal, ENT-95)
 - `"La renta de MES-00005 ya fue entregada el …"` y los de horarios y fechas ocupadas de CU-04.
 
-`POST /api/rentals/<id>/cancel/` · Los mismos · sin cuerpo
+`POST /api/rentals/<id>/cancel/` · Los mismos; el personal hasta el recojo · sin cuerpo
 
-Respuesta: la renta cancelada; `message`: `"Reserva cancelada: MES-00005 de cl01."`. Errores: `"Ya no puedes cancelar en línea; comunícate con la tienda."` · `"La renta de MES-00005 ya fue cancelada el …"`. Una renta que el usuario no puede abrir da 404.
+Respuesta: la renta cancelada; `message`: `"Reserva cancelada: MES-00005 de cl01."`. El sistema solo cancela: si estaba pagada, el dinero se devuelve a mano en la tienda (ENT-89). Errores: `"Ya no puedes cancelar en línea; comunícate con la tienda."` · `"La renta de MES-00005 ya fue cancelada el …"`. Una renta que el usuario no puede abrir da 404.
 
 ### CU-02 · Clientes en la tienda
 
@@ -173,7 +175,7 @@ Respuesta: la renta cancelada; `message`: `"Reserva cancelada: MES-00005 de cl01
 {"client": 2, "equipment": "MES-00004", "start_date": "2026-10-28", "start_time": "18:00", "end_date": "2026-10-30", "end_time": "09:00"}
 ```
 
-`client` es el `id` del usuario que devolvió la búsqueda. La renta nace pagada en efectivo; `message`: `"Renta registrada: MES-00004 para cl02."`. Errores: los de CU-04, `"El cliente cl02 tiene una deuda pendiente de 40,00 Bs. Cóbrala antes de registrar otra renta."` y `"Cliente: Escoja una opción válida. …"` si el cliente no existe o está desactivado.
+`client` es el `id` del usuario que devolvió la búsqueda. La renta nace «Reservada» y pagada en efectivo; si el cliente se la lleva al momento, se registra el recojo (CU-08, ENT-91); `message`: `"Renta registrada: MES-00004 para cl02."`. Errores: los de CU-04, `"El cliente cl02 tiene una deuda pendiente de 40,00 Bs. Cóbrala antes de registrar otra renta."` y `"Cliente: Escoja una opción válida. …"` si el cliente no existe o está desactivado.
 
 ### CU-08 · Entregar
 
@@ -182,16 +184,16 @@ Respuesta: la renta cancelada; `message`: `"Reserva cancelada: MES-00005 de cl01
 `POST /api/staff/rentals/<id>/pickup/` · Operador · `{"paid_now": true}` solo si cobró en efectivo en ese momento
 
 - `message`: `"Recojo registrado: MES-00001 entregado a cl01."` o, si cobró, `"Cobro de 40,00 Bs en efectivo y recojo registrados: MES-00001 entregado a cl01."`.
-- Errores: `"Falta el pago de 40,00 Bs de esta renta. Cóbralo en efectivo o cancela la reserva si el cliente no paga."` · `"La reserva de MES-00001 venció a la medianoche."` · `"La renta de MES-00001 ya fue entregada el …"`.
+- Errores: `"Falta el pago de 40,00 Bs de esta renta. Cóbralo en efectivo o cancela la reserva si el cliente no paga."` · `"El equipo MES-00001 está en revisión. Espera a que mantenimiento lo revise o cancela la reserva."` · `"La reserva de MES-00001 venció a la medianoche."` · `"La renta de MES-00001 ya fue entregada el …"`.
 
 ### CU-09 · Devolver
 
-`GET /api/staff/returns/` · Operador → `data` = las rentas que faltan devolver, la que vence primero arriba.
+`GET /api/staff/returns/` · Operador → `data` = las rentas «Rentadas», la que vence primero arriba: solo esas se devuelven (ENT-93).
 
 `POST /api/staff/rentals/<id>/return/` · Operador · `{"note": "Una pata floja"}`
 
 - `message`: `"Devolución registrada: MES-00001 recibido de cl01. A tiempo."` o `"… Con 2 días de atraso: deuda de 40,00 Bs."`.
-- Errores: `"Escribe cómo llegó el equipo."` · `"La renta de MES-00001 ya fue devuelta el …"`.
+- Errores: `"Escribe cómo llegó el equipo."` · `"La renta de MES-00001 nunca se entregó: solo se devuelve una renta «Rentada»."` · `"La renta de MES-00001 ya fue devuelta el …"`.
 
 ### CU-11 · Deudas
 
@@ -201,13 +203,24 @@ Respuesta: la renta cancelada; `message`: `"Reserva cancelada: MES-00005 de cl01
 {"data": {"debts": [/* deudas sin pagar */], "totals": [{"username": "cl02", "first_name": "Diego", "last_name": "Rojas", "total": "40.00"}]}, "message": ""}
 ```
 
-`POST /api/staff/debts/<id>/pay/` · Operador · sin cuerpo → `message`: `"Pago registrado: deuda de 40,00 Bs de cl02."`. Error: `"Esta deuda ya se pagó el 28/10/2026 10:15."`.
+`POST /api/staff/debts/<id>/pay/` · Operador · sin cuerpo. Las deudas se pagan solo en la tienda (ENT-92): no hay endpoint para que el cliente pague una deuda → `message`: `"Pago registrado: deuda de 40,00 Bs de cl02."`. Error: `"Esta deuda ya se pagó el 28/10/2026 10:15."`.
 
 ### CU-10 · Mantenimiento
 
-`GET /api/maintenance/equipment/` · Mantenimiento → `data` = equipos con `"choices": [{"value": "available", "label": "Disponible"}, …]`, los estados que se pueden elegir.
+`GET /api/maintenance/equipment/?status=in_review` · Mantenimiento → `data` = todos los equipos que no están de baja, primero los «En revisión»; `status` filtra por estado (ENT-90).
 
-`POST /api/maintenance/equipment/<code>/review/` · Mantenimiento · `{"status": "in_repair", "comment": "Tapiz roto"}`
+```json
+{"data": [{"inventory_id": "SIL-00003", "name": "Silla plegable blanca", "status": "in_review", "status_label": "En revisión", "daily_price": "4.00",
+           "choices": [{"value": "available", "label": "Disponible"}, {"value": "in_repair", "label": "En reparación"}, {"value": "retired", "label": "Baja"}],
+           "last_client": "cl02", "charge_label": "Cobrar el daño al último cliente (cl02, renta del 25/10)"}], "message": ""}
+```
+
+`choices` son los estados permitidos desde el actual. `last_client` y `charge_label` vienen `null` y vacío si el equipo nunca volvió de una renta: entonces no se muestra la casilla. El frontend muestra la casilla solo si el estado elegido es `in_repair` o `retired`, **sin marcar**.
+
+`POST /api/maintenance/equipment/<code>/review/` · Mantenimiento · `{"status": "in_repair", "comment": "Tapiz roto", "charge_last_client": true}`
+
+- `charge_last_client` true: deuda del 20 % (reparación) o del 100 % (baja), con el tope de D-06. Sin `true`: no hay deuda y el log escribe `DAMAGE_NOT_CHARGED`.
+- Reparación o baja cancelan las reservas no recogidas del equipo; sus `id` vienen en `cancelled_rentals`.
 
 ```json
 {"data": {"inventory_id": "SIL-00003", "status": "in_repair", "status_label": "En reparación", "daily_price": "4.00",
@@ -215,7 +228,7 @@ Respuesta: la renta cancelada; `message`: `"Reserva cancelada: MES-00005 de cl01
  "message": "SIL-00003 ahora está «En reparación». Deuda de 16,00 Bs para cl02."}
 ```
 
-Errores: `"El equipo SIL-00003 solo puede pasar a disponible, en reparación o baja."` · `"El equipo SIL-00005 está dado de baja; su estado ya no puede cambiar."` · `"El equipo SIL-00004 ya está «En reparación»."`.
+Errores: `"El equipo SIL-00003 solo puede pasar a disponible, en revisión, en reparación o baja."` · `"El equipo SIL-00005 está dado de baja; su estado ya no puede cambiar."` · `"El equipo SIL-00004 ya está «En reparación»."`.
 
 ### CU-12 · Registrar un equipo
 

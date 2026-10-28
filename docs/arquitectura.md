@@ -9,6 +9,8 @@
 flowchart LR
     N[Navegador] --> M[Middleware de Django<br/>seguridad · whitenoise · sesión · CSRF · usuario]
     M --> P[Presentación<br/>views/ · forms.py · templates/]
+    M --> J[API JSON<br/>rentals/api/ · accounts/api.py]
+    J --> A
     P --> A[Aplicación<br/>use_cases/ · accounts/registration.py]
     A --> D[Dominio<br/>rules.py · statuses.py · errors.py]
     A --> BD[(Datos<br/>models.py · PostgreSQL)]
@@ -20,8 +22,8 @@ flowchart LR
 
 | Capa | Carpetas y archivos | Qué hace | Qué no hace |
 |---|---|---|---|
-| **Presentación** | `rentals/views/`, `templates/`, `rentals/forms.py`; también `accounts/views.py`, `accounts/forms.py`, los `urls.py`, los `admin.py` y `context_processors.py` | Lee la petición, revisa que los datos tengan forma, llama a **una** función del caso de uso, muestra el mensaje y elige la página. | No decide reglas. |
-| **Aplicación** | `rentals/use_cases/`; también `accounts/registration.py` | Hace una operación completa: valida, bloquea la fila, guarda, escribe el log y manda el correo. | No sabe nada de HTTP: una API futura puede llamar a las mismas funciones. |
+| **Presentación** | `rentals/views/`, `templates/`, `rentals/forms.py`; también `accounts/views.py`, `accounts/forms.py`, los `urls.py`, los `admin.py`, `context_processors.py` y la API JSON (`rentals/api/`, `accounts/api.py`) | Lee la petición, revisa que los datos tengan forma, llama a **una** función del caso de uso, muestra el mensaje y elige la página. | No decide reglas. |
+| **Aplicación** | `rentals/use_cases/`; también `accounts/registration.py` | Hace una operación completa: valida, bloquea la fila, guarda, escribe el log y manda el correo. | No sabe nada de HTTP: las páginas y la API JSON llaman a las mismas funciones. |
 | **Dominio** | `rentals/rules.py`, `rentals/statuses.py`, `rentals/errors.py`; también `accounts/validators.py` | Las reglas puras (fechas, horas y montos), los estados fijos y los rechazos con su causa para el usuario. | No lee ni escribe la base. |
 | **Datos** | `rentals/models.py`, `accounts/models.py`, `migrations/` y PostgreSQL | Las tablas, sus restricciones y el estado calculado de la renta. | No decide qué operación se permite. |
 | **Transversal** | `rentals/services/`, `accounts/roles.py` | Lo que usan varias capas sin ser una regla: el log de negocio, los correos, los textos para mostrar y los roles. | No cambia la base. |
@@ -44,6 +46,7 @@ rentals/
     services/                                 ← lo que usan los casos de uso sin ser una regla
         events.py  notifications.py  formatting.py
     views/  management/  migrations/
+    api/                                      ← API JSON: mismas funciones de use_cases/, respuestas JSON
 ```
 
 | Módulo | Responsabilidad | CU |
@@ -63,9 +66,9 @@ rentals/
 | `rentals/use_cases/renting.py` | Búsqueda de clientes, rentar en línea y en tienda, modificar, cancelar y «Mis rentas». | CU-04 a CU-07, CU-16 |
 | `rentals/use_cases/payments.py` | QR simulado; crear, sumar, listar y cobrar deudas. | CU-04, CU-11 |
 | `rentals/use_cases/handover.py` | Entregar (cobra si falta el pago) y devolver (crea la deuda por atraso). | CU-08, CU-09 |
-| `rentals/use_cases/review.py` | Revisión de mantenimiento: estado nuevo, deuda por daño y, si es baja, cancela las reservas futuras. | CU-10 |
+| `rentals/use_cases/review.py` | Revisión de mantenimiento de cualquier equipo: estado nuevo, deuda por daño solo si se marca el cobro y, con reparación o baja, cancela las reservas no recogidas. | CU-10 |
 | `rentals/use_cases/inventory.py` | Registrar un equipo con las reglas del modelo. | CU-12 |
-| `rentals/use_cases/history.py` | `change_status`: el único lugar que cambia `Equipment.status`, siempre con su fila de historial. | CU-09, CU-10, CU-13 |
+| `rentals/use_cases/history.py` | `change_status`: el único lugar que cambia `Equipment.status`, siempre con su fila de historial; `correct_status` (admin) y `cancel_if_out_of_service` (cancela las reservas al pasar a reparación o baja). | CU-09, CU-10, CU-13 |
 | `rentals/use_cases/dashboard.py` | Las seis listas del panel del responsable. | CU-15 |
 | `rentals/services/events.py` | Log de negocio y el decorador que escribe cada rechazo una sola vez. | Todos (RC-05) |
 | `rentals/services/notifications.py` | Correos al cliente, enviados cuando la transacción se confirma. | CU-01, CU-02, CU-04 a CU-07, CU-09, CU-10 |
@@ -80,6 +83,8 @@ rentals/
 | `rentals/views/inventory.py` | Registrar un equipo. | CU-12 |
 | `rentals/views/dashboard.py` | Panel del responsable. | CU-15 |
 | `rentals/views/home.py` | Manda a cada usuario a la página de su rol. | — (RF-19) |
+| `rentals/api/` | API JSON: `responses.py` (formato, método, sesión, rol y errores), `serializers.py` (fechas ISO y montos) y un archivo por grupo de casos de uso. Contrato en [api.md](api.md). | CU-03 a CU-12, CU-15, CU-16 |
+| `accounts/api.py` | API de la sesión (CSRF, login, logout, «quién soy») y de las cuentas. | CU-01, CU-02 |
 | `rentals/management/commands/seed_demo.py` | Deja la base con el escenario de la demo. | — |
 | `config/settings.py` | Configuración leída de `.env`, tasas y formatos del negocio, log y correo. | — |
 

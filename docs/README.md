@@ -12,12 +12,13 @@ Versión final del 28/10/2026. Cómo instalar y correr el sistema está en el [R
 | ¿Qué requisitos de calidad (RC) hay y cómo se comprueban? | [casos-de-uso.md](casos-de-uso.md#3-requisitos-de-calidad). |
 | ¿Qué pasa, paso a paso, en cada caso de uso? | [casos-de-uso.md](casos-de-uso.md#5-casos-de-uso): flujo normal, flujos alternativos con el mensaje exacto y el diagrama de secuencia con las funciones del código. |
 | ¿Qué guarda cada botón en la base? | [casos-de-uso.md](casos-de-uso.md#6-qué-guarda-cada-botón). |
+| ¿Por qué estados pasan una renta, un equipo y una deuda, y quién los cambia? | [casos-de-uso.md](casos-de-uso.md#8-estados): tres diagramas de estados con cada transición. |
 | ¿Qué quedó fuera de alcance y por qué? | [casos-de-uso.md](casos-de-uso.md#7-fuera-de-alcance). |
 | ¿Qué tablas hay, por qué existe cada una y qué se calcula sin guardarse? | [base-de-datos.md](base-de-datos.md); el diagrama editable, en [base-de-datos.dbml](base-de-datos.dbml). |
 | ¿Cómo está hecho el sistema: capas, carpetas, despliegue, log y correo? | [arquitectura.md](arquitectura.md). |
 | ¿Qué endpoints JSON tiene el frontend, qué mandan y qué responden? | [api.md](api.md): cada endpoint con quién lo usa, ejemplos y errores, y cómo conectar React en desarrollo. |
 | ¿Qué respondió el cliente? | [respuestas-del-cliente.md](respuestas-del-cliente.md): ENT-01 a ENT-98; desde ENT-66 separa lo que dijo el cliente de lo que completó el equipo. |
-| ¿Qué decidió el equipo donde el cliente no respondió? | [decisiones.md](decisiones.md): D-01 a D-28, con su motivo y su ENT. |
+| ¿Qué decidió el equipo donde el cliente no respondió? | [decisiones.md](decisiones.md): D-01 a D-32, con su motivo y su ENT. |
 | ¿Qué pruebas hay y cómo se corren? | [arquitectura.md](arquitectura.md#pruebas-y-ci) (tipos y CI), la sección «Pruebas» del [README del proyecto](../README.md#pruebas) (comando, cantidad y tiempo) y la columna «Cómo se verifica» de cada RF. |
 
 ## Cómo leer los IDs
