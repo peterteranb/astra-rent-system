@@ -117,6 +117,18 @@ def test_dar_de_baja_cobra_el_valor_y_cancela_las_reservas_futuras(cl01, cl02, o
     assert (reserva.status, reserva.cancelled_by, resultado.cancelled) == (RentalStatus.CANCELLED, mt01, [reserva])
 
 
+def test_reparar_y_despues_dar_de_baja_cobra_en_total_el_valor_del_equipo(cl01, op01, mt01, mes01):
+    # MES-00001 (400 Bs) vuelve de cl01, va a reparación (80 Bs) y después se da de baja -> la baja cobra 320 Bs (D-06)
+    renta = devolver_a_las(renta_recogida(cl01, op01, mes01), op01, local_datetime(2026, 10, 3, 8, 0))
+    review_equipment(mes01, mt01, EquipmentStatus.IN_REPAIR, "Pata rota")
+    resultado = review_equipment(mes01, mt01, EquipmentStatus.RETIRED, "No se pudo reparar")
+    guardadas = list(Debt.objects.filter(rental=renta).order_by("created_at").values_list("reason", "amount"))
+    # Comprueba las dos deudas guardadas de la misma renta
+    assert guardadas == [(DebtReason.REPAIR, Decimal("80.00")), (DebtReason.RETIRED, Decimal("320.00"))]
+    # Comprueba que la revisión devuelve la deuda de la baja
+    assert resultado.debt.amount == Decimal("320.00")
+
+
 def test_un_equipo_que_nunca_se_rento_va_a_reparacion_sin_deuda(mt01, mes03_en_revision):
     # MES-00003 nunca volvió de una renta y mt01 lo manda a reparación -> no hay a quién cobrar
     resultado = review_equipment(mes03_en_revision, mt01, EquipmentStatus.IN_REPAIR, "Revisión de rutina")

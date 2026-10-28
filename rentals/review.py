@@ -1,7 +1,9 @@
 """Caso de uso CU-10: mantenimiento revisa un equipo devuelto, decide su estado nuevo y cobra el daño."""
 from dataclasses import dataclass
+from decimal import Decimal
 
 from django.db import transaction
+from django.db.models import Sum
 from django.utils import timezone
 
 from . import rules
@@ -11,7 +13,7 @@ from .history import change_status
 from .models import Debt, Equipment, Rental, StatusChange
 from .payments import charge_debt
 from .renting import cancel_rental
-from .statuses import EquipmentStatus
+from .statuses import DebtReason, EquipmentStatus
 
 # ENT-49: desde revisión o reparación un equipo pasa a disponible, a
 # reparación o a baja, y la baja es definitiva.
@@ -74,12 +76,20 @@ def check_review_result(equipment, new_status):
 
 def charge_damage(equipment, new_status):
     """Cobra la reparación o la baja al cliente de la última renta devuelta; None si no hay a quién o qué cobrar."""
-    charge = rules.damage_charge(equipment.value, new_status)
     rental = last_returned_rental(equipment)
-    if charge is None or rental is None:
+    if rental is None:
+        return None
+    charge = rules.damage_charge(equipment.value, new_status, damage_charged_on(rental))
+    if charge is None:
         return None
     reason, amount = charge
     return charge_debt(rental, reason, amount)
+
+
+def damage_charged_on(rental) -> Decimal:
+    """Devuelve lo que la renta ya debe o pagó por daño: sus deudas de reparación y de baja."""
+    damage = rental.debts.filter(reason__in=[DebtReason.REPAIR, DebtReason.RETIRED])
+    return damage.aggregate(total=Sum("amount"))["total"] or Decimal("0")
 
 
 def last_returned_rental(equipment):

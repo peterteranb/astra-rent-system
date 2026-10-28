@@ -89,13 +89,34 @@ def daily_price_for(value) -> Decimal:
     return charge_for(value, settings.DAILY_RATE)
 
 
-def damage_charge(value, new_status):
-    """Devuelve (motivo, monto) de la deuda que deja una revisión, o None si el equipo queda disponible (ENT-74)."""
+def damage_reason_and_rate(new_status):
+    """Devuelve (motivo, tasa) del daño que deja una revisión, o None si el equipo queda disponible (ENT-74)."""
     if new_status == EquipmentStatus.IN_REPAIR:
-        return DebtReason.REPAIR, charge_for(value, settings.REPAIR_CHARGE_RATE)
+        return DebtReason.REPAIR, settings.REPAIR_CHARGE_RATE
     if new_status == EquipmentStatus.RETIRED:
-        return DebtReason.RETIRED, charge_for(value, settings.RETIRE_CHARGE_RATE)
+        return DebtReason.RETIRED, settings.RETIRE_CHARGE_RATE
     return None
+
+
+def damage_charge(value, new_status, already_charged=Decimal("0")):
+    """Devuelve (motivo, monto) de la deuda que deja una revisión, o None si no hay nada que cobrar (ENT-74).
+
+    already_charged es lo que la renta ya debe por daño: la baja después de una reparación
+    cobra solo lo que falta para llegar al valor del equipo (D-06).
+    """
+    damage = damage_reason_and_rate(new_status)
+    if damage is None:
+        return None
+    reason, rate = damage
+    amount = cap_damage(charge_for(value, rate), value, already_charged)
+    if amount == 0:
+        return None
+    return reason, amount
+
+
+def cap_damage(amount, value, already_charged) -> Decimal:
+    """Recorta amount para que las deudas por daño de una renta no sumen más que el valor del equipo (D-06)."""
+    return min(amount, max(value - already_charged, Decimal("0")))
 
 
 def classify_return(returned_at, due_date) -> ReturnResult:

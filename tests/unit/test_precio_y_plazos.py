@@ -1,5 +1,6 @@
 """Prueba rentals/rules.py: daily_price_for(), charge_for() y damage_charge(), el precio por día y los cargos
-por daño (ENT-71, ENT-74), Rental.total_price (ENT-72) y can_client_change(), el plazo de 24 h del cliente (ENT-80)."""
+por daño con su tope (ENT-71, ENT-74, D-06), Rental.total_price (ENT-72) y can_client_change(), el plazo de 24 h
+del cliente (ENT-80)."""
 from datetime import timedelta
 from decimal import Decimal
 
@@ -29,6 +30,18 @@ def test_la_reparacion_de_una_silla_de_80_bs_cobra_16_bs():
 def test_la_baja_cobra_todo_el_valor():
     # Una mesa de 400 Bs se da de baja -> deuda por baja de 400 Bs
     assert damage_charge(Decimal("400.00"), EquipmentStatus.RETIRED) == (DebtReason.RETIRED, Decimal("400.00"))
+
+
+def test_la_baja_despues_de_una_reparacion_cobra_lo_que_falta_del_valor():
+    # Una mesa de 400 Bs ya debe 80 Bs por reparación y se da de baja -> la baja cobra 320 Bs, no 400
+    assert damage_charge(Decimal("400.00"), EquipmentStatus.RETIRED, Decimal("80.00")) == (
+        DebtReason.RETIRED, Decimal("320.00")
+    )
+
+
+def test_si_ya_se_cobro_todo_el_valor_la_baja_no_deja_deuda():
+    # Una mesa de 400 Bs ya debe 400 Bs por daño y se da de baja -> no hay nada más que cobrar
+    assert damage_charge(Decimal("400.00"), EquipmentStatus.RETIRED, Decimal("400.00")) is None
 
 
 def test_dejarlo_disponible_no_cobra_nada():

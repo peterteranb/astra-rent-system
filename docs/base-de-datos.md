@@ -116,7 +116,7 @@ erDiagram
 | Recojo con pago pendiente | Si paga: `paid_at`, `payment_method = cash` y se entrega. Si no paga: el operador cancela la renta |
 | Devolución después de las 12:00 | `DEUDA` con `late_return` = días de atraso × `daily_price` |
 | Revisión → reparación | `DEUDA` con `repair` = 20 % del valor, al último cliente |
-| Revisión → baja | `DEUDA` con `retired` = 100 % del valor; se cancelan las reservas futuras del equipo |
+| Revisión → baja | `DEUDA` con `retired` = 100 % del valor, menos lo que esa renta ya debe por reparación (D-06); se cancelan las reservas futuras del equipo |
 | El cliente paga una deuda | `paid_at` y `paid_received_by` en esa `DEUDA` |
 
 ## Parámetros (`settings.py`)
