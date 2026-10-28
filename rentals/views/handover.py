@@ -1,4 +1,4 @@
-"""Páginas del operador para CU-03 y CU-04: entregar los equipos reservados y recibirlos de vuelta.
+"""Páginas del operador para CU-08 y CU-09: entregar los equipos reservados y recibirlos de vuelta.
 
 Leen la petición, llaman a handover.py y eligen la plantilla; las reglas están en handover.py y rules.py.
 """
@@ -7,6 +7,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
 from ..errors import OperationRejectedError
+from ..formatting import money_text
 from ..forms import ReturnForm
 from ..handover import (
     register_pickup,
@@ -30,19 +31,25 @@ def staff_reservations(request):
 @role_required(OPERATOR)
 @require_POST
 def pickup_reservation(request, rental_id):
-    """Registra el recojo de una reserva y vuelve a la lista (CU-03)."""
+    """Registra el recojo de una reserva, cobrando si el pago estaba pendiente, y vuelve a la lista (CU-08)."""
     rental = get_object_or_404(Rental, pk=rental_id)
+    was_pending = not rental.is_paid
     try:
-        register_pickup(rental, request.user)
+        register_pickup(rental, request.user, paid_now=request.POST.get("paid_now") == "yes")
     except OperationRejectedError as error:
         messages.error(request, str(error))
     else:
-        messages.success(
-            request,
-            f"Recojo registrado: {rental.equipment.inventory_id} entregado a {rental.client.username}.",
-        )
+        messages.success(request, pickup_message(rental, was_pending))
     # Redirige después del POST: recargar la página no lo envía otra vez.
     return redirect("staff_reservations")
+
+
+def pickup_message(rental, was_pending):
+    """Mensaje de éxito del recojo; si se cobró en ese momento, empieza con el cobro."""
+    handed_over = f"{rental.equipment.inventory_id} entregado a {rental.client.username}."
+    if was_pending:
+        return f"Cobro de {money_text(rental.total_price)} en efectivo y recojo registrados: {handed_over}"
+    return f"Recojo registrado: {handed_over}"
 
 
 @role_required(OPERATOR)
@@ -53,7 +60,7 @@ def staff_returns(request):
 
 @role_required(OPERATOR)
 def return_rental(request, rental_id):
-    """Muestra el formulario de la observación de una renta y registra la devolución (CU-04)."""
+    """Muestra el formulario de la observación de una renta y registra la devolución (CU-09)."""
     rental = get_object_or_404(Rental, pk=rental_id)
     form = ReturnForm(request.POST or None)
     if request.method == "POST" and form.is_valid():

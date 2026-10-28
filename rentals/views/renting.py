@@ -12,6 +12,7 @@ from .. import rules
 from ..errors import EquipmentNotAvailableError, OperationRejectedError
 from ..forms import RentalForm, WalkInRentalForm
 from ..models import Equipment, Rental
+from ..payments import pay_with_qr
 from ..renting import (
     cancel_rental,
     catalog_entries,
@@ -52,8 +53,35 @@ def rent_equipment(request, inventory_id):
             # Fechas u horas inválidas: se queda en el formulario para corregirlas.
             form.add_error(None, str(error))
         else:
-            return redirect("rental_confirmation", rental_id=rental.pk)
+            return redirect("pay_rental", rental_id=rental.pk)
     return render(request, "rentals/rent_form.html", rental_form_context(equipment, form))
+
+
+@login_required
+def pay_rental(request, rental_id):
+    """Muestra el QR simulado de una reserva en línea y guarda el botón que presiona el cliente (CU-04)."""
+    rental = get_object_or_404(Rental, pk=rental_id, client=request.user, registered_by__isnull=True)
+    if request.method != "POST":
+        return render(request, "rentals/pay_rental.html", {"rental": rental})
+    approved = request.POST.get("result") == "approved"
+    try:
+        pay_with_qr(rental, approved)
+    except OperationRejectedError as error:
+        messages.error(request, str(error))
+    else:
+        show_payment_result(request, approved)
+    return redirect("rental_confirmation", rental_id=rental.pk)
+
+
+def show_payment_result(request, approved):
+    """Muestra al cliente si el pago QR se completó o si paga al recoger (ENT-67)."""
+    if approved:
+        messages.success(request, "Pago recibido. Tu renta está confirmada.")
+        return
+    messages.warning(
+        request,
+        "Tu reserva está hecha, pero el pago no se completó. Paga en la tienda al recoger el equipo.",
+    )
 
 
 @login_required
@@ -73,6 +101,7 @@ def rental_form_context(equipment, form):
     """Datos que necesita la plantilla del formulario de renta, con los límites de las reglas."""
     return {
         "equipment": equipment,
+        "equipment_daily_price": rules.daily_price_for(equipment.value),
         "form": form,
         "earliest_pickup_time": rules.EARLIEST_PICKUP_TIME,
         "latest_return_time": rules.LATEST_RETURN_TIME,

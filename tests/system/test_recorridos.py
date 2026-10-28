@@ -19,10 +19,11 @@ def periodo(inicio, fin):
 
 
 def test_ciclo_completo_de_una_renta(client, cl01, op01, mt01, mes01):
-    # cl01 renta MES-00001 -> op01 lo entrega -> op01 lo recibe con nota -> mt01 lo deja disponible -> cl01 lo ve libre
+    # cl01 renta y paga MES-00001 -> op01 lo entrega -> op01 lo recibe con nota -> mt01 lo deja disponible -> cl01 lo ve libre
     client.force_login(cl01)
     renta_pedida = client.post("/equipment/MES-00001/rent/", periodo(dentro_de(1, 18), dentro_de(2, 9)))
     renta = Rental.objects.get()
+    pago = client.post(f"/rentals/{renta.pk}/pay/", {"result": "approved"}, follow=True)
     client.force_login(op01)
     entrega = client.post(f"/staff/reservations/{renta.pk}/pickup/", follow=True)
     devolucion = client.post(f"/staff/returns/{renta.pk}/", {"note": "Pata floja"}, follow=True)
@@ -30,8 +31,10 @@ def test_ciclo_completo_de_una_renta(client, cl01, op01, mt01, mes01):
     revision = client.post("/maintenance/MES-00001/", {"status": EquipmentStatus.AVAILABLE, "comment": ""}, follow=True)
     client.force_login(cl01)
     catalogo = client.get("/")
-    # Comprueba que el cliente llegó a la confirmación de su renta
-    assertRedirects(renta_pedida, f"/rentals/{renta.pk}/")
+    # Comprueba que el cliente llegó a la pantalla del QR
+    assertRedirects(renta_pedida, f"/rentals/{renta.pk}/pay/")
+    # Comprueba que el cliente vio su pago recibido
+    assertContains(pago, "Pago recibido. Tu renta está confirmada.")
     # Comprueba que el operador vio el recojo registrado
     assertContains(entrega, "Recojo registrado: MES-00001 entregado a cl01.")
     # Comprueba que el operador vio la devolución registrada
@@ -42,6 +45,19 @@ def test_ciclo_completo_de_una_renta(client, cl01, op01, mt01, mes01):
     assertContains(catalogo, "Libre")
     # Comprueba que la renta quedó devuelta y el historial tiene la ida a revisión y la vuelta a disponible
     assert (Rental.objects.get().status, StatusChange.objects.count()) == (RentalStatus.RETURNED, 2)
+
+
+def test_un_pago_qr_fallido_deja_la_reserva_y_avisa_que_se_paga_en_la_tienda(client, cl01, mes01):
+    # cl01 renta MES-00001 y el QR falla -> ve que paga al recoger y la reserva queda con el pago pendiente (ENT-67)
+    client.force_login(cl01)
+    client.post("/equipment/MES-00001/rent/", periodo(dentro_de(1, 18), dentro_de(2, 9)))
+    renta = Rental.objects.get()
+    respuesta = client.post(f"/rentals/{renta.pk}/pay/", {"result": "failed"}, follow=True)
+    renta.refresh_from_db()
+    # Comprueba el aviso al cliente
+    assertContains(respuesta, "Tu reserva está hecha, pero el pago no se completó. Paga en la tienda al recoger el equipo.")
+    # Comprueba que la reserva sigue hecha y sin pagar
+    assert (renta.status, renta.paid_at) == (RentalStatus.RESERVED, None)
 
 
 def test_un_rechazo_por_fechas_ocupadas_se_ve_en_el_catalogo(client, cl01, cl02, mes01):

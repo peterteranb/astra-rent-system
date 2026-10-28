@@ -1,12 +1,12 @@
-"""Casos de uso CU-03 y CU-04: el operador entrega un equipo reservado y lo recibe de vuelta."""
+"""Casos de uso CU-08 y CU-09: el operador entrega un equipo reservado y lo recibe de vuelta."""
 from django.db import transaction
 from django.utils import timezone
 
 from . import history
-from .errors import IncompleteReturnError, RentalStateError
-from .formatting import rental_state_message
+from .errors import IncompleteReturnError, PaymentRequiredError, RentalStateError
+from .formatting import money_text, rental_state_message
 from .models import Rental
-from .statuses import EquipmentStatus, RentalStatus
+from .statuses import EquipmentStatus, PaymentMethod, RentalStatus
 
 
 def reservations_to_hand_over() -> list[Rental]:
@@ -36,11 +36,13 @@ def rentals_to_receive():
     )
 
 
-def register_pickup(rental, staff_user) -> Rental:
-    """Guarda que el cliente se llevó el equipo ahora y qué operador lo entregó (RF-08).
+def register_pickup(rental, staff_user, paid_now=False) -> Rental:
+    """Guarda que el cliente se llevó el equipo ahora y qué operador lo entregó (ENT-56).
 
-    Solo cambia la renta: «Rentada» se calcula desde picked_up_at, así que
-    Equipment.status no se toca. Lanza RentalStateError si no está «Reservada».
+    Con el pago pendiente, solo se entrega si paid_now dice que el cliente pagó en
+    efectivo en ese momento (ENT-68). Equipment.status no se toca: «Rentada» se
+    calcula desde picked_up_at. Lanza RentalStateError si no está «Reservada» y
+    PaymentRequiredError si falta el pago.
     """
     with transaction.atomic():
         # Bloquea la fila y la vuelve a leer: si dos operadores hacen clic a la
@@ -48,9 +50,15 @@ def register_pickup(rental, staff_user) -> Rental:
         locked_rental = Rental.objects.select_for_update().get(pk=rental.pk)
         now = timezone.now()
         check_can_pick_up(locked_rental, now)
+        if not locked_rental.is_paid:
+            check_payment_received(locked_rental, paid_now)
+            locked_rental.paid_at = now
+            locked_rental.payment_method = PaymentMethod.CASH
         locked_rental.picked_up_at = now
         locked_rental.handed_over_by = staff_user
-        locked_rental.save(update_fields=["picked_up_at", "handed_over_by"])
+        locked_rental.save(
+            update_fields=["paid_at", "payment_method", "picked_up_at", "handed_over_by"]
+        )
         return locked_rental
 
 
@@ -59,6 +67,15 @@ def check_can_pick_up(rental, now):
     status = rental.status_at(now)
     if status != RentalStatus.RESERVED:
         raise RentalStateError(rental_state_message(rental, status))
+
+
+def check_payment_received(rental, paid_now):
+    """Lanza PaymentRequiredError si la renta tiene el pago pendiente y el operador no lo cobró."""
+    if not paid_now:
+        raise PaymentRequiredError(
+            f"Falta el pago de {money_text(rental.total_price)} de esta renta. "
+            "Cóbralo en efectivo o cancela la reserva si el cliente no paga."
+        )
 
 
 def register_return(rental, staff_user, note) -> Rental:

@@ -1,4 +1,4 @@
-"""Casos de uso CU-01, CU-02 y CU-06: catálogo, renta en línea y en tienda, y cancelar una reserva.
+"""Casos de uso CU-03 a CU-07: catálogo, renta en línea y en tienda, modificar y cancelar una reserva.
 
 Las vistas llaman a este módulo; aplica las reglas de rules.py y habla con la base. No lee la petición ni elige páginas.
 """
@@ -15,7 +15,7 @@ from .errors import EquipmentNotAvailableError, InvalidPeriodError, RentalStateE
 from .formatting import local_text, rental_state_message
 from .models import Equipment, EquipmentStatus, Rental
 from .roles import CLIENT
-from .statuses import RentalStatus
+from .statuses import PaymentMethod, RentalStatus
 
 # ENT-64: el catálogo dice cuándo está ocupado cada equipo; con 3 periodos basta para elegir fechas.
 MAX_BUSY_PERIODS_SHOWN = 3
@@ -98,10 +98,11 @@ def create_rental(
 ) -> Rental:
     """Guarda una renta confirmada de un equipo y la devuelve (ENT-16: se confirma al instante).
 
-    registered_by es el operador que la registró (None si el cliente renta en
-    línea). Con picked_up_now el cliente se lo lleva en la tienda: la renta nace
-    «Rentada» (ENT-57). Lanza un OperationRejectedError si se rompe una regla;
-    entonces no se guarda nada.
+    registered_by es el operador que la registró en la tienda, donde se paga en
+    efectivo (ENT-70); es None si el cliente renta en línea y paga con el QR después.
+    Con picked_up_now el cliente se lo lleva en la tienda: la renta nace «Rentada»
+    (ENT-57). Lanza un OperationRejectedError si se rompe una regla; entonces no se
+    guarda nada.
     """
     # Las reglas comparan horas de reloj (18:00, 09:00): se trabaja en hora local.
     start = timezone.localtime(start_datetime)
@@ -121,6 +122,9 @@ def create_rental(
             daily_price=rules.daily_price_for(locked_equipment.value),
             registered_by=registered_by,
         )
+        if registered_by is not None:
+            rental.paid_at = timezone.now()
+            rental.payment_method = PaymentMethod.CASH
         if picked_up_now:
             # Pendiente con el cliente: qué pasa si se lo lleva ahora y el periodo empieza después (ENT-57).
             rental.picked_up_at = timezone.now()

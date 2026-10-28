@@ -8,6 +8,7 @@ urlpatterns = [
     path("home/", home.home, name="home"),
     path("equipment/<str:inventory_id>/rent/", renting.rent_equipment, name="rent_equipment"),
     path("rentals/<int:rental_id>/", renting.rental_confirmation, name="rental_confirmation"),
+    path("rentals/<int:rental_id>/pay/", renting.pay_rental, name="pay_rental"),
     path("staff/reservations/", handover.staff_reservations, name="staff_reservations"),
     path(
         "staff/reservations/<int:rental_id>/pickup/",

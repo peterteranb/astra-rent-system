@@ -1,19 +1,20 @@
 """Prueba rentals/handover.py con la base: register_pickup() y register_return(),
-entregar el equipo y recibirlo de vuelta (CU-03, CU-04)."""
+entregar el equipo, cobrando si el pago está pendiente, y recibirlo de vuelta (CU-08, CU-09)."""
 import pytest
 
-from rentals.errors import IncompleteReturnError
+from rentals.errors import IncompleteReturnError, PaymentRequiredError
 from rentals.handover import register_pickup, register_return
 from rentals.history import change_status
 from rentals.models import Rental, StatusChange
+from rentals.payments import pay_with_qr
 from rentals.renting import create_rental
-from rentals.statuses import EquipmentStatus, RentalStatus
+from rentals.statuses import EquipmentStatus, PaymentMethod, RentalStatus
 from tests.helpers import dentro_de, foto_de_la_base
 
 
 def test_register_pickup_guarda_la_hora_y_el_operador(cl01, op01, mes01):
-    # op01 entrega la reserva de cl01 -> la renta queda «Rentada» con la hora y op01 (RF-08)
-    renta = create_rental(cl01, mes01, dentro_de(1, 18), dentro_de(2, 9))
+    # op01 entrega la reserva pagada con QR de cl01 -> la renta queda «Rentada» con la hora y op01 (ENT-56)
+    renta = pay_with_qr(create_rental(cl01, mes01, dentro_de(1, 18), dentro_de(2, 9)), approved=True)
     register_pickup(renta, op01)
     guardada = Rental.objects.get(pk=renta.pk)
     # Comprueba que se guardó la hora del recojo
@@ -21,6 +22,31 @@ def test_register_pickup_guarda_la_hora_y_el_operador(cl01, op01, mes01):
     # Comprueba que se guardó quién entregó
     assert guardada.handed_over_by == op01
     # Comprueba que ahora está rentada
+    assert guardada.status == RentalStatus.RENTED
+
+
+def test_entregar_sin_cobrar_el_pago_pendiente_se_rechaza_y_la_base_no_cambia(cl01, op01, mes01):
+    # El QR de cl01 falló y op01 intenta entregar sin cobrar -> rechazado con el monto y no se guarda nada (ENT-68)
+    renta = create_rental(cl01, mes01, dentro_de(0, 18), dentro_de(2, 9))
+    antes = foto_de_la_base()
+    with pytest.raises(PaymentRequiredError) as error:
+        register_pickup(renta, op01)
+    # Comprueba el mensaje con el monto y qué hacer
+    assert str(error.value) == (
+        "Falta el pago de 40,00 Bs de esta renta. Cóbralo en efectivo o cancela la reserva si el cliente no paga."
+    )
+    # Comprueba que la base quedó igual
+    assert foto_de_la_base() == antes
+
+
+def test_entregar_cobrando_en_efectivo_guarda_el_pago_y_el_recojo(cl01, op01, mes01):
+    # El QR de cl01 falló y op01 cobra en efectivo al entregar -> pagada en efectivo y rentada (ENT-68)
+    renta = create_rental(cl01, mes01, dentro_de(0, 18), dentro_de(2, 9))
+    register_pickup(renta, op01, paid_now=True)
+    guardada = Rental.objects.get(pk=renta.pk)
+    # Comprueba la forma de pago y que el pago y el recojo son del mismo momento
+    assert (guardada.payment_method, guardada.paid_at) == (PaymentMethod.CASH, guardada.picked_up_at)
+    # Comprueba que quedó rentada
     assert guardada.status == RentalStatus.RENTED
 
 
