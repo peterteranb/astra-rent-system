@@ -40,6 +40,13 @@ def is_rentable_status(status: str) -> bool:
     return status == EquipmentStatus.AVAILABLE
 
 
+def next_statuses(current) -> list:
+    """Devuelve los estados a los que puede pasar un equipo: cualquiera menos el actual; desde la baja, ninguno (ENT-49, ENT-90)."""
+    if current == EquipmentStatus.RETIRED:
+        return []
+    return [status for status in EquipmentStatus if status != current]
+
+
 def ends_after_start(start, end) -> bool:
     """Devuelve True si el periodo termina después de empezar."""
     return end > start

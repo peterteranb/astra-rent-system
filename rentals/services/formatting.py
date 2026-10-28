@@ -90,6 +90,12 @@ def debt_paid_message(debt):
     return f"Pago registrado: deuda de {money_text(debt.amount)} de {debt.rental.client.username}."
 
 
+def charge_label(rental):
+    """Texto de la casilla de mantenimiento, por ejemplo «Cobrar el daño al último cliente (cl02, renta del 25/10)»."""
+    start = timezone.localtime(rental.start_datetime)
+    return f"Cobrar el daño al último cliente ({rental.client.username}, renta del {start:%d/%m})"
+
+
 def review_message(outcome):
     """Aviso de la revisión: el estado nuevo, la deuda y las reservas canceladas."""
     change = outcome.change

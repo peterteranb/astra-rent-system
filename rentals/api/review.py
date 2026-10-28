@@ -12,16 +12,19 @@ from .serializers import debt_data, equipment_data
 
 @api_view("GET", roles=[MAINTENANCE])
 def maintenance_equipment(request):
-    """Devuelve los equipos que esperan a mantenimiento, cada uno con los estados que puede elegir."""
-    return success(
-        [
-            {
-                **equipment_data(equipment),
-                "choices": [{"value": value, "label": label} for value, label in choices],
-            }
-            for equipment, choices in review_queue()
-        ]
-    )
+    """Devuelve los equipos que no están de baja, filtrados por ?status=, con sus estados posibles y su último cliente."""
+    return success([entry_data(entry) for entry in review_queue(request.GET.get("status", ""))])
+
+
+def entry_data(entry):
+    """Un equipo de la lista de mantenimiento: sus opciones y a quién se le cobraría el daño."""
+    last_rental = entry.last_rental
+    return {
+        **equipment_data(entry.equipment),
+        "choices": [{"value": value, "label": label} for value, label in entry.choices],
+        "last_client": last_rental.client.username if last_rental else None,
+        "charge_label": entry.charge_label,
+    }
 
 
 @api_view("POST", roles=[MAINTENANCE])
@@ -30,7 +33,11 @@ def review_equipment_view(request, inventory_id):
     equipment = get_object_or_404(Equipment, inventory_id=inventory_id)
     body = read_json(request)
     outcome = review_equipment(
-        equipment, request.user, str(body.get("status", "")), str(body.get("comment", ""))
+        equipment,
+        request.user,
+        str(body.get("status", "")),
+        str(body.get("comment", "")),
+        charge_last_client=body.get("charge_last_client") is True,
     )
     return success(
         {

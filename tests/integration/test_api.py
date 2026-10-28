@@ -129,7 +129,7 @@ def test_mantenimiento_revisa_por_la_api_y_un_estado_invalido_se_rechaza(client,
     ]
     # Comprueba el rechazo con la causa y que la base quedó igual
     assert (rechazo.status_code, rechazo.json()["errors"]) == (
-        400, ["El equipo MES-00003 solo puede pasar a disponible, en reparación o baja."]
+        400, ["El equipo MES-00003 solo puede pasar a disponible, en revisión, en reparación o baja."]
     )
     assert despues_del_rechazo == antes
     # Comprueba el mensaje y el estado guardado

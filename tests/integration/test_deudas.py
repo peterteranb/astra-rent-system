@@ -94,9 +94,9 @@ def test_una_deuda_pagada_no_se_cobra_dos_veces(cl01, op01, mes01):
 
 
 def test_mandar_a_reparacion_cobra_el_20_por_ciento_al_ultimo_cliente(cl01, op01, mt01, mes01):
-    # MES-00001 (400 Bs) vuelve a tiempo de la renta de cl01 y mt01 lo manda a reparación -> deuda de 80 Bs (ENT-74)
+    # MES-00001 (400 Bs) vuelve a tiempo de cl01 y mt01 lo manda a reparación marcando el cobro -> deuda de 80 Bs (ENT-74, ENT-90)
     renta = devolver_a_las(renta_recogida(cl01, op01, mes01), op01, local_datetime(2026, 10, 3, 8, 0))
-    resultado = review_equipment(mes01, mt01, EquipmentStatus.IN_REPAIR, "Pata rota")
+    resultado = review_equipment(mes01, mt01, EquipmentStatus.IN_REPAIR, "Pata rota", charge_last_client=True)
     deuda = Debt.objects.get()
     # Comprueba la deuda guardada
     assert (deuda.rental, deuda.reason, deuda.amount) == (renta, DebtReason.REPAIR, Decimal("80.00"))
@@ -109,7 +109,7 @@ def test_dar_de_baja_cobra_el_valor_y_cancela_las_reservas_futuras(cl01, cl02, o
     renta = renta_recogida(cl01, op01, mes01)
     reserva = create_rental(cl02, mes01, dentro_de(7, 18), dentro_de(9, 9))
     devolver_a_las(renta, op01, local_datetime(2026, 10, 3, 8, 0))
-    resultado = review_equipment(mes01, mt01, EquipmentStatus.RETIRED, "Estructura partida")
+    resultado = review_equipment(mes01, mt01, EquipmentStatus.RETIRED, "Estructura partida", charge_last_client=True)
     reserva.refresh_from_db()
     # Comprueba la deuda del 100 % del valor
     assert (resultado.debt.reason, resultado.debt.amount) == (DebtReason.RETIRED, Decimal("400.00"))
@@ -120,13 +120,26 @@ def test_dar_de_baja_cobra_el_valor_y_cancela_las_reservas_futuras(cl01, cl02, o
 def test_reparar_y_despues_dar_de_baja_cobra_en_total_el_valor_del_equipo(cl01, op01, mt01, mes01):
     # MES-00001 (400 Bs) vuelve de cl01, va a reparación (80 Bs) y después se da de baja -> la baja cobra 320 Bs (D-06)
     renta = devolver_a_las(renta_recogida(cl01, op01, mes01), op01, local_datetime(2026, 10, 3, 8, 0))
-    review_equipment(mes01, mt01, EquipmentStatus.IN_REPAIR, "Pata rota")
-    resultado = review_equipment(mes01, mt01, EquipmentStatus.RETIRED, "No se pudo reparar")
+    review_equipment(mes01, mt01, EquipmentStatus.IN_REPAIR, "Pata rota", charge_last_client=True)
+    resultado = review_equipment(mes01, mt01, EquipmentStatus.RETIRED, "No se pudo reparar", charge_last_client=True)
     guardadas = list(Debt.objects.filter(rental=renta).order_by("created_at").values_list("reason", "amount"))
     # Comprueba las dos deudas guardadas de la misma renta
     assert guardadas == [(DebtReason.REPAIR, Decimal("80.00")), (DebtReason.RETIRED, Decimal("320.00"))]
     # Comprueba que la revisión devuelve la deuda de la baja
     assert resultado.debt.amount == Decimal("320.00")
+
+
+def test_mandar_a_reparacion_sin_marcar_el_cobro_no_crea_deuda_y_lo_escribe_en_el_log(cl01, op01, mt01, mes01, caplog):
+    # MES-00001 vuelve de cl01 y mt01 lo manda a reparación sin marcar la casilla -> no hay deuda y el log dice DAMAGE_NOT_CHARGED (ENT-90)
+    renta = devolver_a_las(renta_recogida(cl01, op01, mes01), op01, local_datetime(2026, 10, 3, 8, 0))
+    caplog.clear()
+    resultado = review_equipment(mes01, mt01, EquipmentStatus.IN_REPAIR, "Pata rota")
+    # Comprueba que no se guardó ninguna deuda
+    assert (resultado.debt, Debt.objects.count()) == (None, 0)
+    # Comprueba la línea del log con la renta y quién decidió
+    assert (
+        f"DAMAGE_NOT_CHARGED equipment=MES-00001 rental={renta.pk} client=cl01 status=in_repair by=mt01" in caplog.messages
+    )
 
 
 def test_un_equipo_que_nunca_se_rento_va_a_reparacion_sin_deuda(mt01, mes03_en_revision):

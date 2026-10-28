@@ -318,6 +318,23 @@ body {
   width: auto;
 }
 
+/* La casilla de cobro solo se ve si el estado elegido es reparación o baja (ENT-90). */
+.review-form__charge {
+  display: none;
+  flex-basis: 100%;
+  margin: 0;
+}
+
+.review-form:has(option[value="in_repair"]:checked) .review-form__charge,
+.review-form:has(option[value="retired"]:checked) .review-form__charge {
+  display: flex;
+}
+
+.review-form__charge input {
+  flex: none;
+  width: auto;
+}
+
 /* Etiquetas de estado: un color por estado de renta y de equipo. */
 
 .badge {

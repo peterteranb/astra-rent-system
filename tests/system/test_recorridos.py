@@ -6,6 +6,7 @@ from pytest_django.asserts import assertContains, assertNotContains, assertRedir
 
 from rentals.models import Debt, Equipment, Rental, StatusChange
 from rentals.statuses import DebtReason, EquipmentStatus, RentalStatus
+from rentals.use_cases.handover import register_pickup, register_return
 from rentals.use_cases.renting import create_rental
 from tests.helpers import dentro_de, foto_de_la_base
 
@@ -160,3 +161,16 @@ def test_el_admin_cancela_manda_a_reparacion_y_no_agrega_rentas(client, ad01, cl
     assert (cambio.equipment, cambio.new_status, cambio.changed_by) == (mes02, EquipmentStatus.IN_REPAIR, ad01)
     # Comprueba que el admin no puede crear rentas a mano (RF-09)
     assert agregar.status_code == 403
+
+
+def test_mantenimiento_ve_todos_los_equipos_y_la_casilla_del_ultimo_cliente(client, cl02, op01, mt01, mes01, mes02):
+    # MES-00002 vuelve de cl02 y queda en revisión; MES-00001 está disponible -> mt01 ve los dos, MES-00002 primero y con la casilla de cobro
+    renta = create_rental(cl02, mes02, dentro_de(0, 18), dentro_de(1, 9), registered_by=op01)
+    register_return(register_pickup(renta, op01), op01, "Pata floja")
+    client.force_login(mt01)
+    respuesta = client.get("/maintenance/")
+    pagina = respuesta.content.decode()
+    # Comprueba que el equipo en revisión aparece antes que el disponible
+    assert pagina.index("MES-00002") < pagina.index("MES-00001")
+    # Comprueba la casilla con el último cliente y el día de su renta (ENT-90)
+    assertContains(respuesta, f"Cobrar el daño al último cliente (cl02, renta del {dentro_de(0, 18):%d/%m})")
