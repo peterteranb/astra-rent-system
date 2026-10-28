@@ -34,7 +34,7 @@ MAX_BUSY_PERIODS_SHOWN = 3
 # ENT-02 y ENT-86: con unos 1000 equipos, el catálogo se muestra de 20 en 20.
 CATALOG_PAGE_SIZE = 20
 
-# RF-06: el operador elige al cliente de una lista corta, no de todos los clientes.
+# ENT-54: el operador busca al cliente y lo elige de una lista corta, no de todos los clientes.
 MAX_CLIENTS_FOUND = 10
 
 
@@ -135,7 +135,7 @@ def find_clients(text):
 
 
 def rentals_of(client):
-    """Devuelve las rentas del cliente, la más reciente primero (HU-08)."""
+    """Devuelve las rentas del cliente, la más reciente primero (CU-16)."""
     return Rental.objects.filter(client=client).select_related("equipment").order_by("-start_datetime")
 
 
@@ -182,7 +182,7 @@ def create_rental(
             rental.paid_at = timezone.now()
             rental.payment_method = PaymentMethod.CASH
         if picked_up_now:
-            # Pendiente con el cliente: qué pasa si se lo lleva ahora y el periodo empieza después (ENT-57).
+            # D-20: si el periodo empieza después, igual queda «Rentada» desde ahora (ENT-57).
             rental.picked_up_at = timezone.now()
             rental.handed_over_by = registered_by
         rental.save()

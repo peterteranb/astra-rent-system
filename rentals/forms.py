@@ -63,14 +63,14 @@ class RentalForm(forms.Form):
     """Fecha y hora de recojo y de devolución que elige el cliente.
 
     Solo revisa que lleguen fechas y horas reales; la ventana 18:00 / 09:00 la
-    revisa el caso de uso, así el cliente ve su mensaje con la causa (RC-01).
+    revisa el caso de uso, así el cliente ve su mensaje con la causa (RC-04).
     """
 
     start_date = forms.DateField(
         label="Fecha de recojo",
         widget=forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"),
     )
-    # Sin min/max en el campo a propósito: el servidor aplica la regla y explica la causa (RC-01).
+    # Sin min/max en el campo a propósito: el servidor aplica la regla y explica la causa (RC-04).
     start_time = forms.TimeField(
         label="Hora de recojo",
         help_text=f"Desde las {rules.EARLIEST_PICKUP_TIME:%H:%M}",
@@ -122,7 +122,7 @@ class WalkInRentalForm(RentalForm):
 class ReturnForm(forms.Form):
     """Observación que escribe el operador sobre cómo llegó el equipo."""
 
-    # No es obligatoria aquí: register_return revisa que haya nota y da su mensaje (RC-01).
+    # No es obligatoria aquí: register_return revisa que haya nota y da su mensaje (RC-04).
     # max_length es el del modelo, así una nota larga da error de formulario y no de base.
     note = forms.CharField(
         label="Observación",

@@ -1,5 +1,5 @@
-"""Prueba rentals/renting.py con la base: create_rental() en línea y en tienda (CU-01, CU-02)
-y find_clients(), la búsqueda de clientes del operador (RF-06)."""
+"""Prueba rentals/renting.py con la base: create_rental() en línea y en tienda (CU-04, CU-05)
+y find_clients(), la búsqueda de clientes del operador (ENT-54)."""
 from decimal import Decimal
 
 import pytest

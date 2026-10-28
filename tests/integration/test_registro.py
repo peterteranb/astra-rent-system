@@ -1,5 +1,5 @@
 """Prueba accounts/registration.py con la base: register_client(), la misma función para el registro
-en la web (CU-01) y en la tienda (CU-02), con todas las causas juntas (ENT-84, sesión 20)."""
+en la web (CU-01) y en la tienda (CU-02), con todas las causas juntas (ENT-84, RC-04)."""
 import pytest
 from django.contrib.auth import get_user_model
 

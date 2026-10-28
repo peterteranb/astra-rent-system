@@ -33,7 +33,7 @@ class SignUpForm(forms.Form):
     """Los datos de una cuenta nueva, en la web (CU-01) o en la tienda (CU-02).
 
     Ningún campo es obligatorio aquí: register_client revisa todo al presionar el
-    botón y muestra todas las causas juntas (sesión 20).
+    botón y muestra todas las causas juntas (RC-04).
     """
 
     first_name = forms.CharField(label="Nombre", required=False, max_length=150)

@@ -43,7 +43,7 @@ def catalog(request):
 
 @login_required
 def rent_equipment(request, inventory_id):
-    """Muestra el formulario de un equipo e intenta rentarlo (CU-01)."""
+    """Muestra el formulario de un equipo e intenta rentarlo (CU-04)."""
     equipment = get_object_or_404(Equipment, inventory_id=inventory_id)
     form = RentalForm(request.POST or None)
     if request.method == "POST" and form.is_valid():
@@ -184,7 +184,7 @@ def cancel_reservation(request, rental_id):
 
 @role_required(OPERATOR)
 def walk_in_rental(request):
-    """Busca un cliente por GET y registra una renta en tienda para él por POST (CU-02)."""
+    """Busca un cliente por GET y registra una renta en tienda para él por POST (CU-05)."""
     # El formulario se envía a la misma dirección con ?q=, así los resultados
     # de la búsqueda siguen en la página si la renta se rechaza.
     query = request.GET.get("q", "")

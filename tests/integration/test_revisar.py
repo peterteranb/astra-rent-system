@@ -1,5 +1,5 @@
 """Prueba rentals/review.py con la base: review_equipment(), la decisión de mantenimiento
-sobre un equipo devuelto y su fila de historial (CU-05)."""
+sobre un equipo devuelto y su fila de historial (CU-10)."""
 from decimal import Decimal
 
 import pytest

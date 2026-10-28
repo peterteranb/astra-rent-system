@@ -25,6 +25,7 @@
 | D-17 | Devolución de una renta nunca recogida (ENT-60) | Si llega después de las 12:00 del vencimiento, también crea la deuda por atraso. | La regla de atraso no hace excepciones; el humano revisa el caso (ENT-60). |
 | D-18 | Mensajes de contraseña | Los de longitud, contraseña común, solo números y parecida al usuario son los de Django en español. | El plan pide los validadores nativos; los dos propios (mayúscula y número) tienen nuestro texto. |
 | D-19 | Migraciones | Se reiniciaron una vez (`0001` en cada app y `accounts.0002_roles` con los roles); después se agregó `rentals.0002` con los mensajes en español de los campos del equipo. | Reiniciar otra vez obligaba a borrar la base de prueba. |
+| D-20 | Renta en tienda «Se lo lleva ahora» con un periodo que empieza después | Se registra el recojo en ese momento y la renta queda «Rentada» desde ya; sus fechas siguen ocupando el equipo. | Es lo más simple y no deja el equipo sin registrar mientras lo tiene el cliente (ENT-56, ENT-57). |
 
 ## 2. Lo que quedó sin hacer
 

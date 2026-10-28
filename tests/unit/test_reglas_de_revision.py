@@ -1,5 +1,5 @@
 """Prueba rentals/review.py: check_review_result() y rentals/history.py: check_status_can_change(),
-qué estados puede elegir mantenimiento y qué cambios se rechazan (RF-04, ENT-49)."""
+qué estados puede elegir mantenimiento y qué cambios se rechazan (RF-10, ENT-49)."""
 import pytest
 
 from rentals.errors import InvalidStatusChangeError

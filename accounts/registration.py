@@ -1,6 +1,6 @@
 """Caso de uso CU-01 y CU-02: crear la cuenta de un cliente, en la web o en la tienda, con la misma función.
 
-Revisa todas las reglas al presionar «Registrarme» y devuelve todas las causas juntas (sesión 20).
+Revisa todas las reglas al presionar «Registrarme» y devuelve todas las causas juntas (RC-04).
 """
 import re
 from dataclasses import dataclass
