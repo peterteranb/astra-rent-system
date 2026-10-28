@@ -6,9 +6,9 @@
 
 | # | Tema | Qué se decidió | Por qué |
 |---|---|---|---|
-| D-01 | Fuente de ENT-66 a ENT-87 | Se marcaron como «Charla en clase 27/10», salvo el pago fallido (ENT-67), que llegó por «WhatsApp 27/10». | El plan no dice de dónde vino cada una; revisar con quien estuvo en la charla. |
+| D-01 | Fuente de ENT-66 a ENT-87 | Cada fila separa lo que dijo el cliente («Cliente: …», `confirmado`) de lo que decidió el equipo («Equipo: …», `decisión del equipo`). ENT-67, ENT-68 y ENT-69 llegaron por «WhatsApp 27/10»; las demás partes del cliente, por la «Charla 27/10». ENT-70 a ENT-72, ENT-75 y ENT-81 a ENT-87 son solo del equipo. | Que nadie lea como pedido del cliente lo que propuso el equipo. |
 | D-02 | `docs/base-de-datos.md` y `.dbml` | Se suben al repositorio en el commit de documentación. Se agregó `value > 0` en `EQUIPO` y el correo único sin distinguir mayúsculas. | Estaban sin seguimiento en `main`; el plan pide que el valor sea mayor que 0 y el correo único «sin distinguir mayúsculas». |
-| D-03 | Base local con el usuario nuevo | El permiso para borrar el esquema `public` de `astra_rent` fue denegado en esta sesión. Se probó todo en una base nueva y vacía, `astra_rent_final`, sin tocar la anterior. | El usuario personalizado cambia la tabla de usuarios: la base vieja ya no sirve. Ver la sección 3. |
+| D-03 | Base local con el usuario nuevo | No se pudo borrar el esquema `public` de `astra_rent` en la máquina de Peter (permiso denegado). Se probó todo en una base nueva y vacía, `astra_rent_final`, sin tocar la anterior. | El usuario personalizado cambia la tabla de usuarios: la base vieja ya no sirve. Ver la sección 3. |
 | D-04 | Correo de la renta en línea | Se envía cuando el cliente presiona un botón del QR (exitoso o fallido). Si cierra la página sin presionar, la reserva queda con el pago pendiente y sin correo. | La reserva ya existe al llegar al QR (ENT-67); así no llegan dos correos por la misma renta. |
 | D-05 | Deuda de reparación o baja sin renta devuelta | Si el equipo nunca volvió de una renta, no se crea deuda. | No hay «último cliente» a quien cobrar (ENT-74). |
 | D-06 | Reparación y después baja del mismo equipo | Se cobran las dos (20 % y 100 %) al mismo cliente, porque son motivos distintos. Una renta nunca tiene dos deudas del mismo motivo. | Se aplicó la regla tal cual; confirmar con el cliente si debería cobrarse solo la diferencia. |
@@ -20,7 +20,7 @@
 | D-12 | Plazo de 24 h al modificar | Se cuenta contra el recojo actual de la reserva, no contra el nuevo. | ENT-80 habla del «inicio» de la reserva que se quiere cambiar. |
 | D-13 | Filtro «libres entre dos fechas» | Busca libres desde las 18:00 del primer día hasta las 09:00 del último, como una renta. | Así lo que muestra el catálogo coincide con lo que después se puede rentar. |
 | D-14 | Rentas activas y vencidas en el panel | «Activas» son las rentadas a tiempo; las vencidas van solo en su lista. | Que una renta no se cuente dos veces. |
-| D-15 | Página de inicio del administrador | Llega al panel del responsable (antes, al admin de Django); el admin sigue en el menú. | ENT-87 y la sesión 20 («admin → panel»). |
+| D-15 | Página de inicio del administrador | Llega al panel del responsable (antes, al admin de Django); el admin sigue en el menú. | Lo que el responsable revisa cada día está en el panel (ENT-87). |
 | D-16 | Usuario bloqueado | Ve «Usuario o contraseña incorrectos.», igual que con una clave mala. | El login de Django no distingue una cuenta inactiva; así tampoco da pistas a quien adivina cuentas. |
 | D-17 | Devolución de una renta nunca recogida (ENT-60) | Si llega después de las 12:00 del vencimiento, también crea la deuda por atraso. | La regla de atraso no hace excepciones; el humano revisa el caso (ENT-60). |
 | D-18 | Mensajes de contraseña | Los de longitud, contraseña común, solo números y parecida al usuario son los de Django en español. | El plan pide los validadores nativos; los dos propios (mayúscula y número) tienen nuestro texto. |
@@ -35,7 +35,7 @@
 | Envío real por Gmail | No probado: en esta máquina no hay contraseña de aplicación. Se probó con la consola, con `mail.outbox` y con un fallo simulado del servidor (`EMAIL_FAILED`). |
 | Revisión en celular de 360 px, tablet de 600 px, Chrome y Firefox (RC-04, RC-08) | Los estilos son adaptables, pero falta revisarlo a mano en el navegador antes del viernes. |
 | Errores 500 en el log de negocio | Django los escribe en su propio logger, no en `logs/negocio.log`. |
-| Reiniciar la base local `astra_rent` | Permiso denegado en la sesión; ver la sección 3. |
+| Reiniciar la base local `astra_rent` | Permiso denegado en la máquina de Peter; ver la sección 3. |
 
 ## 3. Comandos que el equipo debe correr
 

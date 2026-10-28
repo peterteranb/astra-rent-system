@@ -1,7 +1,7 @@
 # Casos de uso · versión final
 
 > Versión del 28/10/2026, para la entrega del 30/10. Reemplaza a la versión del MVP (19/10).
-> Las respuestas del cliente (ENT-xx) están en [respuestas-del-cliente.md](respuestas-del-cliente.md); las necesidades del encargo (PRE-xx), en [presentacion12-10.md](presentacion12-10.md). La base de datos está en [base-de-datos.md](base-de-datos.md).
+> Las respuestas del cliente (ENT-xx) están en [respuestas-del-cliente.md](respuestas-del-cliente.md); ahí cada ENT dice qué parte dijo el cliente y qué parte es una decisión del equipo. Las necesidades del encargo (PRE-xx), en [presentacion12-10.md](presentacion12-10.md). La base de datos está en [base-de-datos.md](base-de-datos.md).
 
 ## 1. Mapa
 
@@ -135,7 +135,7 @@ flowchart LR
 | **Guarda** | Una fila en `accounts_user` con la contraseña cifrada (`set_password`) y el teléfono solo con dígitos. |
 | **Log** | `ACCOUNT_CREATED id=7 username=cl03 role=cliente registered_by=web` · `ACCOUNT_REJECTED reason="No se creó la cuenta: El usuario cl03 ya existe."` |
 | **Correo** | Bienvenida. |
-| **Origen** | ENT-15, ENT-84, PRE-01, [sesión 20](sesion-20-bocetos.md) |
+| **Origen** | ENT-15, ENT-84, PRE-01 |
 
 ```mermaid
 sequenceDiagram
@@ -667,8 +667,8 @@ sequenceDiagram
 
 | Qué | Por qué no |
 |---|---|
-| PIN o verificación por SMS | Necesita un proveedor de SMS pagado; el cliente aceptó registrar con correo y teléfono únicos (ENT-84). |
-| Notificaciones por SMS, WhatsApp o Telegram | Cada canal necesita una cuenta de empresa y un proveedor; el correo cubre los avisos que pidió el cliente (ENT-85). |
+| PIN o verificación por SMS | Necesita un proveedor de SMS pagado; el equipo decidió registrar con correo y teléfono únicos (ENT-84). |
+| Notificaciones por SMS, WhatsApp o Telegram | Cada canal necesita una cuenta de empresa y un proveedor; el correo cubre los avisos que definió el equipo (ENT-85). |
 | Login con Google | Exige registrar la app en Google y no lo pidió el cliente; el usuario y la contraseña bastan. |
 | Lector de código de barras o RFID | Necesita hardware; el admin escribe el código a mano (ENT-83). |
 | Importación masiva de equipos | El cliente dijo que «puede mega esperar» (ENT-14). |
