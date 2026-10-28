@@ -15,12 +15,13 @@ from django.utils import timezone
 
 from accounts.models import Role
 from accounts.roles import ADMINISTRATOR, CLIENT, MAINTENANCE, OPERATOR
+from rentals import rules
 from rentals.models import Debt, Equipment, EquipmentStatus, Rental, StatusChange
 from rentals.services.events import log_event
-from rentals.statuses import DebtReason
+from rentals.statuses import DebtReason, PaymentMethod
 from rentals.use_cases.history import change_status
 from rentals.use_cases.payments import charge_debt, pay_with_qr
-from rentals.use_cases.renting import cancel_rental, create_rental
+from rentals.use_cases.renting import cancel_rental, create_rental, log_rental_created
 
 # La demo no manda correos: sus clientes tienen direcciones inventadas.
 NO_EMAIL = {"default": {"BACKEND": "django.core.mail.backends.dummy.EmailBackend"}}
@@ -192,11 +193,23 @@ def create_scenario(users, equipment):
 
 
 def picked_up_in_store(client, unit, operator, start, end):
-    """Crea una renta en tienda con el recojo y el pago en start; register_pickup usaría la hora de ahora."""
-    rental = create_rental(client, unit, start, end, registered_by=operator)
-    Rental.objects.filter(pk=rental.pk).update(
-        picked_up_at=start, handed_over_by=operator, paid_at=start
+    """Guarda una renta en tienda ya pagada y recogida en start, con el mismo log que create_rental.
+
+    Se arma a mano porque create_rental rechaza un recojo pasado (ENT-94) y la demo necesita rentas de días anteriores.
+    """
+    rental = Rental.objects.create(
+        client=client,
+        equipment=unit,
+        start_datetime=start,
+        end_datetime=end,
+        daily_price=rules.daily_price_for(unit.value),
+        paid_at=start,
+        payment_method=PaymentMethod.CASH,
+        registered_by=operator,
+        picked_up_at=start,
+        handed_over_by=operator,
     )
+    log_rental_created(rental)
     return rental
 
 

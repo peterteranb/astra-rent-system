@@ -151,6 +151,8 @@ def log_rental_created(rental):
 
 def check_period(start, end):
     """Lanza InvalidPeriodError si el periodo mismo rompe una regla, sea cual sea el equipo."""
+    if not rules.is_pickup_date_allowed(start, timezone.localtime()):
+        raise InvalidPeriodError("La fecha de recojo ya pasó. Elige hoy o un día siguiente.")
     if not rules.ends_after_start(start, end):
         raise InvalidPeriodError(
             "La fecha y hora de devolución debe ser posterior a la de recojo."

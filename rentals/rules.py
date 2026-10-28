@@ -1,7 +1,7 @@
 """Reglas puras de la renta: solo comparan los valores que reciben y nunca tocan la base.
 
 Todas las fechas llegan en hora local (America/La_Paz); el caso de uso las convierte antes.
-No se rechazan fechas pasadas: ENT-17 dice que no hay límite de anticipación («puede ser al instante»).
+No hay anticipación mínima (ENT-17: «puede ser al instante»), pero el recojo no puede ser un día pasado (ENT-94).
 """
 from datetime import datetime, time, timedelta
 from decimal import ROUND_HALF_UP, Decimal
@@ -60,6 +60,15 @@ def rental_days(start, end) -> int:
 def is_within_max_duration(start, end) -> bool:
     """Devuelve True si la renta dura como máximo MAX_RENTAL_DAYS días (ENT-18)."""
     return rental_days(start, end) <= MAX_RENTAL_DAYS
+
+
+def is_pickup_date_allowed(start, now) -> bool:
+    """Devuelve True si el recojo es hoy o un día siguiente (ENT-94).
+
+    Compara solo la fecha: el recojo de hoy a las 18:00 vale hasta la medianoche,
+    porque el cliente puede recogerlo hasta entonces (ENT-69).
+    """
+    return start.date() >= now.date()
 
 
 def is_pickup_time_allowed(start) -> bool:
