@@ -212,23 +212,30 @@ def create_rental(
         # vez, el segundo espera aquí y ve la renta del primero (ENT-21: gana el primer clic).
         locked_equipment = Equipment.objects.select_for_update().get(pk=equipment.pk)
         check_equipment_is_free(locked_equipment, start, end)
-        rental = Rental(
-            client=client,
-            equipment=locked_equipment,
-            start_datetime=start,
-            end_datetime=end,
-            daily_price=rules.daily_price_for(locked_equipment.value),
-            registered_by=registered_by,
-        )
-        if registered_by is not None:
-            rental.paid_at = timezone.now()
-            rental.payment_method = PaymentMethod.CASH
-        if picked_up_now:
-            # D-20: si el periodo empieza después, igual queda «Rentada» desde ahora (ENT-57).
-            rental.picked_up_at = timezone.now()
-            rental.handed_over_by = registered_by
+        rental = new_rental(client, locked_equipment, start, end, registered_by, picked_up_now)
         rental.save()
     log_rental_created(rental)
+    return rental
+
+
+def new_rental(client, equipment, start, end, registered_by, picked_up_now) -> Rental:
+    """Arma la renta sin guardarla, con el precio de hoy; en la tienda nace pagada en efectivo (ENT-70, ENT-71)."""
+    now = timezone.now()
+    rental = Rental(
+        client=client,
+        equipment=equipment,
+        start_datetime=start,
+        end_datetime=end,
+        daily_price=rules.daily_price_for(equipment.value),
+        registered_by=registered_by,
+    )
+    if registered_by is not None:
+        rental.paid_at = now
+        rental.payment_method = PaymentMethod.CASH
+    if picked_up_now:
+        # D-20: si el periodo empieza después, igual queda «Rentada» desde ahora (ENT-57).
+        rental.picked_up_at = now
+        rental.handed_over_by = registered_by
     return rental
 
 

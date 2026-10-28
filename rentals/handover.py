@@ -57,21 +57,23 @@ def register_pickup(rental, staff_user, paid_now=False) -> Rental:
         locked_rental.save(
             update_fields=["paid_at", "payment_method", "picked_up_at", "handed_over_by"]
         )
+    log_pickup(locked_rental, staff_user, charged_now)
+    return locked_rental
+
+
+def log_pickup(rental, staff_user, charged_now):
+    """Escribe el cobro en efectivo, si se cobró al entregar, y después PICKUP_REGISTERED."""
     if charged_now:
         log_event(
-            "PAYMENT_CASH",
-            rental=locked_rental.pk,
-            amount=locked_rental.total_price,
-            received_by=staff_user.username,
+            "PAYMENT_CASH", rental=rental.pk, amount=rental.total_price, received_by=staff_user.username
         )
     log_event(
         "PICKUP_REGISTERED",
-        id=locked_rental.pk,
-        equipment=locked_rental.equipment.inventory_id,
-        client=locked_rental.client.username,
+        id=rental.pk,
+        equipment=rental.equipment.inventory_id,
+        client=rental.client.username,
         by=staff_user.username,
     )
-    return locked_rental
 
 
 def check_can_pick_up(rental, now):
