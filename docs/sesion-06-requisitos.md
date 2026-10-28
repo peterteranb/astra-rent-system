@@ -1,5 +1,7 @@
 # Sesión 6 — Hallazgos y requisitos del proyecto
 
+> **Documento histórico** de una iteración anterior: se conserva como evidencia y no se actualiza. Lo vigente está en el [índice de la documentación](README.md).
+
 - Proyecto: astra-rent-system — SergioCorp, renta de equipos para eventos (encargo P01, Gestión de préstamos de equipos)
 - Integrantes: Sofia Arduz Rengel, Andres Laura Vargas, Peter Uriel Terán Bedregal
 - Fecha: 01/10/2026

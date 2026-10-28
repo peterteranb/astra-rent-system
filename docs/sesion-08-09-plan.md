@@ -1,5 +1,7 @@
 # Sesiones 8 y 9 — Plan del siguiente incremento
 
+> **Documento histórico** de una iteración anterior: se conserva como evidencia y no se actualiza. Lo vigente está en el [índice de la documentación](README.md).
+
 - Proyecto: SergioCorp / astra-rent-system
 - Integrantes: Sofia Arduz Rengel, Andres Laura Vargas, Peter Uriel Terán Bedregal
 - Fecha: 06/10/2026

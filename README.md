@@ -7,7 +7,7 @@ Sistema web de renta de mesas y sillas para eventos de SergioCorp (cliente simul
 - **Mantenimiento:** revisa lo que vuelve: disponible, en reparación o de baja (con su deuda).
 - **Administrador:** registra equipos, ve el panel del responsable y gestiona todo desde `/admin`.
 
-La documentación está en [docs/README.md](docs/README.md): casos de uso, arquitectura, base de datos y respuestas del cliente.
+La documentación está en [docs/README.md](docs/README.md): casos de uso, requisitos, arquitectura, base de datos, respuestas del cliente y decisiones del equipo.
 
 ## Instalar en Windows con PowerShell
 
@@ -47,6 +47,30 @@ Necesitas Python 3.12 o superior (lo exige Django 6.1), PostgreSQL 15 o superior
    ```
 
 Después de cada `git pull`, vuelve a ejecutar `python -m pip install -r requirements.txt` y `python manage.py migrate`.
+
+## Actualizar tu máquina (para el equipo)
+
+Si ya tenías el proyecto de una versión anterior:
+
+1. En `.env`, para programar, agrega estas dos líneas. `DEBUG` ahora es `False` si no se dice otra cosa, y entonces exige `SECRET_KEY`:
+   ```text
+   DEBUG=True
+   SECRET_KEY=cualquier-clave-larga-para-tu-maquina
+   ```
+2. Instala las dependencias nuevas (whitenoise y waitress):
+   ```powershell
+   python -m pip install -r requirements.txt
+   ```
+3. Reinicia la base local: el usuario personalizado cambió las tablas y la demo se vuelve a crear:
+   ```powershell
+   python manage.py shell -c "from django.db import connection; connection.cursor().execute('DROP SCHEMA public CASCADE; CREATE SCHEMA public;')"
+   python manage.py migrate
+   python manage.py seed_demo
+   ```
+   Si el primer comando falla por permisos, borra y crea la base como `postgres` (ajusta la carpeta a tu versión) y después corre `migrate` y `seed_demo`:
+   ```powershell
+   & "C:\Program Files\PostgreSQL\17\bin\psql.exe" -U postgres -h localhost -c "DROP DATABASE astra_rent;" -c "CREATE DATABASE astra_rent OWNER astra;"
+   ```
 
 ## Correr como en producción
 
@@ -96,7 +120,7 @@ Es el registro de cada acción del sistema, aceptada o rechazada: sirve para aud
 
 Por defecto los correos (bienvenida, renta confirmada, renta cancelada y deuda) se imprimen en la consola. Para mandarlos de verdad con Gmail:
 
-1. En la cuenta de Google, activa la verificación en dos pasos y crea una **contraseña de aplicación** en https://myaccount.google.com/apppasswords.
+1. En la cuenta de Google, activa la verificación en dos pasos y crea una **contraseña de aplicación** para «SergioCorp» en https://myaccount.google.com/apppasswords.
 2. En `.env` pon `EMAIL_HOST_USER=tu.correo@gmail.com` y `EMAIL_HOST_PASSWORD=` con las 16 letras de esa contraseña.
 3. Reinicia el servidor. Si un correo falla, la operación sigue y el log escribe `EMAIL_FAILED`.
 

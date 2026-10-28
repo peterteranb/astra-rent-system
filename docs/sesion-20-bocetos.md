@@ -1,5 +1,7 @@
 # Sesión 20 — Bocetos y recorridos: registro e inicio de sesión
 
+> **Documento histórico** de una iteración anterior: se conserva como evidencia y no se actualiza. Lo vigente está en el [índice de la documentación](README.md).
+
 https://canva.link/hbnc46om5arbw4h
 
 ```

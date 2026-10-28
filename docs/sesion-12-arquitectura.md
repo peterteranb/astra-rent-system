@@ -1,5 +1,7 @@
 # Sesión 12 — Arquitectura y verificación del flujo
 
+> **Documento histórico** de una iteración anterior: se conserva como evidencia y no se actualiza. Lo vigente está en el [índice de la documentación](README.md).
+
 Actualizado el 19/10/2026: las pruebas del contrato de esta sesión ahora están en tests/integration/test_rentar.py.
 
 - Proyecto e integrantes: astra-rent-system — SergioCorp (renta de mesas y sillas); Sofia Arduz Rengel, Andrés Laura Vargas, Peter Uriel Terán Bedregal.

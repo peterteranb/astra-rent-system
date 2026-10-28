@@ -1,110 +1,30 @@
-# Decisiones y pendientes de la versión final
+# Decisiones del equipo
 
-> Rama `feat/final-version`, 28/10/2026 (actualizado después de la revisión del código). Lo que se decidió sin una respuesta del cliente, lo que quedó sin hacer, lo que el equipo debe correr y lo que encontró la revisión.
+> Versión final, 28/10/2026. Lo que decidió el equipo donde el cliente no dio una respuesta, con su motivo y la respuesta del cliente con la que se relaciona (ENT-xx, en [respuestas-del-cliente.md](respuestas-del-cliente.md)). El código y los documentos citan estas decisiones como D-xx. «—» quiere decir que la decisión es técnica y no sale de una respuesta del cliente.
 
-## 1. Decisiones tomadas sin respuesta del cliente
-
-| # | Tema | Qué se decidió | Por qué |
-|---|---|---|---|
-| D-01 | Fuente de ENT-66 a ENT-87 | Cada fila separa lo que dijo el cliente («Cliente: …», `confirmado`) de lo que decidió el equipo («Equipo: …», `decisión del equipo`). ENT-67, ENT-68 y ENT-69 llegaron por «WhatsApp 27/10»; las demás partes del cliente, por la «Charla 27/10». ENT-70 a ENT-72, ENT-75 y ENT-81 a ENT-87 son solo del equipo. | Que nadie lea como pedido del cliente lo que propuso el equipo. |
-| D-02 | `docs/base-de-datos.md` y `.dbml` | Se suben al repositorio en el commit de documentación. Se agregó `value > 0` en `EQUIPO` y el correo único sin distinguir mayúsculas. | Estaban sin seguimiento en `main`; el plan pide que el valor sea mayor que 0 y el correo único «sin distinguir mayúsculas». |
-| D-03 | Base local con el usuario nuevo | Al principio no se pudo borrar el esquema `public` de `astra_rent` (permiso denegado) y se probó en una base aparte, `astra_rent_final`. Después Peter reinició `astra_rent` y borró `astra_rent_final`. | El usuario personalizado cambia la tabla de usuarios: la base vieja ya no sirve. Andrés y Sofia deben reiniciar la suya (sección 3). |
-| D-04 | Correo de la renta en línea | Se envía cuando el cliente presiona un botón del QR (exitoso o fallido). Si cierra la página sin presionar, la reserva queda con el pago pendiente y sin correo. | La reserva ya existe al llegar al QR (ENT-67); así no llegan dos correos por la misma renta. |
-| D-05 | Deuda de reparación o baja sin renta devuelta | Si el equipo nunca volvió de una renta, no se crea deuda. | No hay «último cliente» a quien cobrar (ENT-74). |
-| D-06 | Reparación y después baja del mismo equipo | Las deudas por daño de una renta nunca suman más que el valor del equipo: la baja cobra el valor menos lo ya cobrado por reparación (20 % + 80 %). Una renta nunca tiene dos deudas del mismo motivo. | El cliente pidió cobrar el valor total por una baja (ENT-74), no más que eso. La regla está en `rules.cap_damage`. |
-| D-07 | Mensaje de deuda en la tienda | El cliente ve «Tienes una deuda pendiente…»; el operador ve «El cliente cl02 tiene una deuda pendiente de X Bs. Cóbrala antes de registrar otra renta.». | El mensaje del cliente (ENT-77) habla en segunda persona y confundiría al operador. |
-| D-08 | `SECRET_KEY` en `.env.example` | Trae una clave de ejemplo larga para que el sistema arranque con solo copiar el archivo. El README pide cambiarla antes de publicar. | Con `DEBUG=False`, sin clave el sistema no arranca. |
-| D-09 | Puerto del servidor | `runserver` y waitress usan el puerto 8080. | En Windows el 8000 a veces está reservado. |
-| D-10 | Proxy con HTTPS | `USE_HTTPS=True` no activa `SECURE_PROXY_SSL_HEADER`. | Solo es seguro si el proxy borra esa cabecera; se decide cuando exista el servidor real. |
-| D-11 | Correo de la demo | `seed_demo` usa el backend «dummy» mientras corre. | Sus clientes tienen correos inventados; con Gmail configurado rebotarían. |
-| D-12 | Plazo de 24 h al modificar | Se cuenta contra el recojo actual de la reserva, no contra el nuevo. | ENT-80 habla del «inicio» de la reserva que se quiere cambiar. |
-| D-13 | Filtro «libres entre dos fechas» | Busca libres desde las 18:00 del primer día hasta las 09:00 del último, como una renta. | Así lo que muestra el catálogo coincide con lo que después se puede rentar. |
-| D-14 | Rentas activas y vencidas en el panel | «Activas» son las rentadas a tiempo; las vencidas van solo en su lista. | Que una renta no se cuente dos veces. |
-| D-15 | Página de inicio del administrador | Llega al panel del responsable (antes, al admin de Django); el admin sigue en el menú. | Lo que el responsable revisa cada día está en el panel (ENT-87). |
-| D-16 | Usuario bloqueado | Con su contraseña correcta ve «Tu cuenta está desactivada. Comunícate con la tienda.»; con una incorrecta, «Usuario o contraseña incorrectos.». Si tenía la sesión abierta, vuelve al login en su siguiente clic. La tienda ya no lo encuentra para registrarle una renta. El log escribe `LOGIN_REJECTED`, `ACCOUNT_DEACTIVATED` y `ACCOUNT_REACTIVATED`. | Solo quien sabe la contraseña se entera de que la cuenta está desactivada: no da pistas a quien adivina cuentas. Se usa lo de Django (`AllowAllUsersModelBackend` y `confirm_login_allowed`), con `ModelBackend` primero para que una sesión abierta deje de valer. |
-| D-17 | Devolución de una renta nunca recogida (ENT-60) | Si llega después de las 12:00 del vencimiento, también crea la deuda por atraso. | La regla de atraso no hace excepciones; el humano revisa el caso (ENT-60). |
-| D-18 | Mensajes de contraseña | Los de longitud, contraseña común, solo números y parecida al usuario son los de Django en español. | El plan pide los validadores nativos; los dos propios (mayúscula y número) tienen nuestro texto. |
-| D-19 | Migraciones | Se reiniciaron una vez (`0001` en cada app y `accounts.0002_roles` con los roles); después se agregó `rentals.0002` con los mensajes en español de los campos del equipo. | Reiniciar otra vez obligaba a borrar la base de prueba. |
-| D-20 | Renta en tienda «Se lo lleva ahora» con un periodo que empieza después | Se registra el recojo en ese momento y la renta queda «Rentada» desde ya; sus fechas siguen ocupando el equipo. | Es lo más simple y no deja el equipo sin registrar mientras lo tiene el cliente (ENT-56, ENT-57). |
-
-## 2. Lo que quedó sin hacer
-
-| Qué | Estado |
-|---|---|
-| Comando `stress_test`, prueba de concurrencia con hilos, `seed_demo --equipos N` y la evidencia de `check --deploy` | Los hacen otros integrantes (fuera de esta tarea). El resultado local de `check --deploy` está en la sección 4. |
-| Frontend en React y detección de GPU | Los hacen otros integrantes. Las plantillas de Django siguen funcionando y las reglas están en funciones de caso de uso, sin HTTP. |
-| Envío real por Gmail | No probado: en esta máquina no hay contraseña de aplicación. Se probó con la consola, con `mail.outbox` y con un fallo simulado del servidor (`EMAIL_FAILED`). |
-| Revisión en celular de 360 px, tablet de 600 px, Chrome y Firefox (RC-04, RC-08) | Los estilos son adaptables, pero falta revisarlo a mano en el navegador antes del viernes. |
-| Errores 500 en el log de negocio | Django los escribe en su propio logger, no en `logs/negocio.log`. |
-| Reiniciar la base local `astra_rent` de Andrés y Sofia | Hecho en la máquina de Peter; los demás, con los comandos de la sección 3. |
-
-## 3. Comandos que el equipo debe correr
-
-**Agregar a `.env` (desarrollo).** Ahora `DEBUG` es `False` si no se dice otra cosa y entonces exige `SECRET_KEY`. Agrega estas dos líneas a tu `.env`:
-
-```text
-DEBUG=True
-SECRET_KEY=cualquier-clave-larga-para-tu-maquina
-```
-
-**Instalar las dependencias nuevas** (whitenoise y waitress):
-
-```powershell
-python -m pip install -r requirements.txt
-```
-
-**Reiniciar la base local** (el usuario personalizado cambia las tablas; los datos de la demo se recrean):
-
-```powershell
-python manage.py shell -c "from django.db import connection; connection.cursor().execute('DROP SCHEMA public CASCADE; CREATE SCHEMA public;')"
-python manage.py migrate
-python manage.py seed_demo
-```
-
-Si el primer comando falla por permisos, hazlo como `postgres` (ajusta la carpeta a tu versión):
-
-```powershell
-& "C:\Program Files\PostgreSQL\17\bin\psql.exe" -U postgres -h localhost -c "DROP DATABASE astra_rent;" -c "CREATE DATABASE astra_rent OWNER astra;"
-```
-
-**Contraseña de aplicación de Gmail** (para mandar correos de verdad):
-
-1. En la cuenta de Google, activa la verificación en dos pasos.
-2. Entra a https://myaccount.google.com/apppasswords, crea una contraseña para «SergioCorp» y copia las 16 letras.
-3. En `.env`: `EMAIL_HOST_USER=tu.correo@gmail.com` y `EMAIL_HOST_PASSWORD=` con esas 16 letras. Reinicia el servidor.
-
-## 4. `check --deploy`
-
-Con `DEBUG=False`, una `SECRET_KEY` propia, `USE_HTTPS=True` y Gmail configurado: **sin advertencias** («System check identified no issues»).
-
-En local, sin HTTPS y sin Gmail, quedan estas, todas esperadas:
-
-| Código | Qué dice | Por qué queda en local |
-|---|---|---|
-| `mail.E001` | El correo usa el backend de consola, que es solo para desarrollo. | Sin `EMAIL_HOST_USER` y `EMAIL_HOST_PASSWORD` los correos se imprimen. Desaparece al configurar Gmail. |
-| `security.W004` | Falta `SECURE_HSTS_SECONDS`. | HSTS solo se activa con `USE_HTTPS=True`; en `http://localhost` rompería el sitio. |
-| `security.W008` | `SECURE_SSL_REDIRECT` no está en `True`. | En local no hay HTTPS al que redirigir. |
-| `security.W012` | `SESSION_COOKIE_SECURE` no está en `True`. | Con HTTP el navegador no enviaría la cookie y no se podría iniciar sesión. |
-| `security.W016` | `CSRF_COOKIE_SECURE` no está en `True`. | Igual que la anterior, para el token CSRF. |
-
-## 5. Modo producción local
-
-- Se probó con waitress 3.0.2 en el puerto 8080, con `DEBUG=False`, una `SECRET_KEY` propia y `collectstatic`: inicio de sesión, estilos servidos por whitenoise y las líneas del log en la consola y en `logs/negocio.log`.
-- El modo desarrollo se probó con `runserver` sobre una base nueva.
-
-## 6. Revisión del código (28/10)
-
-Se revisaron `accounts/`, `rentals/`, `config/`, `templates/` y `static/` buscando código espagueti. Las 175 pruebas pasan igual antes y después; ninguna regla cambió.
-
-| Qué se encontró | Qué se hizo |
-|---|---|
-| Vistas que llamaban a dos o tres funciones o decidían algo: el catálogo calculaba quién es del personal, el pago filtraba qué rentas paga el cliente y «Mis rentas», «Deudas» y «Mantenimiento» armaban sus datos. | Cada vista llama a una función: `browse_catalog`, `online_rentals_of`, `rentals_visible_to`, `my_rentals`, `debts_overview` y `review_queue`. «Personal de la tienda» se decide en `roles.is_store_staff`. |
-| El formulario del catálogo convertía las fechas al periodo de 18:00 a 09:00 (D-13), y la plantilla tenía esas horas escritas a mano. | La conversión está en `renting.catalog_filters` y la plantilla muestra las horas de `rules.py`. |
-| `reservations_to_hand_over` repetía en Python la regla de la medianoche y su comentario decía que no estaba en SQL, aunque `Rental.objects.reserved_at` ya la tenía. | Usa `reserved_at`. |
-| Reglas y textos repetidos: la suma de deudas (3 lugares), el día de vencimiento (2), el plural de «día» (2), el aviso de deuda del cliente (código y plantilla), el mensaje del teléfono (2), los títulos de rechazo (código y plantilla), la etiqueta de pago (3 plantillas), el enlace «Volver» de modificar (vista y plantilla) y el bucle de las tres acciones del admin. | Cada uno quedó en un solo lugar: `Debt.objects.….total()`, `Rental.due_date`, `formatting.days_text`, `formatting.client_debt_message`, `PHONE_FORMAT_MESSAGE`, `REJECTION_TITLE`, `includes/payment_badge.html`, `back_page` y `admin.apply_to_selected`. |
-| `create_rental` (40 líneas) y `register_pickup` (39). | Se separaron los pasos `new_rental` y `log_pickup`. |
-| Comentarios que citaban números viejos (por ejemplo «CU-01» en la renta en línea, «RC-01» para los mensajes de rechazo, «RF-06» en la búsqueda de clientes) o una sesión de clase, y una nota «pendiente con el cliente» en el código. | Se corrigieron; la nota pasó a D-20. |
-| La vista de mantenimiento se llamaba `review_unit` y el resto del sistema dice «equipo». | Ahora es `review_equipment_view` (URL `review_equipment`). |
-| Código muerto, importaciones sin uso e importaciones circulares. | No se encontraron (revisado con un script). Las clases CSS que parecían sin uso se arman en las plantillas (`badge--{{ status }}`). |
-| ¿Dividir `rentals/` en más apps? | No conviene: ver «Organización en apps» en [arquitectura.md](arquitectura.md). |
-
+| # | Tema | Qué se decidió | Por qué | ENT |
+|---|---|---|---|---|
+| D-01 | Fuente de ENT-66 a ENT-87 | Cada fila separa lo que dijo el cliente («Cliente: …», `confirmado`) de lo que decidió el equipo («Equipo: …», `decisión del equipo`). ENT-67, ENT-68 y ENT-69 llegaron por «WhatsApp 27/10»; las demás partes del cliente, por la «Charla 27/10». ENT-70 a ENT-72, ENT-75 y ENT-81 a ENT-87 son solo del equipo. | Que nadie lea como pedido del cliente lo que propuso el equipo. | ENT-66 a ENT-87 |
+| D-02 | Restricciones de la base | `value > 0` en `EQUIPO` y el correo único sin distinguir mayúsculas. El diagrama está en [base-de-datos.md](base-de-datos.md) y [base-de-datos.dbml](base-de-datos.dbml). | El plan pide que el valor sea mayor que 0 y el correo único «sin distinguir mayúsculas». | ENT-83, ENT-84 |
+| D-03 | Base local con el usuario nuevo | Al pasar al usuario personalizado, cada integrante reinicia su base local; los comandos están en el README, en «Actualizar tu máquina». | El usuario personalizado cambia la tabla de usuarios: la base vieja ya no sirve. | ENT-53, ENT-84 |
+| D-04 | Correo de la renta en línea | Se envía cuando el cliente presiona un botón del QR (exitoso o fallido). Si cierra la página sin presionar, la reserva queda con el pago pendiente y sin correo. | La reserva ya existe al llegar al QR; así no llegan dos correos por la misma renta. | ENT-67, ENT-85 |
+| D-05 | Deuda de reparación o baja sin renta devuelta | Si el equipo nunca volvió de una renta, no se crea deuda. | No hay «último cliente» a quien cobrar. | ENT-74 |
+| D-06 | Reparación y después baja del mismo equipo | Las deudas por daño de una renta nunca suman más que el valor del equipo: la baja cobra el valor menos lo ya cobrado por reparación (20 % + 80 %). Una renta nunca tiene dos deudas del mismo motivo. La regla está en `rules.cap_damage`. | El cliente pidió cobrar el valor total por una baja, no más que eso. | ENT-74 |
+| D-07 | Mensaje de deuda en la tienda | El cliente ve «Tienes una deuda pendiente…»; el operador ve «El cliente cl02 tiene una deuda pendiente de X Bs. Cóbrala antes de registrar otra renta.». | El mensaje del cliente habla en segunda persona y confundiría al operador. | ENT-77 |
+| D-08 | `SECRET_KEY` en `.env.example` | Trae una clave de ejemplo larga para que el sistema arranque con solo copiar el archivo. El README pide cambiarla antes de publicar. | Con `DEBUG=False`, sin clave el sistema no arranca. | — |
+| D-09 | Puerto del servidor | `runserver` y waitress usan el puerto 8080. | En Windows el 8000 a veces está reservado. | — |
+| D-10 | Proxy con HTTPS | `USE_HTTPS=True` no activa `SECURE_PROXY_SSL_HEADER`. | Solo es seguro si el proxy borra esa cabecera; se decide cuando exista el servidor real. | — |
+| D-11 | Correo de la demo | `seed_demo` usa el backend «dummy» mientras corre. | Sus clientes tienen correos inventados; con Gmail configurado rebotarían. | ENT-85 |
+| D-12 | Plazo de 24 h al modificar | Se cuenta contra el recojo actual de la reserva, no contra el nuevo. | ENT-80 habla del «inicio» de la reserva que se quiere cambiar. | ENT-80 |
+| D-13 | Filtro «libres entre dos fechas» | Busca libres desde las 18:00 del primer día hasta las 09:00 del último, como una renta. | Así lo que muestra el catálogo coincide con lo que después se puede rentar. | ENT-19, ENT-86 |
+| D-14 | Rentas activas y vencidas en el panel | «Activas» son las rentadas a tiempo; las vencidas van solo en su lista. | Que una renta no se cuente dos veces. | ENT-87 |
+| D-15 | Página de inicio del administrador | Llega al panel del responsable (antes, al admin de Django); el admin sigue en el menú. | Lo que el responsable revisa cada día está en el panel. | ENT-50, ENT-87 |
+| D-16 | Usuario bloqueado | Con su contraseña correcta ve «Tu cuenta está desactivada. Comunícate con la tienda.»; con una incorrecta, «Usuario o contraseña incorrectos.». Si tenía la sesión abierta, vuelve al login en su siguiente clic. La tienda ya no lo encuentra para registrarle una renta. El log escribe `LOGIN_REJECTED`, `ACCOUNT_DEACTIVATED` y `ACCOUNT_REACTIVATED`. | Solo quien sabe la contraseña se entera de que la cuenta está desactivada: no da pistas a quien adivina cuentas. Se usa lo de Django (`AllowAllUsersModelBackend` y `confirm_login_allowed`), con `ModelBackend` primero para que una sesión abierta deje de valer. | ENT-79 |
+| D-17 | Devolución de una renta nunca recogida | Si llega después de las 12:00 del vencimiento, también crea la deuda por atraso. | La regla de atraso no hace excepciones; el humano revisa el caso. | ENT-60, ENT-73 |
+| D-18 | Mensajes de contraseña | Los de longitud, contraseña común, solo números y parecida al usuario son los de Django en español. | El plan pide los validadores nativos; los dos propios (mayúscula y número) tienen nuestro texto. | ENT-84 |
+| D-19 | Migraciones | Se reiniciaron una vez (`0001` en cada app y `accounts.0002_roles` con los roles); después se agregó `rentals.0002` con los mensajes en español de los campos del equipo. | Reiniciar otra vez obligaba a borrar la base de prueba. | — |
+| D-20 | Renta en tienda «Se lo lleva ahora» con un periodo que empieza después | Se registra el recojo en ese momento y la renta queda «Rentada» desde ya; sus fechas siguen ocupando el equipo. | Es lo más simple y no deja el equipo sin registrar mientras lo tiene el cliente. | ENT-56, ENT-57 |
+| D-21 | Servidor en producción | waitress corre Django y whitenoise sirve los estilos, sin otro servidor web delante. | Funciona en Windows, es Python puro y se instala con `pip`: cada integrante corre el modo producción en su máquina sin instalar nada más. | — |
+| D-22 | Dónde va «Mis rentas» (CU-16) | Queda en `use_cases/renting.py`, junto a las rentas que lista; el catálogo (CU-03) pasó a `use_cases/catalog.py`. | Son tres lecturas de las rentas del cliente: en un archivo propio quedarían casi solas. | ENT-55 |
+| D-23 | Log al volver a cero la demo | `seed_demo` vacía `logs/negocio.log` al empezar y escribe `DEMO_RESET`; después quedan las líneas de las operaciones que arman el escenario. Fuera de la demo el archivo no se vacía solo. | En la presentación el log muestra solo esta demo y cómo se armó. Vaciarlo en otro momento borraría la evidencia para auditar (RC-05). | — |
+| D-24 | Restricción de exclusión en PostgreSQL (issue #30) | No se hace: queda fuera de alcance. | Que una renta ocupe el equipo depende de la hora (una reserva no recogida lo libera a la medianoche), y una restricción de la base no puede mirar la hora. El cruce ya se evita bloqueando la fila del equipo (RC-02). | ENT-21, ENT-69 |
