@@ -117,10 +117,10 @@ Usan una base temporal que crea pytest-django; la base de la demo y `logs/negoci
 
 | Tipo | Carpeta | Pruebas | Tiempo |
 |---|---|---|---|
-| Unitarias (sin base de datos) | `tests/unit/` | 88 | 0,2 s |
-| Integración (casos de uso con la base, el log y el correo) | `tests/integration/` | 68 | 4,4 s |
+| Unitarias (sin base de datos) | `tests/unit/` | 90 | 0,3 s |
+| Integración (casos de uso con la base, el log y el correo) | `tests/integration/` | 74 | 4,2 s |
 | Sistema (recorridos por la web) | `tests/system/` | 11 | 2,8 s |
-| **Total** | | **167** | **5,9 s** |
+| **Total** | | **175** | **5,6 s** |
 
 Los tiempos de integración y sistema incluyen crear la base de pruebas.
 

@@ -1,6 +1,6 @@
 # Decisiones y pendientes de la versión final
 
-> Rama `feat/final-version`, 28/10/2026. Lo que se decidió sin una respuesta del cliente, lo que quedó sin hacer y lo que el equipo debe correr.
+> Rama `feat/final-version`, 28/10/2026 (actualizado después de la revisión del código). Lo que se decidió sin una respuesta del cliente, lo que quedó sin hacer, lo que el equipo debe correr y lo que encontró la revisión.
 
 ## 1. Decisiones tomadas sin respuesta del cliente
 
@@ -8,7 +8,7 @@
 |---|---|---|---|
 | D-01 | Fuente de ENT-66 a ENT-87 | Cada fila separa lo que dijo el cliente («Cliente: …», `confirmado`) de lo que decidió el equipo («Equipo: …», `decisión del equipo`). ENT-67, ENT-68 y ENT-69 llegaron por «WhatsApp 27/10»; las demás partes del cliente, por la «Charla 27/10». ENT-70 a ENT-72, ENT-75 y ENT-81 a ENT-87 son solo del equipo. | Que nadie lea como pedido del cliente lo que propuso el equipo. |
 | D-02 | `docs/base-de-datos.md` y `.dbml` | Se suben al repositorio en el commit de documentación. Se agregó `value > 0` en `EQUIPO` y el correo único sin distinguir mayúsculas. | Estaban sin seguimiento en `main`; el plan pide que el valor sea mayor que 0 y el correo único «sin distinguir mayúsculas». |
-| D-03 | Base local con el usuario nuevo | No se pudo borrar el esquema `public` de `astra_rent` en la máquina de Peter (permiso denegado). Se probó todo en una base nueva y vacía, `astra_rent_final`, sin tocar la anterior. | El usuario personalizado cambia la tabla de usuarios: la base vieja ya no sirve. Ver la sección 3. |
+| D-03 | Base local con el usuario nuevo | Al principio no se pudo borrar el esquema `public` de `astra_rent` (permiso denegado) y se probó en una base aparte, `astra_rent_final`. Después Peter reinició `astra_rent` y borró `astra_rent_final`. | El usuario personalizado cambia la tabla de usuarios: la base vieja ya no sirve. Andrés y Sofia deben reiniciar la suya (sección 3). |
 | D-04 | Correo de la renta en línea | Se envía cuando el cliente presiona un botón del QR (exitoso o fallido). Si cierra la página sin presionar, la reserva queda con el pago pendiente y sin correo. | La reserva ya existe al llegar al QR (ENT-67); así no llegan dos correos por la misma renta. |
 | D-05 | Deuda de reparación o baja sin renta devuelta | Si el equipo nunca volvió de una renta, no se crea deuda. | No hay «último cliente» a quien cobrar (ENT-74). |
 | D-06 | Reparación y después baja del mismo equipo | Las deudas por daño de una renta nunca suman más que el valor del equipo: la baja cobra el valor menos lo ya cobrado por reparación (20 % + 80 %). Una renta nunca tiene dos deudas del mismo motivo. | El cliente pidió cobrar el valor total por una baja (ENT-74), no más que eso. La regla está en `rules.cap_damage`. |
@@ -36,7 +36,7 @@
 | Envío real por Gmail | No probado: en esta máquina no hay contraseña de aplicación. Se probó con la consola, con `mail.outbox` y con un fallo simulado del servidor (`EMAIL_FAILED`). |
 | Revisión en celular de 360 px, tablet de 600 px, Chrome y Firefox (RC-04, RC-08) | Los estilos son adaptables, pero falta revisarlo a mano en el navegador antes del viernes. |
 | Errores 500 en el log de negocio | Django los escribe en su propio logger, no en `logs/negocio.log`. |
-| Reiniciar la base local `astra_rent` | Permiso denegado en la máquina de Peter; ver la sección 3. |
+| Reiniciar la base local `astra_rent` de Andrés y Sofia | Hecho en la máquina de Peter; los demás, con los comandos de la sección 3. |
 
 ## 3. Comandos que el equipo debe correr
 
@@ -66,8 +66,6 @@ Si el primer comando falla por permisos, hazlo como `postgres` (ajusta la carpet
 ```powershell
 & "C:\Program Files\PostgreSQL\17\bin\psql.exe" -U postgres -h localhost -c "DROP DATABASE astra_rent;" -c "CREATE DATABASE astra_rent OWNER astra;"
 ```
-
-En la máquina de Peter quedó además la base de prueba `astra_rent_final`; se puede borrar con `-c "DROP DATABASE astra_rent_final;"`.
 
 **Contraseña de aplicación de Gmail** (para mandar correos de verdad):
 
@@ -102,3 +100,20 @@ En local, sin HTTPS y sin Gmail, quedan estas, todas esperadas:
 - `docker compose build`: **funciona** (28/10/2026, Docker 29.3.1, Compose v5.1.1). Docker Desktop estaba apagado y se inició para la prueba.
 - Se probó el camino A completo en una copia aparte del repositorio, con el `.env.example` tal cual y el puerto 8765: `migrate`, `collectstatic`, gunicorn, `seed_demo`, inicio de sesión de `ad01`, el panel del responsable y `logs/negocio.log` en la máquina, con la hora de La Paz. Después se borró con `docker compose down -v`.
 - El camino B se probó con `runserver` sobre una base nueva, con `DEBUG=True` y con `DEBUG=False` más `collectstatic`.
+
+## 6. Revisión del código (28/10)
+
+Se revisaron `accounts/`, `rentals/`, `config/`, `templates/` y `static/` buscando código espagueti. Las 175 pruebas pasan igual antes y después; ninguna regla cambió.
+
+| Qué se encontró | Qué se hizo |
+|---|---|
+| Vistas que llamaban a dos o tres funciones o decidían algo: el catálogo calculaba quién es del personal, el pago filtraba qué rentas paga el cliente y «Mis rentas», «Deudas» y «Mantenimiento» armaban sus datos. | Cada vista llama a una función: `browse_catalog`, `online_rentals_of`, `rentals_visible_to`, `my_rentals`, `debts_overview` y `review_queue`. «Personal de la tienda» se decide en `roles.is_store_staff`. |
+| El formulario del catálogo convertía las fechas al periodo de 18:00 a 09:00 (D-13), y la plantilla tenía esas horas escritas a mano. | La conversión está en `renting.catalog_filters` y la plantilla muestra las horas de `rules.py`. |
+| `reservations_to_hand_over` repetía en Python la regla de la medianoche y su comentario decía que no estaba en SQL, aunque `Rental.objects.reserved_at` ya la tenía. | Usa `reserved_at`. |
+| Reglas y textos repetidos: la suma de deudas (3 lugares), el día de vencimiento (2), el plural de «día» (2), el aviso de deuda del cliente (código y plantilla), el mensaje del teléfono (2), los títulos de rechazo (código y plantilla), la etiqueta de pago (3 plantillas), el enlace «Volver» de modificar (vista y plantilla) y el bucle de las tres acciones del admin. | Cada uno quedó en un solo lugar: `Debt.objects.….total()`, `Rental.due_date`, `formatting.days_text`, `formatting.client_debt_message`, `PHONE_FORMAT_MESSAGE`, `REJECTION_TITLE`, `includes/payment_badge.html`, `back_page` y `admin.apply_to_selected`. |
+| `create_rental` (40 líneas) y `register_pickup` (39). | Se separaron los pasos `new_rental` y `log_pickup`. |
+| Comentarios que citaban números viejos (por ejemplo «CU-01» en la renta en línea, «RC-01» para los mensajes de rechazo, «RF-06» en la búsqueda de clientes) o una sesión de clase, y una nota «pendiente con el cliente» en el código. | Se corrigieron; la nota pasó a D-20. |
+| La vista de mantenimiento se llamaba `review_unit` y el resto del sistema dice «equipo». | Ahora es `review_equipment_view` (URL `review_equipment`). |
+| Código muerto, importaciones sin uso e importaciones circulares. | No se encontraron (revisado con un script). Las clases CSS que parecían sin uso se arman en las plantillas (`badge--{{ status }}`). |
+| ¿Dividir `rentals/` en más apps? | No conviene: ver «Organización en apps» en [arquitectura.md](arquitectura.md). |
+
