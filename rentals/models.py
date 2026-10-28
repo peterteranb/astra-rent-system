@@ -1,4 +1,5 @@
 """Tablas de la base: equipos, rentas, deudas e historial de estados."""
+from datetime import timedelta
 from decimal import Decimal
 
 from django.conf import settings
@@ -70,6 +71,11 @@ class Equipment(models.Model):
         """Muestra el código y el nombre, por ejemplo «MES-00001 · Mesa plegable 1,80 m»."""
         return f"{self.inventory_id} · {self.name}"
 
+    @property
+    def daily_price(self):
+        """Devuelve lo que costaría hoy un día de renta de este equipo (ENT-71)."""
+        return rules.daily_price_for(self.value)
+
 
 class RentalQuerySet(models.QuerySet):
     """Filtra las rentas por su estado calculado; repite en SQL las reglas de Rental.status_at."""
@@ -93,9 +99,22 @@ class RentalQuerySet(models.QuerySet):
         """Rentas que en now ocupan las fechas de su equipo: las «Reservadas» y las «Rentadas»."""
         return self.reserved_at(now) | self.rented()
 
+    def active_at(self, now):
+        """Rentas «Rentadas» que en now todavía están a tiempo."""
+        return self.rented().filter(end_datetime__gte=now)
+
     def overdue_at(self, now):
-        """Rentas «Rentadas» cuya devolución ya pasó en now (PRE-06)."""
+        """Rentas «Rentadas» cuya devolución ya pasó en now: el equipo no volvió (PRE-06)."""
         return self.rented().filter(end_datetime__lt=now)
+
+    def reserved_for_today_at(self, now):
+        """Reservas cuyo recojo es el día de now."""
+        today = rules.start_of_day(timezone.localtime(now))
+        return self.reserved_at(now).filter(start_datetime__lt=today + timedelta(days=1))
+
+    def pending_payment_at(self, now):
+        """Reservas con el pago pendiente: se cobran al recoger o se cancelan (ENT-68)."""
+        return self.reserved_at(now).filter(paid_at__isnull=True)
 
 
 class Rental(models.Model):

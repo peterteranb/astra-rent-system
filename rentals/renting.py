@@ -5,6 +5,7 @@ Las vistas llaman a este módulo; aplica las reglas de rules.py y habla con la b
 from dataclasses import dataclass
 
 from django.contrib.auth import get_user_model
+from django.core.paginator import Paginator
 from django.db import transaction
 from django.db.models import Prefetch, Q
 from django.shortcuts import get_object_or_404
@@ -28,8 +29,21 @@ from .statuses import PaymentMethod, RentalStatus
 # ENT-64: el catálogo dice cuándo está ocupado cada equipo; con 3 periodos basta para elegir fechas.
 MAX_BUSY_PERIODS_SHOWN = 3
 
+# ENT-02 y ENT-86: con unos 1000 equipos, el catálogo se muestra de 20 en 20.
+CATALOG_PAGE_SIZE = 20
+
 # RF-06: el operador elige al cliente de una lista corta, no de todos los clientes.
 MAX_CLIENTS_FOUND = 10
+
+
+@dataclass(frozen=True)
+class CatalogFilters:
+    """Lo que se busca en el catálogo: texto del código o nombre, un periodo libre y, para el personal, un estado."""
+
+    text: str = ""
+    free_start: object = None
+    free_end: object = None
+    status: str = ""
 
 
 @dataclass(frozen=True)
@@ -49,19 +63,47 @@ def list_catalog():
     return Equipment.objects.filter(status=EquipmentStatus.AVAILABLE)
 
 
-def catalog_entries(now) -> list[CatalogEntry]:
-    """Devuelve cada equipo del catálogo con sus próximos periodos ocupados en now, el más próximo primero."""
-    # Una sola consulta extra para todos los equipos en vez de una por equipo.
+def search_catalog(filters, now, staff=False):
+    """Devuelve los equipos que cumplen los filtros (ENT-86); el cliente solo ve los «Disponibles»."""
+    equipment = Equipment.objects.all() if staff else list_catalog()
+    if staff and filters.status:
+        equipment = equipment.filter(status=filters.status)
+    if filters.text:
+        equipment = equipment.filter(
+            Q(inventory_id__icontains=filters.text) | Q(name__icontains=filters.text)
+        )
+    if filters.free_start and filters.free_end:
+        equipment = equipment.exclude(pk__in=busy_equipment(filters.free_start, filters.free_end, now))
+    return equipment
+
+
+def busy_equipment(start, end, now):
+    """Devuelve los ids de los equipos con una renta que en now ocupa algún momento entre start y end (RF-01)."""
+    # Mismo cruce que rules.periods_overlap, pero en SQL para no traer las rentas de 1000 equipos.
+    return (
+        Rental.objects.occupying_at(now)
+        .filter(start_datetime__lt=end, end_datetime__gt=start)
+        .values("equipment")
+    )
+
+
+def catalog_page(equipment, page_number, now):
+    """Devuelve una página de 20 equipos, cada uno con sus próximos periodos ocupados (RC-01).
+
+    Siempre son tres consultas: contar, traer la página y traer sus rentas, con 20 o con 1000 equipos.
+    """
     # Solo las rentas que no terminaron pueden ocupar el equipo desde ahora.
     upcoming = Prefetch(
         "rentals",
         queryset=Rental.objects.filter(end_datetime__gt=now),
         to_attr="upcoming_rentals",
     )
-    return [
-        CatalogEntry(equipment, busy_rentals_at(equipment.upcoming_rentals, now))
-        for equipment in list_catalog().prefetch_related(upcoming)
+    paginator = Paginator(equipment.prefetch_related(upcoming), CATALOG_PAGE_SIZE)
+    page = paginator.get_page(page_number)
+    page.object_list = [
+        CatalogEntry(unit, busy_rentals_at(unit.upcoming_rentals, now)) for unit in page.object_list
     ]
+    return page
 
 
 def busy_rentals_at(rentals, now) -> list[Rental]:

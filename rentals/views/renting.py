@@ -11,26 +11,33 @@ from django.views.decorators.http import require_POST
 from .. import rules
 from ..errors import EquipmentNotAvailableError, OperationRejectedError
 from ..formatting import local_text
-from ..forms import RentalForm, WalkInRentalForm
+from ..forms import CatalogFilterForm, RentalForm, WalkInRentalForm
 from ..models import Equipment, Rental
-from ..payments import pay_with_qr
+from ..payments import debt_total_of, pay_with_qr, pending_debts_of
 from ..renting import (
     cancel_rental,
-    catalog_entries,
+    catalog_page,
     create_rental,
     find_clients,
     modify_rental,
     rentals_of,
+    search_catalog,
     visible_rental,
 )
-from ..roles import OPERATOR, has_role, role_required
+from ..roles import MAINTENANCE, OPERATOR, has_role, role_required
 
 
 @login_required
 def catalog(request):
-    """Muestra los equipos que el cliente puede elegir, cada uno con sus próximos periodos ocupados."""
+    """Muestra el catálogo filtrado, de 20 en 20, con los próximos periodos ocupados de cada equipo (CU-03)."""
+    now = timezone.now()
+    staff = has_role(request.user, OPERATOR) or has_role(request.user, MAINTENANCE)
+    form = CatalogFilterForm(request.GET or None)
+    equipment = search_catalog(form.filters(), now, staff=staff)
     return render(
-        request, "rentals/catalog.html", {"catalog_entries": catalog_entries(timezone.now())}
+        request,
+        "rentals/catalog.html",
+        {"form": form, "page": catalog_page(equipment, request.GET.get("page"), now), "staff": staff},
     )
 
 
@@ -205,5 +212,13 @@ def walk_in_rental(request):
 
 @login_required
 def client_rentals(request):
-    """Muestra las rentas del cliente con su estado (HU-08)."""
-    return render(request, "rentals/client_rentals.html", {"rentals": rentals_of(request.user)})
+    """Muestra las rentas del cliente con su estado y su pago, y lo que debe (CU-16)."""
+    return render(
+        request,
+        "rentals/client_rentals.html",
+        {
+            "rentals": rentals_of(request.user),
+            "debts": pending_debts_of(request.user),
+            "debt_total": debt_total_of(request.user),
+        },
+    )

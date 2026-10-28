@@ -9,7 +9,7 @@ from ..roles import ADMINISTRATOR, MAINTENANCE, OPERATOR, has_role
 def home(request):
     """Manda a cada usuario a la primera página de su rol (RF-19)."""
     if has_role(request.user, ADMINISTRATOR):
-        return redirect("admin:index")
+        return redirect("manager_dashboard")
     if has_role(request.user, OPERATOR):
         return redirect("staff_reservations")
     if has_role(request.user, MAINTENANCE):

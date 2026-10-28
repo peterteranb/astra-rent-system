@@ -1,10 +1,12 @@
 """Pruebas de sistema: recorridos completos por la web con el cliente de pruebas de Django,
-desde la petición hasta lo guardado (CU-01 a CU-07)."""
-from pytest_django.asserts import assertContains, assertRedirects
+desde la petición hasta lo guardado (CU-03 a CU-16)."""
+from decimal import Decimal
 
-from rentals.models import Rental, StatusChange
+from pytest_django.asserts import assertContains, assertNotContains, assertRedirects
+
+from rentals.models import Debt, Equipment, Rental, StatusChange
 from rentals.renting import create_rental
-from rentals.statuses import EquipmentStatus, RentalStatus
+from rentals.statuses import DebtReason, EquipmentStatus, RentalStatus
 from tests.helpers import dentro_de, foto_de_la_base
 
 
@@ -72,6 +74,36 @@ def test_el_cliente_cancela_desde_mis_rentas_y_no_puede_cancelar_la_de_otro(clie
     assertContains(respuesta, "Reserva cancelada: MES-00001 de cl01.")
     # Comprueba que la reserva ajena no existe para cl01 y sigue reservada
     assert (intento.status_code, ajena.status) == (404, RentalStatus.RESERVED)
+
+
+def test_el_cliente_con_deuda_la_ve_en_mis_rentas_y_no_puede_rentar(client, cl02, op01, mes01, mes02):
+    # cl02 debe 20 Bs -> «Mis rentas» muestra la deuda y al rentar ve el mismo aviso (ENT-77)
+    renta = create_rental(cl02, mes01, dentro_de(-3, 18), dentro_de(-1, 9), registered_by=op01, picked_up_now=True)
+    Debt.objects.create(rental=renta, reason=DebtReason.LATE_RETURN, amount=Decimal("20.00"))
+    client.force_login(cl02)
+    mis_rentas = client.get("/my-rentals/")
+    renta_pedida = client.post("/equipment/MES-00002/rent/", periodo(dentro_de(7, 18), dentro_de(9, 9)))
+    aviso = "Tienes una deuda pendiente de 20,00 Bs. Págala en la tienda para volver a rentar."
+    # Comprueba la deuda en «Mis rentas»
+    assertContains(mis_rentas, aviso)
+    # Comprueba que el pedido se rechaza con el mismo aviso y no se guarda
+    assertContains(renta_pedida, aviso)
+    assert Rental.objects.count() == 1
+
+
+def test_el_catalogo_filtra_por_texto_y_pagina_de_20_en_20(client, cl01):
+    # Hay 25 sillas y una mesa; cl01 busca «silla» -> 25 equipos en 2 páginas, sin la mesa
+    Equipment.objects.bulk_create(
+        Equipment(inventory_id=f"SIL-{numero:05d}", serial_number=f"SN-{numero}", name="Silla plegable", value=Decimal("80"))
+        for numero in range(1, 26)
+    )
+    Equipment.objects.create(inventory_id="MES-00001", serial_number="SN-MES", name="Mesa plegable", value=Decimal("400"))
+    client.force_login(cl01)
+    respuesta = client.get("/?q=silla&page=2")
+    # Comprueba el total y la página
+    assertContains(respuesta, "25 equipos · página 2 de 2")
+    # Comprueba que la mesa no aparece
+    assertNotContains(respuesta, "MES-00001")
 
 
 def test_un_rechazo_por_fechas_ocupadas_se_ve_en_el_catalogo(client, cl01, cl02, mes01):

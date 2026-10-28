@@ -1,4 +1,4 @@
-"""Formularios de la renta en línea (CU-04) y en tienda (CU-05), la devolución (CU-09) y el registro de equipos (CU-12)."""
+"""Formularios del catálogo (CU-03), la renta en línea (CU-04) y en tienda (CU-05), la devolución (CU-09) y el registro de equipos (CU-12)."""
 from datetime import datetime
 
 from django import forms
@@ -7,13 +7,56 @@ from django.utils import timezone
 from . import rules
 from .inventory import normalize_inventory_id
 from .models import Equipment, Rental
-from .renting import client_accounts, list_catalog
+from .renting import CatalogFilters, client_accounts, list_catalog
+from .statuses import EquipmentStatus
 
 
 def combine_local(day, chosen_time):
     """Junta una fecha y una hora en un momento con la zona de La Paz."""
     # make_aware usa el TIME_ZONE del proyecto (America/La_Paz).
     return timezone.make_aware(datetime.combine(day, chosen_time))
+
+
+class CatalogFilterForm(forms.Form):
+    """Filtros del catálogo: código o nombre, libres entre dos fechas y, para el personal, el estado (ENT-86)."""
+
+    q = forms.CharField(label="Código o nombre", required=False, max_length=100)
+    free_from = forms.DateField(
+        label="Libre desde",
+        required=False,
+        widget=forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"),
+    )
+    free_to = forms.DateField(
+        label="Libre hasta",
+        required=False,
+        widget=forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"),
+    )
+    status = forms.ChoiceField(
+        label="Estado", required=False, choices=[("", "Todos"), *EquipmentStatus.choices]
+    )
+
+    def clean(self):
+        """Revisa que lleguen las dos fechas y en orden; el periodo va de las 18:00 a las 09:00, como una renta."""
+        cleaned_data = super().clean()
+        free_from, free_to = cleaned_data.get("free_from"), cleaned_data.get("free_to")
+        if bool(free_from) != bool(free_to):
+            raise forms.ValidationError("Elige las dos fechas para ver los equipos libres.")
+        if free_from and free_to <= free_from:
+            raise forms.ValidationError("La fecha final debe ser posterior a la inicial.")
+        return cleaned_data
+
+    def filters(self):
+        """Devuelve los filtros listos para renting.search_catalog; sin filtros si el formulario tiene errores."""
+        if not self.is_valid():
+            return CatalogFilters()
+        data = self.cleaned_data
+        free_from, free_to = data["free_from"], data["free_to"]
+        return CatalogFilters(
+            text=data["q"].strip(),
+            free_start=free_from and combine_local(free_from, rules.EARLIEST_PICKUP_TIME),
+            free_end=free_to and combine_local(free_to, rules.LATEST_RETURN_TIME),
+            status=data["status"],
+        )
 
 
 class RentalForm(forms.Form):

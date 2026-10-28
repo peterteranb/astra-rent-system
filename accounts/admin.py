@@ -1,6 +1,7 @@
 """Pantallas del admin de Django para los usuarios y los roles (ENT-50, ENT-79)."""
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as DjangoUserAdmin
+from django.db.models import Q, Sum
 
 from .forms import UserChangeAdminForm, UserCreationAdminForm
 from .models import Role, User
@@ -20,7 +21,9 @@ class UserAdmin(DjangoUserAdmin):
 
     form = UserChangeAdminForm
     add_form = UserCreationAdminForm
-    list_display = ["username", "first_name", "last_name", "email", "phone", "role", "is_active"]
+    list_display = [
+        "username", "first_name", "last_name", "email", "phone", "role", "is_active", "pending_debt",
+    ]
     list_filter = ["role", "is_active"]
     search_fields = ["username", "first_name", "last_name", "email", "phone"]
     list_select_related = ["role"]
@@ -45,3 +48,15 @@ class UserAdmin(DjangoUserAdmin):
         ),
     ]
     filter_horizontal = []
+
+    def get_queryset(self, request):
+        """Agrega a cada usuario la suma de sus deudas sin pagar, en la misma consulta (ENT-76)."""
+        pending = Q(rentals__debts__paid_at__isnull=True)
+        return super().get_queryset(request).annotate(
+            pending_debt_total=Sum("rentals__debts__amount", filter=pending)
+        )
+
+    @admin.display(description="Deuda pendiente (Bs)", ordering="pending_debt_total")
+    def pending_debt(self, user):
+        """Muestra lo que debe el usuario; se calcula, no se guarda."""
+        return user.pending_debt_total or 0

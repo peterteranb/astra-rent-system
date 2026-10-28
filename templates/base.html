@@ -12,6 +12,7 @@
     <a class="site-header__brand" href="{% url 'catalog' %}">SergioCorp · Mesas y sillas para eventos</a>
     {% if is_operator or is_maintenance %}
       <nav class="site-header__nav">
+        <a href="{% url 'catalog' %}">Catálogo</a>
         {% if is_operator %}
           <a href="{% url 'register_client_at_store' %}">Nuevo cliente</a>
           <a href="{% url 'walk_in_rental' %}">Renta en tienda</a>
@@ -23,6 +24,7 @@
           <a href="{% url 'maintenance' %}">Mantenimiento</a>
         {% endif %}
         {% if is_admin %}
+          <a href="{% url 'manager_dashboard' %}">Panel</a>
           <a href="{% url 'register_equipment' %}">Registrar equipo</a>
           <a href="{% url 'admin:index' %}">Admin</a>
         {% endif %}

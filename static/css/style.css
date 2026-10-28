@@ -466,3 +466,62 @@ body {
   border: 0.4rem dashed var(--color-text);
   border-radius: 0.5rem;
 }
+
+/* Filtros y páginas del catálogo (ENT-86) */
+
+.filters {
+  display: grid;
+  gap: 0.75rem;
+}
+
+@media (min-width: 600px) {
+  .filters {
+    grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+    align-items: end;
+  }
+}
+
+.filters .form__field {
+  margin: 0;
+}
+
+.pagination {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+  justify-content: center;
+  margin-top: 1rem;
+}
+
+.pagination__current {
+  color: var(--color-muted);
+}
+
+/* Avisos y panel del responsable */
+
+.card--warning {
+  color: var(--color-warning);
+  background: var(--color-warning-background);
+}
+
+.dashboard {
+  display: grid;
+  gap: 1rem;
+}
+
+@media (min-width: 600px) {
+  .dashboard {
+    grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  }
+}
+
+.dashboard .card + .card {
+  margin-top: 0;
+}
+
+.card__count {
+  float: right;
+  font-size: 1.5rem;
+  font-weight: 700;
+}

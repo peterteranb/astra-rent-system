@@ -4,6 +4,18 @@
 {% block heading %}Mis rentas{% endblock %}
 
 {% block content %}
+  {% if debt_total %}
+    {# ENT-77: el cliente con deuda ve cuánto debe y qué hacer para volver a rentar. #}
+    <section class="card card--warning">
+      <p><strong>Tienes una deuda pendiente de {{ debt_total|floatformat:"2g" }} Bs. Págala en la tienda para volver a rentar.</strong></p>
+      <ul class="totals">
+        {% for debt in debts %}
+          <li>{{ debt.get_reason_display }} · {{ debt.rental.equipment.inventory_id }} · {{ debt.amount|floatformat:"2g" }} Bs</li>
+        {% endfor %}
+      </ul>
+    </section>
+  {% endif %}
+
   {% if rentals %}
     <table class="table">
       <thead>
@@ -11,6 +23,8 @@
           <th>Equipo</th>
           <th>Desde</th>
           <th>Hasta</th>
+          <th>Total</th>
+          <th>Pago</th>
           <th>Estado</th>
           <th></th>
         </tr>
@@ -19,9 +33,11 @@
         {% for rental in rentals %}
           {% with status=rental.status %}
             <tr>
-              <td data-label="Equipo">{{ rental.equipment.inventory_id }} · {{ rental.equipment.name }}</td>
+              <td data-label="Equipo">{{ rental.equipment }}</td>
               <td data-label="Desde">{{ rental.start_datetime|date:"d/m/Y H:i" }}</td>
               <td data-label="Hasta">{{ rental.end_datetime|date:"d/m/Y H:i" }}</td>
+              <td data-label="Total">{{ rental.total_price|floatformat:"2g" }} Bs</td>
+              <td data-label="Pago"><span class="badge badge--{% if rental.is_paid %}paid{% else %}pending{% endif %}">{{ rental.payment_label }}</span></td>
               <td data-label="Estado"><span class="badge badge--{{ status }}">{{ status.label }}</span></td>
               <td class="table__actions">
                 {% if rental.client_can_change %}
