@@ -55,6 +55,10 @@ class EquipmentAdmin(admin.ModelAdmin):
     readonly_fields = ["status", "created_at"]
     actions = ["mark_available", "send_to_repair", "retire"]
 
+    def has_delete_permission(self, request, obj=None):
+        """No deja borrar equipos: un equipo se da de baja y su historia queda (ENT-97)."""
+        return False
+
     def save_model(self, request, obj, form, change):
         """Guarda el equipo y, si es nuevo, escribe EQUIPMENT_REGISTERED como la página de registro."""
         super().save_model(request, obj, form, change)

@@ -1,14 +1,14 @@
 """Comando seed_demo: deja la base con el escenario de la demo, con fechas relativas a hoy.
 
-SOLO PARA LA DEMO: vacía logs/negocio.log, borra todas las deudas, rentas, historial y equipos
-y los vuelve a crear, así cada vez que se corre el escenario queda igual.
+SOLO PARA LA DEMO Y EL DESARROLLO (DEBUG=True): vacía logs/negocio.log, borra todas las deudas, rentas,
+historial y equipos y los vuelve a crear, así cada vez que se corre el escenario queda igual.
 """
 from datetime import datetime, time, timedelta
 from decimal import Decimal
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
-from django.core.management.base import BaseCommand
+from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 from django.test.utils import override_settings
 from django.utils import timezone
@@ -96,6 +96,9 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         """Empieza el log de cero y crea todo el escenario en una sola transacción: o queda completo o no cambia nada."""
+        # ENT-97: nunca se borra nada; este comando sí borra, así que no corre en producción.
+        if not settings.DEBUG:
+            raise CommandError("seed_demo borra los datos de la demo; solo se usa con DEBUG=True")
         start_business_log()
         with override_settings(MAILERS=NO_EMAIL), transaction.atomic():
             # PROTECT: se borra de las hojas hacia la raíz.

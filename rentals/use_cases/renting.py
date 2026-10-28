@@ -31,6 +31,8 @@ from .payments import debt_total_of, pending_debts_of
 # ENT-54: el operador busca al cliente y lo elige de una lista corta, no de todos los clientes.
 MAX_CLIENTS_FOUND = 10
 
+DEACTIVATED_REASON = "La cuenta fue desactivada."
+
 
 @dataclass(frozen=True)
 class ClientRentals:
@@ -303,6 +305,11 @@ def cancel_reservations(rentals, cancelled_by, reason) -> list[Rental]:
     """Cancela las rentas de rentals todavía no recogidas, cada una con su correo y su línea de log, y las devuelve."""
     reservations = rentals.reserved_at(timezone.now())
     return [cancel_rental(reservation, cancelled_by, reason) for reservation in reservations]
+
+
+def cancel_reservations_of_deactivated(client, cancelled_by) -> list[Rental]:
+    """Cancela las reservas no recogidas de un cliente desactivado; las rentas que tiene en la mano siguen (D-27)."""
+    return cancel_reservations(Rental.objects.filter(client=client), cancelled_by, DEACTIVATED_REASON)
 
 
 def default_cancellation_reason(rental, cancelled_by):

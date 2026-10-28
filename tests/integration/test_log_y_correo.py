@@ -8,7 +8,7 @@ from unittest import mock
 import pytest
 from django.contrib.auth import get_user_model
 from django.core import mail
-from django.core.management import call_command
+from django.core.management import CommandError, call_command
 
 from accounts.registration import SignUpData, register_client
 from rentals.errors import EquipmentNotAvailableError, InvalidStatusChangeError, RegistrationRejectedError
@@ -18,7 +18,7 @@ from rentals.use_cases.handover import register_return
 from rentals.use_cases.payments import pay_with_qr
 from rentals.use_cases.renting import create_rental
 from rentals.use_cases.review import review_equipment
-from tests.helpers import con_la_hora, dentro_de, local_datetime, renta_entregada
+from tests.helpers import con_la_hora, dentro_de, foto_de_la_base, local_datetime, renta_entregada
 
 DATOS = SignUpData("Lucía", "Quispe", "lucia@correo.com", "71234567", "cl03", "Montaña2026", "Montaña2026")
 
@@ -102,8 +102,21 @@ def test_volver_a_cero_la_demo_vacia_el_log_y_empieza_con_demo_reset(db, setting
     log_viejo = tmp_path / "negocio.log"
     log_viejo.write_text("2026-10-27 10:00:00 | INFO    | RENTAL_CREATED id=1\n", encoding="utf-8")
     settings.BUSINESS_LOG_FILE = log_viejo
+    settings.DEBUG = True
     call_command("seed_demo", stdout=StringIO())
     # Comprueba que no quedó la línea vieja (en las pruebas el log va solo a la consola)
     assert log_viejo.read_text(encoding="utf-8") == ""
     # Comprueba que DEMO_RESET va primero y que el escenario se creó con sus 21 equipos, el combo incluido
     assert (caplog.messages[0], Equipment.objects.count()) == ("DEMO_RESET", 21)
+
+
+def test_seed_demo_no_corre_con_debug_false_y_no_borra_nada(db, settings, cl01, mes01):
+    # Con DEBUG=False alguien corre seed_demo -> se niega con el motivo y la base queda igual (ENT-97)
+    settings.DEBUG = False
+    antes = foto_de_la_base()
+    with pytest.raises(CommandError) as error:
+        call_command("seed_demo", stdout=StringIO())
+    # Comprueba el mensaje con la causa
+    assert str(error.value) == "seed_demo borra los datos de la demo; solo se usa con DEBUG=True"
+    # Comprueba que la base quedó igual
+    assert foto_de_la_base() == antes
