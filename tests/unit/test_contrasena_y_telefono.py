@@ -1,5 +1,4 @@
-"""Prueba accounts/validators.py: UppercaseAndDigitValidator, la regla propia de contraseña (ENT-84),
-y accounts/registration.py: normalize_phone(), que deja el teléfono solo con dígitos."""
+"""Prueba accounts/validators.py (contraseñas seguras) y accounts/registration.py (normalización de teléfonos)."""
 import pytest
 from django.core.exceptions import ValidationError
 
@@ -7,25 +6,19 @@ from accounts.registration import normalize_phone
 from accounts.validators import UppercaseAndDigitValidator
 
 
-def test_una_contrasena_con_mayuscula_y_numero_se_acepta():
-    # «Abcdefg1» tiene mayúscula y número -> se acepta, no lanza error
+def test_validaciones_de_contrasena_y_normalizacion_de_telefono():
+    # Clave «Abcdefg1» con mayúscula y número se acepta; sin mayúscula («abcdefg1») o sin número («Abcdefgh») se rechazan con su respectivo mensaje -> robustez de claves
+    # Comprueba que una contraseña con mayúscula y número se acepta sin errores
     assert UppercaseAndDigitValidator().validate("Abcdefg1") is None
-
-
-def test_una_contrasena_sin_mayuscula_se_rechaza():
-    # «abcdefg1» no tiene mayúscula -> rechazada con la causa
-    with pytest.raises(ValidationError) as error:
+    # Comprueba que una contraseña sin mayúsculas es rechazada con su mensaje específico
+    with pytest.raises(ValidationError) as error_mayus:
         UppercaseAndDigitValidator().validate("abcdefg1")
-    assert error.value.messages == ["La contraseña necesita al menos una mayúscula."]
-
-
-def test_una_contrasena_sin_numero_se_rechaza():
-    # «Abcdefgh» no tiene número -> rechazada con la causa
-    with pytest.raises(ValidationError) as error:
+    assert error_mayus.value.messages == ["La contraseña necesita al menos una mayúscula."]
+    # Comprueba que una contraseña sin números es rechazada con su mensaje específico
+    with pytest.raises(ValidationError) as error_num:
         UppercaseAndDigitValidator().validate("Abcdefgh")
-    assert error.value.messages == ["La contraseña necesita al menos un número."]
+    assert error_num.value.messages == ["La contraseña necesita al menos un número."]
 
-
-def test_el_telefono_queda_solo_con_digitos():
-    # Escribe «+591 7123-4567» -> se guarda 59171234567
+    # Escribe «+591 7123-4567» -> se normaliza dejando únicamente los dígitos (59171234567) -> limpieza de formato telefónico
+    # Comprueba que el teléfono se limpia de caracteres especiales y conserva solo los dígitos
     assert normalize_phone("+591 7123-4567") == "59171234567"

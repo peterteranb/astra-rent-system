@@ -1,5 +1,4 @@
-"""Prueba rentals/use_cases/renting.py: busy_message(), lo que se le dice al cliente cuando las fechas chocan
-(ENT-36 y ENT-51: el sistema dice cuándo está ocupado y hasta cuándo está libre)."""
+"""Prueba rentals/use_cases/renting.py: busy_message(), generando el mensaje explicativo cuando hay un cruce de fechas."""
 from rentals.models import Equipment, Rental
 from rentals.use_cases.renting import busy_message
 from tests.helpers import local_datetime
@@ -12,16 +11,15 @@ OTRA_RENTA = Rental(
 )
 
 
-def test_si_la_otra_renta_empieza_despues_dice_hasta_cuando_esta_libre():
-    # Pide desde el 18/10 y la otra renta empieza el 20/10 -> dice que está libre hasta el 20/10 a las 09:00
-    mensaje = busy_message(EQ01, OTRA_RENTA, local_datetime(2026, 10, 18, 18, 0))
-    assert mensaje == (
+def test_generacion_de_mensajes_de_ocupacion_segun_solapamiento():
+    # Petición antes de la otra renta muestra hasta cuándo está libre; petición durante o después de inicio omite la disponibilidad previa -> claridad de avisos de bloqueo
+    # Comprueba que si la renta existente empieza después, el mensaje detalla el periodo ocupado y el tiempo libre previo
+    mensaje_con_libre = busy_message(EQ01, OTRA_RENTA, local_datetime(2026, 10, 18, 18, 0))
+    assert mensaje_con_libre == (
         "El equipo MES-00001 está ocupado del 20/10/2026 18:00 al 22/10/2026 09:00. "
         "Está libre hasta el 20/10/2026 a las 09:00."
     )
 
-
-def test_si_la_otra_renta_empezo_antes_no_dice_hasta_cuando_esta_libre():
-    # Pide desde el 21/10 y la otra renta empezó el 20/10 -> solo dice cuándo está ocupado
-    mensaje = busy_message(EQ01, OTRA_RENTA, local_datetime(2026, 10, 21, 18, 0))
-    assert mensaje == "El equipo MES-00001 está ocupado del 20/10/2026 18:00 al 22/10/2026 09:00."
+    # Comprueba que si la petición se solapa cuando la otra renta ya comenzó, el mensaje solo indica el bloqueo vigente sin fechas libres
+    mensaje_sin_libre = busy_message(EQ01, OTRA_RENTA, local_datetime(2026, 10, 21, 18, 0))
+    assert mensaje_sin_libre == "El equipo MES-00001 está ocupado del 20/10/2026 18:00 al 22/10/2026 09:00."

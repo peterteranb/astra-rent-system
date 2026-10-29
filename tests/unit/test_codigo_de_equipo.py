@@ -1,5 +1,4 @@
-"""Prueba rentals/use_cases/inventory.py: normalize_inventory_id(), y el formato del código del modelo Equipment
-(ENT-83: 3 letras, un guion y 5 números, por ejemplo MES-00001)."""
+"""Prueba rentals/use_cases/inventory.py y el modelo Equipment: normalización y formato del código de equipo."""
 import pytest
 from django.core.exceptions import ValidationError
 
@@ -10,29 +9,23 @@ MENSAJE = "El código debe tener 3 letras, un guion y 5 números, por ejemplo ME
 
 
 def revisar_codigo(codigo):
-    """Revisa solo el formato del código, sin la base: clean_fields no consulta si se repite."""
+    """Revisa solo el formato del código, sin consultar la base de datos."""
     Equipment(inventory_id=codigo, serial_number="SN-1", name="Mesa", value=1).clean_fields()
 
 
-def test_el_codigo_se_guarda_sin_espacios_y_en_mayusculas():
-    # Escribe « mes-00021 » -> se guarda «MES-00021»
+def test_normalizacion_y_validaciones_de_formato_de_codigo():
+    # Escribe « mes-00021 » con espacios y minúsculas -> se normaliza a «MES-00021» en mayúsculas
+    # Comprueba que el código se limpia de espacios y pasa a mayúsculas
     assert normalize_inventory_id(" mes-00021 ") == "MES-00021"
 
-
-def test_un_codigo_con_3_letras_y_5_numeros_es_valido():
-    # MES-00001 -> válido, no lanza error
+    # MES-00001 es válido; MES-0001 (4 números) y ME-00001 (2 letras) se rechazan con el mensaje esperado -> cumplimiento del patrón estricto
+    # Comprueba que un código con 3 letras, un guion y 5 números es válido
     assert revisar_codigo("MES-00001") is None
-
-
-def test_un_codigo_con_4_numeros_se_rechaza():
-    # MES-0001 tiene 4 números -> rechazado con el formato esperado
-    with pytest.raises(ValidationError) as error:
+    # Comprueba que un código con menos números de los requeridos lanza error de validación
+    with pytest.raises(ValidationError) as error_numeros:
         revisar_codigo("MES-0001")
-    assert error.value.message_dict["inventory_id"] == [MENSAJE]
-
-
-def test_un_codigo_con_2_letras_se_rechaza():
-    # ME-00001 tiene 2 letras -> rechazado con el formato esperado
-    with pytest.raises(ValidationError) as error:
+    assert error_numeros.value.message_dict["inventory_id"] == [MENSAJE]
+    # Comprueba que un código con menos letras de las requeridas lanza error de validación
+    with pytest.raises(ValidationError) as error_letras:
         revisar_codigo("ME-00001")
-    assert error.value.message_dict["inventory_id"] == [MENSAJE]
+    assert error_letras.value.message_dict["inventory_id"] == [MENSAJE]
