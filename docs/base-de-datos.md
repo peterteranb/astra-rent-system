@@ -115,8 +115,10 @@ erDiagram
 | Renta en línea, QR fallido | La renta queda Reservada con `paid_at` vacío |
 | Recojo con pago pendiente | Si paga: `paid_at`, `payment_method = cash` y se entrega. Si no paga: el operador cancela la renta |
 | Devolución después de las 12:00 | `DEUDA` con `late_return` = días de atraso × `daily_price` |
-| Revisión → reparación | `DEUDA` con `repair` = 20 % del valor, al último cliente |
-| Revisión → baja | `DEUDA` con `retired` = 100 % del valor, menos lo que esa renta ya debe por reparación (D-06); se cancelan las reservas futuras del equipo |
+| Revisión → reparación | Con «Cobrar el daño» marcado, `DEUDA` con `repair` = 20 % del valor, al último cliente (ENT-90). Se cancelan las reservas no recogidas del equipo (ENT-88) |
+| Revisión → baja | Con «Cobrar el daño» marcado, `DEUDA` con `retired` = 100 % del valor, menos lo que esa renta ya debe por reparación (D-06). Se cancelan las reservas no recogidas del equipo |
+| El admin corrige a reparación o baja | Ninguna `DEUDA` (ENT-75); se cancelan las reservas no recogidas del equipo |
+| El admin desactiva a un cliente | `is_active` vacío; se cancelan sus reservas no recogidas (D-27) |
 | El cliente paga una deuda | `paid_at` y `paid_received_by` en esa `DEUDA` |
 
 ## Parámetros (`settings.py`)
@@ -135,7 +137,7 @@ erDiagram
 - `value > 0` en `EQUIPO` (agregada al programar, 28/10: el valor de compra nunca es 0 ni negativo, ENT-83).
 - Únicos: `inventory_id`, `serial_number`, `email` (sin distinguir mayúsculas), `phone`, `ROL.code`.
 - `DEUDA`: un solo registro por (`rental_id`, `reason`).
-- Todas las claves foráneas con `PROTECT`: nada se borra.
+- Todas las claves foráneas con `PROTECT` y el admin sin permiso de borrar: nada se borra (ENT-97). Un equipo se da de baja y un usuario se desactiva.
 
 ## Redundancias conscientes
 

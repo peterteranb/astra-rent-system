@@ -182,6 +182,9 @@ else:
     MAILERS = {"default": {"BACKEND": "django.core.mail.backends.console.EmailBackend"}}
     DEFAULT_FROM_EMAIL = "SergioCorp <no-responder@sergiocorp.local>"
 
+# La API responde el rechazo CSRF en JSON; las páginas siguen con templates/403_csrf.html.
+CSRF_FAILURE_VIEW = "rentals.api.responses.csrf_failure"
+
 LOGIN_URL = "login"
 LOGIN_REDIRECT_URL = "home"
 LOGOUT_REDIRECT_URL = "login"

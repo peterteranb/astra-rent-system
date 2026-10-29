@@ -9,12 +9,12 @@ from rentals.models import Debt
 from rentals.statuses import DebtReason
 from rentals.use_cases.dashboard import manager_summary
 from rentals.use_cases.renting import create_rental
-from tests.helpers import dentro_de
+from tests.helpers import dentro_de, renta_entregada
 
 
 def test_el_panel_separa_vencidas_reservas_de_hoy_y_pagos_pendientes(cl01, cl02, op01, mes01, mes02):
     # MES-00001 debió volver ayer y MES-00002 se recoge hoy sin pagar -> cada una en su lista
-    vencida = create_rental(cl01, mes01, dentro_de(-3, 18), dentro_de(-1, 9), registered_by=op01, picked_up_now=True)
+    vencida = renta_entregada(cl01, mes01, dentro_de(-3, 18), dentro_de(-1, 9), op01)
     pendiente = create_rental(cl02, mes02, dentro_de(0, 18), dentro_de(1, 9))
     resumen = manager_summary(timezone.now())
     # Comprueba que la vencida no cuenta como activa
@@ -25,7 +25,7 @@ def test_el_panel_separa_vencidas_reservas_de_hoy_y_pagos_pendientes(cl01, cl02,
 
 def test_el_panel_suma_las_deudas_por_cliente(cl01, op01, mes01):
     # cl01 debe 20 Bs por atraso y 80 Bs por reparación -> el panel muestra 100 Bs para cl01
-    renta = create_rental(cl01, mes01, dentro_de(-3, 18), dentro_de(-1, 9), registered_by=op01, picked_up_now=True)
+    renta = renta_entregada(cl01, mes01, dentro_de(-3, 18), dentro_de(-1, 9), op01)
     Debt.objects.create(rental=renta, reason=DebtReason.LATE_RETURN, amount=Decimal("20.00"))
     Debt.objects.create(rental=renta, reason=DebtReason.REPAIR, amount=Decimal("80.00"))
     resumen = manager_summary(timezone.now())
@@ -37,7 +37,7 @@ def test_el_panel_suma_las_deudas_por_cliente(cl01, op01, mes01):
 
 def test_el_enlace_de_vencidas_lleva_al_admin_filtrado(client, ad01, cl01, cl02, op01, mes01, mes02):
     # ad01 abre «Vencidas» en el admin -> ve la renta vencida de cl01 y no la reserva de cl02
-    create_rental(cl01, mes01, dentro_de(-3, 18), dentro_de(-1, 9), registered_by=op01, picked_up_now=True)
+    renta_entregada(cl01, mes01, dentro_de(-3, 18), dentro_de(-1, 9), op01)
     create_rental(cl02, mes02, dentro_de(7, 18), dentro_de(9, 9))
     client.force_login(ad01)
     respuesta = client.get("/admin/rentals/rental/?situacion=vencidas")

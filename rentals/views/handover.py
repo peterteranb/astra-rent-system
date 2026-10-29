@@ -11,8 +11,7 @@ from accounts.roles import OPERATOR, role_required
 from ..errors import OperationRejectedError
 from ..forms import ReturnForm
 from ..models import Rental
-from ..services.formatting import days_text, money_text
-from ..statuses import ReturnResult
+from ..services.formatting import pickup_message, return_message
 from ..use_cases.handover import (
     register_pickup,
     register_return,
@@ -46,14 +45,6 @@ def pickup_reservation(request, rental_id):
     return redirect("staff_reservations")
 
 
-def pickup_message(rental, was_pending):
-    """Mensaje de éxito del recojo; si se cobró en ese momento, empieza con el cobro."""
-    handed_over = f"{rental.equipment.inventory_id} entregado a {rental.client.username}."
-    if was_pending:
-        return f"Cobro de {money_text(rental.total_price)} en efectivo y recojo registrados: {handed_over}"
-    return f"Recojo registrado: {handed_over}"
-
-
 @role_required(OPERATOR)
 def staff_returns(request):
     """Muestra las rentas que faltan devolver, con su estado."""
@@ -75,11 +66,3 @@ def return_rental(request, rental_id):
             messages.success(request, return_message(returned))
             return redirect("staff_returns")
     return render(request, "rentals/return_form.html", {"rental": rental, "form": form})
-
-
-def return_message(rental):
-    """Mensaje de éxito de una devolución, que termina con cómo llegó y, con atraso, la deuda (RF-09)."""
-    received = f"Devolución registrada: {rental.equipment.inventory_id} recibido de {rental.client.username}."
-    if rental.return_result != ReturnResult.LATE:
-        return f"{received} {rental.return_result.label}."
-    return f"{received} Con {days_text(rental.late_days)} de atraso: deuda de {money_text(rental.late_charge)}."

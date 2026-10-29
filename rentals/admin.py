@@ -6,7 +6,7 @@ from .errors import OperationRejectedError
 from .forms import EquipmentAdminForm
 from .models import Debt, Equipment, Rental, StatusChange
 from .statuses import EquipmentStatus
-from .use_cases.history import change_status
+from .use_cases.history import correct_status
 from .use_cases.inventory import log_equipment_registered
 from .use_cases.payments import pay_debt
 from .use_cases.renting import cancel_rental
@@ -50,10 +50,14 @@ class EquipmentAdmin(admin.ModelAdmin):
     list_filter = ["status"]
     search_fields = ["inventory_id", "serial_number", "name"]
     list_per_page = ADMIN_PAGE_SIZE
-    # El estado solo cambia con las acciones, que pasan por history.change_status
+    # El estado solo cambia con las acciones, que pasan por history.correct_status
     # y dejan cada cambio en el historial (ENT-34).
     readonly_fields = ["status", "created_at"]
     actions = ["mark_available", "send_to_repair", "retire"]
+
+    def has_delete_permission(self, request, obj=None):
+        """No deja borrar equipos: un equipo se da de baja y su historia queda (ENT-97)."""
+        return False
 
     def save_model(self, request, obj, form, change):
         """Guarda el equipo y, si es nuevo, escribe EQUIPMENT_REGISTERED como la página de registro."""
@@ -79,13 +83,13 @@ class EquipmentAdmin(admin.ModelAdmin):
     def change_selected(self, request, queryset, new_status):
         """Cambia cada equipo marcado y avisa cuántos cambiaron y cuáles no.
 
-        Es una corrección: no crea deudas ni cancela reservas (ENT-75).
+        Es una corrección: no crea deudas (ENT-75); reparación o baja cancelan sus reservas (ENT-88).
         """
         apply_to_selected(
             self,
             request,
             queryset,
-            lambda equipment: change_status(equipment, new_status, request.user),
+            lambda equipment: correct_status(equipment, new_status, request.user),
             ("Equipos actualizados", "No se cambiaron", lambda equipment: equipment.inventory_id),
         )
 

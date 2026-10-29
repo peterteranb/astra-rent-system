@@ -4,6 +4,7 @@ from django.contrib.auth.admin import UserAdmin as DjangoUserAdmin
 from django.db.models import Q, Sum
 
 from rentals.services.events import log_event
+from rentals.use_cases.renting import cancel_reservations_of_deactivated
 
 from .forms import UserChangeAdminForm, UserCreationAdminForm
 from .models import Role, User
@@ -16,10 +17,14 @@ class RoleAdmin(admin.ModelAdmin):
     list_display = ["code", "name", "description"]
     search_fields = ["code", "name"]
 
+    def has_delete_permission(self, request, obj=None):
+        """No deja borrar roles: cada usuario tiene uno (ENT-97: nunca se borra nada)."""
+        return False
+
 
 @admin.register(User)
 class UserAdmin(DjangoUserAdmin):
-    """Usuarios con su rol; el admin bloquea a uno quitándole «Activo» (ENT-79)."""
+    """Usuarios con su rol; el admin bloquea a uno quitándole «Activo» y nunca lo borra (ENT-79, ENT-97)."""
 
     form = UserChangeAdminForm
     add_form = UserCreationAdminForm
@@ -58,12 +63,22 @@ class UserAdmin(DjangoUserAdmin):
             pending_debt_total=Sum("rentals__debts__amount", filter=pending)
         )
 
+    def has_delete_permission(self, request, obj=None):
+        """No deja borrar usuarios: se desactivan y su historia queda (ENT-97)."""
+        return False
+
     def save_model(self, request, obj, form, change):
-        """Guarda el usuario y, si cambió «Activo», escribe en el log quién lo bloqueó o lo desbloqueó (ENT-79)."""
+        """Guarda el usuario y, si cambió «Activo», escribe en el log quién lo bloqueó o lo desbloqueó (ENT-79).
+
+        Al desactivarlo se cancelan sus reservas todavía no recogidas (D-27).
+        """
         super().save_model(request, obj, form, change)
-        if change and "is_active" in form.changed_data:
-            event = "ACCOUNT_REACTIVATED" if obj.is_active else "ACCOUNT_DEACTIVATED"
-            log_event(event, user=obj.username, by=request.user.username)
+        if not (change and "is_active" in form.changed_data):
+            return
+        event = "ACCOUNT_REACTIVATED" if obj.is_active else "ACCOUNT_DEACTIVATED"
+        log_event(event, user=obj.username, by=request.user.username)
+        if not obj.is_active:
+            cancel_reservations_of_deactivated(obj, request.user)
 
     @admin.display(description="Deuda pendiente (Bs)", ordering="pending_debt_total")
     def pending_debt(self, user):

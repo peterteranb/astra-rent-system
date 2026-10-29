@@ -3,6 +3,7 @@ misma cantidad de días (CU-06, ENT-81)."""
 from decimal import Decimal
 
 import pytest
+from django.core import mail
 
 from rentals.errors import EquipmentNotAvailableError, InvalidModificationError
 from rentals.models import Rental
@@ -19,6 +20,20 @@ def test_el_cliente_mueve_su_reserva_con_los_mismos_dias(cl01, mes01):
     assert (guardada.start_datetime, guardada.end_datetime) == (dentro_de(10, 18), dentro_de(12, 9))
     # Comprueba que el precio sigue igual: 2 días a 20 Bs
     assert (guardada.daily_price, guardada.total_price) == (Decimal("20.00"), Decimal("40.00"))
+
+
+def test_si_el_operador_modifica_el_cliente_recibe_las_fechas_nuevas(cl01, op01, mes01, django_capture_on_commit_callbacks):
+    # op01 mueve la reserva de cl01 de hoy+7 a hoy+10 -> cl01 recibe un correo con las fechas nuevas (ENT-95)
+    reserva = create_rental(cl01, mes01, dentro_de(7, 18), dentro_de(9, 9))
+    with django_capture_on_commit_callbacks(execute=True):
+        modify_rental(reserva, dentro_de(10, 18), dentro_de(12, 9), op01)
+    [correo] = mail.outbox
+    # Comprueba a quién va y el asunto
+    assert (correo.to, correo.subject) == (["cl01@correo.com"], "Reserva modificada: MES-00001")
+    # Comprueba la fecha nueva de recojo en el correo
+    assert f"Recojo desde: {dentro_de(10, 18):%d/%m/%Y %H:%M}" in correo.body
+    # Comprueba lo guardado
+    assert Rental.objects.get(pk=reserva.pk).start_datetime == dentro_de(10, 18)
 
 
 def test_la_reserva_se_puede_mover_sobre_sus_propias_fechas(cl01, mes01):

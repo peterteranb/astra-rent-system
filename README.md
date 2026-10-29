@@ -96,12 +96,12 @@ Todos usan la clave `Demo1234`.
 | `cl01` | Carla Mendoza, cliente | Catálogo, «Mis rentas» con sus reservas, pagos y botones para modificar o cancelar |
 | `cl02` | Diego Rojas, cliente con deuda | Lo mismo, con su deuda de 22,50 Bs: no puede rentar hasta pagarla |
 | `op01` | Olga Pérez, operadora | Reservas por entregar, renta en tienda, nuevo cliente, devoluciones y deudas |
-| `mt01` | Mario Torres, mantenimiento | Los equipos en revisión o en reparación |
+| `mt01` | Mario Torres, mantenimiento | Todos los equipos que no están de baja, primero los en revisión, con el filtro por estado y la casilla para cobrar el daño |
 | `ad01` | Ana Díaz, administradora | El panel del responsable, el registro de equipos y el admin de Django |
 
-`seed_demo` crea 8 mesas (`MES-00001` a `MES-00008`) y 12 sillas (`SIL-00001` a `SIL-00012`) y deja listo un caso para cada demostración: una reserva pagada para hoy, una con el pago pendiente, una devolución atrasada, una renta vencida, un equipo en revisión, uno en reparación, uno de baja y la deuda de `cl02`. Al terminar imprime para qué sirve cada equipo.
+`seed_demo` crea 8 mesas (`MES-00001` a `MES-00008`), 12 sillas (`SIL-00001` a `SIL-00012`) y el combo `CMB-00001` «Combo 6 sillas y 1 mesa» (3000 Bs, 150 Bs por día: un equipo más, que no descuenta las sillas y mesas sueltas) y deja listo un caso para cada demostración: una reserva pagada para hoy, una con el pago pendiente, una devolución atrasada, una renta vencida, un equipo en revisión, uno en reparación, uno de baja y la deuda de `cl02`. Al terminar imprime para qué sirve cada equipo.
 
-**Volver a cero:** `python manage.py seed_demo`. Es solo para la demo: vacía `logs/negocio.log`, borra deudas, rentas, historial y equipos y crea el mismo escenario con fechas relativas a hoy. No manda correos.
+**Volver a cero:** `python manage.py seed_demo`. Es solo para la demo y el desarrollo: con `DEBUG=False` se niega a correr («seed_demo borra los datos de la demo; solo se usa con DEBUG=True»). Vacía `logs/negocio.log`, borra deudas, rentas, historial y equipos y crea el mismo escenario con fechas relativas a hoy. No manda correos.
 
 ## El log de negocio: `logs/negocio.log`
 
@@ -118,7 +118,7 @@ Es el registro de cada acción del sistema, aceptada o rechazada: sirve para aud
 
 ## Correo
 
-Por defecto los correos (bienvenida, renta confirmada, renta cancelada y deuda) se imprimen en la consola. Para mandarlos de verdad con Gmail:
+Por defecto los correos (bienvenida, renta confirmada, reserva modificada por la tienda, renta cancelada y deuda) se imprimen en la consola. Para mandarlos de verdad con Gmail:
 
 1. En la cuenta de Google, activa la verificación en dos pasos y crea una **contraseña de aplicación** para «SergioCorp» en https://myaccount.google.com/apppasswords.
 2. En `.env` pon `EMAIL_HOST_USER=tu.correo@gmail.com` y `EMAIL_HOST_PASSWORD=` con las 16 letras de esa contraseña.
@@ -134,10 +134,10 @@ Usan una base temporal que crea pytest-django; la base de la demo y `logs/negoci
 
 | Tipo | Carpeta | Pruebas | Tiempo |
 |---|---|---|---|
-| Unitarias (sin base de datos) | `tests/unit/` | 90 | 0,2 s |
-| Integración (casos de uso con la base, el log y el correo) | `tests/integration/` | 75 | 2,9 s |
-| Sistema (recorridos por la web) | `tests/system/` | 11 | 2,0 s |
-| **Total** | | **176** | **4,0 s** |
+| Unitarias (sin base de datos) | `tests/unit/` | 98 | 0,2 s |
+| Integración (casos de uso y API con la base, el log y el correo) | `tests/integration/` | 91 | 4,0 s |
+| Sistema (recorridos por la web) | `tests/system/` | 12 | 2,2 s |
+| **Total** | | **201** | **4,2 s** |
 
 Los tiempos de integración y sistema incluyen crear la base de pruebas.
 
@@ -151,6 +151,7 @@ Los tiempos de integración y sistema incluyen crear la base de pruebas.
 | `rentals/use_cases/` | Un archivo por grupo de casos de uso: `catalog`, `renting`, `payments`, `handover`, `review`, `inventory`, `history` y `dashboard` |
 | `rentals/services/` | Log de negocio (`events.py`), correos (`notifications.py`) y textos para mostrar (`formatting.py`) |
 | `rentals/views/` | Las páginas de cada caso de uso |
+| `rentals/api/`, `accounts/api.py` | La API JSON para el frontend en React, sobre los mismos casos de uso: ver [docs/api.md](docs/api.md) |
 | `rentals/management/commands/` | `seed_demo`, el escenario de la demo |
 | `templates/` | Páginas HTML; `includes/` tiene las partes que se repiten |
 | `static/` | Estilos del sitio y del admin, y el logo |

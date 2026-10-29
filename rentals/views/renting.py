@@ -14,7 +14,7 @@ from .. import rules
 from ..errors import EquipmentNotAvailableError, OperationRejectedError
 from ..forms import CatalogFilterForm, RentalForm, WalkInRentalForm
 from ..models import Equipment
-from ..services.formatting import local_text
+from ..services.formatting import cancelled_message, modified_message, payment_result_message
 from ..use_cases.catalog import browse_catalog
 from ..use_cases.payments import online_rentals_of, pay_with_qr
 from ..use_cases.renting import (
@@ -80,13 +80,8 @@ def pay_rental(request, rental_id):
 
 def show_payment_result(request, approved):
     """Muestra al cliente si el pago QR se completó o si paga al recoger (ENT-67)."""
-    if approved:
-        messages.success(request, "Pago recibido. Tu renta está confirmada.")
-        return
-    messages.warning(
-        request,
-        "Tu reserva está hecha, pero el pago no se completó. Paga en la tienda al recoger el equipo.",
-    )
+    level = messages.SUCCESS if approved else messages.WARNING
+    messages.add_message(request, level, payment_result_message(approved))
 
 
 @login_required
@@ -129,11 +124,7 @@ def modify_reservation(request, rental_id):
         except OperationRejectedError as error:
             form.add_error(None, str(error))
         else:
-            messages.success(
-                request,
-                f"Reserva modificada: {modified.equipment.inventory_id} ahora va del "
-                f"{local_text(modified.start_datetime)} al {local_text(modified.end_datetime)}.",
-            )
+            messages.success(request, modified_message(modified))
             return redirect(reservations_page_for(request.user))
     return render(
         request,
@@ -175,10 +166,7 @@ def cancel_reservation(request, rental_id):
     except OperationRejectedError as error:
         messages.error(request, str(error))
     else:
-        messages.success(
-            request,
-            f"Reserva cancelada: {rental.equipment.inventory_id} de {rental.client.username}.",
-        )
+        messages.success(request, cancelled_message(rental))
     # Redirige después del POST: recargar la página no lo envía otra vez.
     return redirect(reservations_page_for(request.user))
 
@@ -198,7 +186,6 @@ def walk_in_rental(request):
                 form.cleaned_data["start_datetime"],
                 form.cleaned_data["end_datetime"],
                 registered_by=request.user,
-                picked_up_now=form.cleaned_data["takes_it_now"],
             )
         except OperationRejectedError as error:
             form.add_error(None, str(error))

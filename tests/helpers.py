@@ -1,4 +1,4 @@
-"""Funciones de ayuda para las pruebas: fechas en hora de La Paz, una hora fija y una foto de la base para los rechazos."""
+"""Funciones de ayuda para las pruebas: fechas en hora de La Paz, una hora fija, una renta ya entregada y una foto de la base."""
 from datetime import datetime, timedelta
 from unittest import mock
 
@@ -6,6 +6,8 @@ from django.contrib.auth import get_user_model
 from django.utils import timezone
 
 from rentals.models import Debt, Equipment, Rental, StatusChange
+from rentals.use_cases.handover import register_pickup
+from rentals.use_cases.renting import create_rental
 
 
 def local_datetime(year, month, day, hour, minute=0):
@@ -26,6 +28,12 @@ def dentro_de(dias, hora, minuto=0):
 def con_la_hora(momento):
     """Hace que timezone.now() devuelva momento dentro de un bloque with, para probar horas exactas."""
     return mock.patch("django.utils.timezone.now", return_value=momento)
+
+
+def renta_entregada(cliente, equipo, inicio, fin, operador):
+    """Renta en tienda que el operador registra y entrega a la hora inicio, como si fuera ese momento."""
+    with con_la_hora(inicio):
+        return register_pickup(create_rental(cliente, equipo, inicio, fin, registered_by=operador), operador)
 
 
 def foto_de_la_base():

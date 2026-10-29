@@ -1,5 +1,5 @@
 """Prueba rentals/use_cases/renting.py: check_can_cancel() y check_can_modify(), quién cancela o modifica una reserva
-y hasta cuándo (ENT-80), con rentas sin guardar del 09/10/2026 18:00 al 12/10/2026 09:00."""
+y hasta cuándo (ENT-80, ENT-95), con rentas sin guardar del 09/10/2026 18:00 al 12/10/2026 09:00."""
 import pytest
 
 from accounts.models import User
@@ -44,6 +44,18 @@ def test_el_cliente_no_modifica_una_hora_antes():
     with pytest.raises(DeadlinePassedError) as error:
         check_can_modify(reserva(), CL01, UNA_HORA_ANTES)
     assert str(error.value) == "Ya no puedes modificar en línea; comunícate con la tienda."
+
+
+def test_el_operador_modifica_una_hora_antes():
+    # op01 cambia las fechas de la reserva de cl01 a una hora del inicio -> se puede (ENT-95)
+    assert check_can_modify(reserva(), OP01, UNA_HORA_ANTES) is None
+
+
+def test_el_operador_no_modifica_cuando_la_reserva_ya_empezo():
+    # Son las 18:00 del 09/10, la hora de inicio, y op01 quiere cambiar las fechas -> rechazado (ENT-95: solo antes de que empiece)
+    with pytest.raises(DeadlinePassedError) as error:
+        check_can_modify(reserva(), OP01, INICIO)
+    assert str(error.value) == "La reserva de MES-00001 ya empezó el 09/10/2026 18:00; ya no se puede modificar."
 
 
 def test_una_renta_entregada_no_se_puede_cancelar():

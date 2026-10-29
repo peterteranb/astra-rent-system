@@ -7,6 +7,7 @@ from django.shortcuts import redirect, render
 from django.urls import reverse
 
 from rentals.errors import RejectedWithCausesError
+from rentals.services.formatting import account_created_message
 
 from .forms import SignUpForm
 from .registration import REJECTION_TITLE, SignUpData, register_client
@@ -21,7 +22,7 @@ def sign_up(request):
     if request.method == "POST" and form.is_valid():
         user = try_to_register(form)
         if user:
-            messages.success(request, f"Cuenta creada. Ya puedes iniciar sesión con {user.username}.")
+            messages.success(request, account_created_message(user, at_store=False))
             return redirect("login")
     return render(request, "accounts/signup.html", signup_context(form, at_store=False))
 
@@ -33,7 +34,7 @@ def register_client_at_store(request):
     if request.method == "POST" and form.is_valid():
         user = try_to_register(form, registered_by=request.user)
         if user:
-            messages.success(request, f"Cuenta creada para {user.username}. Ya puedes registrar su renta.")
+            messages.success(request, account_created_message(user, at_store=True))
             return redirect(f"{reverse('walk_in_rental')}?q={user.username}")
     return render(request, "accounts/signup.html", signup_context(form, at_store=True))
 

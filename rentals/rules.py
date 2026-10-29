@@ -1,7 +1,7 @@
 """Reglas puras de la renta: solo comparan los valores que reciben y nunca tocan la base.
 
 Todas las fechas llegan en hora local (America/La_Paz); el caso de uso las convierte antes.
-No se rechazan fechas pasadas: ENT-17 dice que no hay límite de anticipación («puede ser al instante»).
+No hay anticipación mínima (ENT-17: «puede ser al instante»), pero el recojo no puede ser un día pasado (ENT-94).
 """
 from datetime import datetime, time, timedelta
 from decimal import ROUND_HALF_UP, Decimal
@@ -40,6 +40,13 @@ def is_rentable_status(status: str) -> bool:
     return status == EquipmentStatus.AVAILABLE
 
 
+def next_statuses(current) -> list:
+    """Devuelve los estados a los que puede pasar un equipo: cualquiera menos el actual; desde la baja, ninguno (ENT-49, ENT-90)."""
+    if current == EquipmentStatus.RETIRED:
+        return []
+    return [status for status in EquipmentStatus if status != current]
+
+
 def ends_after_start(start, end) -> bool:
     """Devuelve True si el periodo termina después de empezar."""
     return end > start
@@ -53,6 +60,15 @@ def rental_days(start, end) -> int:
 def is_within_max_duration(start, end) -> bool:
     """Devuelve True si la renta dura como máximo MAX_RENTAL_DAYS días (ENT-18)."""
     return rental_days(start, end) <= MAX_RENTAL_DAYS
+
+
+def is_pickup_date_allowed(start, now) -> bool:
+    """Devuelve True si el recojo es hoy o un día siguiente (ENT-94).
+
+    Compara solo la fecha: el recojo de hoy a las 18:00 vale hasta la medianoche,
+    porque el cliente puede recogerlo hasta entonces (ENT-69).
+    """
+    return start.date() >= now.date()
 
 
 def is_pickup_time_allowed(start) -> bool:
@@ -84,6 +100,11 @@ def is_pickup_expired(start, now) -> bool:
 def can_client_change(start, now) -> bool:
     """Devuelve True si faltan al menos 24 h para el recojo: el cliente aún cancela o modifica en línea (ENT-80)."""
     return now <= start - CLIENT_CHANGE_NOTICE
+
+
+def can_staff_modify(start, now) -> bool:
+    """Devuelve True si la reserva todavía no empezó: el personal la modifica hasta su inicio, no hasta el recojo (ENT-95)."""
+    return now < start
 
 
 def charge_for(value, rate) -> Decimal:
