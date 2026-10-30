@@ -77,6 +77,10 @@ export default function RentalConfirmationPage() {
               )}
             </dl>
 
+            {/* ENT-67: tras un pago fallido no se reintenta el QR, se paga en la tienda al recoger. */}
+            {!rental.is_paid && rental.status === "reserved" && (
+              <p className="flow-hint">Paga en la tienda al recoger el equipo.</p>
+            )}
             <p className="flow-hint">Entregamos los equipos desde las 18:00.</p>
 
             <div className="flow-actions">
@@ -86,14 +90,6 @@ export default function RentalConfirmationPage() {
               <Link className="btn btn--secondary" to="/my-rentals">
                 Ver mis rentas
               </Link>
-              {!rental.is_paid && rental.status === "reserved" && (
-                <Link
-                  className="btn btn--secondary"
-                  to={`/rentals/${rental.id}/pay`}
-                >
-                  Intentar pagar de nuevo
-                </Link>
-              )}
             </div>
           </>
         )}
