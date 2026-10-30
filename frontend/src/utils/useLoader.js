@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { errorsFrom } from "./friendlyErrors";
 
-export function useLoader(load) {
+export function useLoader(load, deps = []) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -17,7 +17,7 @@ export function useLoader(load) {
       .finally(() => !cancelled && setLoading(false));
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [version]);
+  }, [version, ...deps]);
 
   const reload = useCallback(() => setVersion((v) => v + 1), []);
   return { data, loading, error, reload };

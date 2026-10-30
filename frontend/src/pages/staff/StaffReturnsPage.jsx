@@ -6,9 +6,12 @@ import DataTable from "../../components/DataTable";
 import { getStaffReturns } from "../../api/staff";
 import { useLoader } from "../../utils/useLoader";
 import { formatDateTime } from "../../utils/format";
+import { useState } from "react";
+import OrderSelect from "../../components/OrderSelect";
 
 export default function StaffReturnsPage() {
-  const { data, loading, error } = useLoader(getStaffReturns);
+  const [order, setOrder] = useState("");
+  const { data, loading, error } = useLoader(() => getStaffReturns(order), [order]);
   const message = useLocation().state?.message; // viene de la pantalla de devolución
 
   const columns = [
@@ -28,6 +31,7 @@ export default function StaffReturnsPage() {
 
   return (
     <Layout title="Devoluciones pendientes">
+      <OrderSelect value={order} onChange={setOrder} dateLabel="Vencen primero" />
       {message && <Alert type="success">{message}</Alert>}
       {error && <Alert>{error}</Alert>}
       {loading && !data && <p className="list-message">Cargando devoluciones…</p>}

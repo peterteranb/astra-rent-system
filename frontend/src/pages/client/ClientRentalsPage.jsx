@@ -5,6 +5,7 @@ import FormErrors from "../../components/FormErrors";
 import { getMyRentals, cancelRental } from "../../api/rentals";
 import { errorsFrom } from "../../utils/friendlyErrors";
 import "./ClientRentalsPage.css";
+import Alert from "../../components/Alert.jsx";
 
 // La API manda fechas ISO; se muestran en hora de La Paz
 const formatDate = (iso) =>
@@ -22,6 +23,7 @@ export default function ClientRentalsPage() {
   const [debtMessage, setDebtMessage] = useState("");
   const [loading, setLoading] = useState(true);
   const [errors, setErrors] = useState([]);
+  const message = useLocation().state?.message;
 
   const load = useCallback(async () => {
     try {
@@ -74,6 +76,8 @@ export default function ClientRentalsPage() {
           </ul>
         </section>
       )}
+
+        {message && <Alert type="success">{message}</Alert>}
 
       {loading && <p className="rentals-message">Cargando tus rentas…</p>}
       {!loading && summary.rentals.length === 0 && (

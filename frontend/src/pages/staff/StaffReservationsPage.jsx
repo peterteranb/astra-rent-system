@@ -1,5 +1,5 @@
 ﻿import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import Layout from "../../components/Layout";
 import Alert from "../../components/Alert";
 import DataTable from "../../components/DataTable";
@@ -9,11 +9,14 @@ import { cancelRental } from "../../api/rentals";
 import { errorsFrom } from "../../utils/friendlyErrors";
 import { useLoader } from "../../utils/useLoader";
 import { formatDateTime, formatMoney } from "../../utils/format";
+import OrderSelect from "../../components/OrderSelect";
 
 export default function StaffReservationsPage() {
-  const { data, loading, error, reload } = useLoader(getStaffReservations);
+  const [order, setOrder] = useState("");
+  const { data, loading, error, reload } = useLoader(() => getStaffReservations(order), [order]);
   const [busy, setBusy] = useState(false);
-  const [notice, setNotice] = useState(null);
+  const fromModify = useLocation().state?.message;
+  const [notice, setNotice] = useState(fromModify ? { type: "success", text: fromModify } : null);
 
   const run = async (action) => {
     setBusy(true);
@@ -62,6 +65,7 @@ export default function StaffReservationsPage() {
 
   return (
     <Layout title="Reservas por entregar">
+      <OrderSelect value={order} onChange={setOrder} dateLabel="Más próximas" />
       {notice && <Alert type={notice.type}>{notice.text}</Alert>}
       {error && <Alert>{error}</Alert>}
       {loading && !data && <p className="list-message">Cargando reservas…</p>}

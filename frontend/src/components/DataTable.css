@@ -1,5 +1,7 @@
 .layout__main > .alert { margin-bottom: 16px; }
 .list-message { padding: 24px; text-align: center; color: var(--color-muted); }
+.order-select { max-width: 280px; margin-bottom: 16px; }
+.order-select .field__input { font-size: 16px; }
 
 .table { width: 100%; border-collapse: collapse; background: var(--color-surface); border: var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); }
 .table th, .table td { padding: 10px 14px; text-align: left; vertical-align: middle; border-bottom: 1.5px solid var(--color-line); }
