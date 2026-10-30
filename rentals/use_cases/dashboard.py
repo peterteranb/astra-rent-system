@@ -32,13 +32,13 @@ class ManagerSummary:
 
 
 def manager_summary(now) -> ManagerSummary:
-    """Devuelve lo que ve el responsable en el momento now; cada lista es una consulta y su conteo."""
-    rentals = Rental.objects.select_related("equipment", "client").order_by("end_datetime")
+    """Devuelve lo que ve el responsable en el momento now, lo último primero (ENT-100); cada lista es una consulta y su conteo."""
+    rentals = Rental.objects.select_related("equipment", "client").order_by("-created_at")
     return ManagerSummary(
         active=dashboard_list(rentals.active_at(now)),
         overdue=dashboard_list(rentals.overdue_at(now)),
-        today=dashboard_list(rentals.reserved_for_today_at(now).order_by("start_datetime")),
-        pending_payment=dashboard_list(rentals.pending_payment_at(now).order_by("start_datetime")),
+        today=dashboard_list(rentals.reserved_for_today_at(now)),
+        pending_payment=dashboard_list(rentals.pending_payment_at(now)),
         to_review=dashboard_list(equipment_to_review()),
         debts_by_client=dashboard_list(pending_totals_by_client()),
         debt_total=Debt.objects.pending().total(),

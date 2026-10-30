@@ -4,7 +4,7 @@ from django.db import IntegrityError, transaction
 
 from ..errors import EquipmentRegistrationError
 from ..models import Equipment
-from ..services.events import log_event, logs_rejection
+from ..services.events import equipment_text, log_event, logs_rejection, named
 
 REJECTION_TITLE = "No se registró el equipo:"
 
@@ -14,7 +14,17 @@ def normalize_inventory_id(text):
     return text.strip().upper()
 
 
-@logs_rejection("EQUIPMENT_REJECTED")
+def attempted_equipment(inventory_id, serial_number, name, value, registered_by):
+    """Los datos del equipo que se intentó registrar, para el log del rechazo."""
+    return {
+        "equipment": named(normalize_inventory_id(inventory_id), name.strip()),
+        "serial": serial_number.strip(),
+        "value": "-" if value is None else value,
+        "by": registered_by.username,
+    }
+
+
+@logs_rejection("EQUIPMENT_REJECTED", attempted_equipment)
 def register_equipment(inventory_id, serial_number, name, value, registered_by) -> Equipment:
     """Guarda un equipo nuevo «Disponible» y lo devuelve.
 
@@ -46,8 +56,8 @@ def log_equipment_registered(equipment, registered_by):
     """Escribe EQUIPMENT_REGISTERED; lo usan esta página y el admin de Django."""
     log_event(
         "EQUIPMENT_REGISTERED",
-        id=equipment.pk,
-        equipment=equipment.inventory_id,
+        equipment=equipment_text(equipment),
+        serial=equipment.serial_number,
         value=equipment.value,
         by=registered_by.username,
     )

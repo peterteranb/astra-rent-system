@@ -37,11 +37,22 @@ def rental_state_message(rental, status):
     return f"La reserva de {inventory_id} venció a la medianoche."
 
 
-def account_created_message(user, at_store):
-    """Aviso de la cuenta nueva: en la web, que ya inicie sesión; en la tienda, que ya se le puede rentar."""
-    if at_store:
-        return f"Cuenta creada para {user.username}. Ya puedes registrar su renta."
+def account_created_message(user):
+    """Aviso de la cuenta creada en la web: ya puede iniciar sesión."""
     return f"Cuenta creada. Ya puedes iniciar sesión con {user.username}."
+
+
+def store_account_message(registration):
+    """Aviso de la cuenta creada en la tienda: si salió el correo para crear la contraseña o qué hacer si no (ENT-102)."""
+    if not registration.email_sent:
+        return (
+            "La cuenta se creó, pero no se pudo enviar el correo. "
+            'Pide al cliente que use "Olvidé mi contraseña" con su correo.'
+        )
+    return (
+        f"Cuenta creada para {registration.user.username}. Le enviamos un correo para crear su contraseña. "
+        "Ya puedes registrar su renta."
+    )
 
 
 def equipment_registered_message(equipment):

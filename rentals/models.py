@@ -258,11 +258,8 @@ class Rental(models.Model):
 
     @property
     def payment_label(self):
-        """Dice cómo está el pago, por ejemplo «Pagado (QR)» o «Pago pendiente»."""
-        if not self.is_paid:
-            return "Pago pendiente"
-        method = "QR" if self.payment_method == PaymentMethod.QR else "efectivo"
-        return f"Pagado ({method})"
+        """Dice solo si está «Pagado» o con «Pago pendiente»; la forma de pago se ve en el detalle (ENT-104)."""
+        return "Pagado" if self.is_paid else "Pago pendiente"
 
     @property
     def client_can_change(self):

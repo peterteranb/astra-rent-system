@@ -1,0 +1,12 @@
+{# Selector «Ordenar por» de una lista del operador: se envía por GET a la misma página (ENT-100). #}
+<section class="card">
+  <form class="filters" method="get">
+    <div class="form__field">
+      {{ order_form.order.label_tag }}
+      {{ order_form.order }}
+    </div>
+    <div class="form__actions">
+      <button class="button button--secondary" type="submit">Ordenar</button>
+    </div>
+  </form>
+</section>

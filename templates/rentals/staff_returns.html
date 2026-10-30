@@ -4,6 +4,8 @@
 {% block heading %}Devoluciones pendientes{% endblock %}
 
 {% block content %}
+  {% include "includes/order_form.html" %}
+
   {% if rentals %}
     <table class="table">
       <thead>

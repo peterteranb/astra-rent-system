@@ -30,11 +30,15 @@ class UserAdmin(DjangoUserAdmin):
     add_form = UserCreationAdminForm
     list_display = [
         "username", "first_name", "last_name", "email", "phone", "role", "is_active", "pending_debt",
+        "date_joined",
     ]
-    list_filter = ["role", "is_active"]
+    list_filter = ["role", "is_active", "date_joined"]
     search_fields = ["username", "first_name", "last_name", "email", "phone"]
     list_select_related = ["role"]
     list_per_page = 50
+    # ENT-100: la cuenta más nueva primero.
+    ordering = ["-date_joined"]
+    date_hierarchy = "date_joined"
     # is_staff e is_superuser no se muestran: User.save() los pone según el rol.
     fieldsets = [
         (None, {"fields": ["username", "password"]}),

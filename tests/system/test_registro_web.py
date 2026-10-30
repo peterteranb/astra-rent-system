@@ -45,5 +45,5 @@ def test_el_operador_crea_la_cuenta_y_queda_listo_para_rentarle(client, op01):
     # Comprueba que va a la renta en tienda con la búsqueda hecha
     assertRedirects(respuesta, "/staff/walk-in/?q=cl03")
     # Comprueba el aviso y que el cliente aparece para elegirlo
-    assertContains(seguida, "Cuenta creada para cl03. Ya puedes registrar su renta.")
+    assertContains(seguida, "Cuenta creada para cl03. Le enviamos un correo para crear su contraseña. Ya puedes registrar su renta.")
     assertContains(seguida, "Lucía Quispe")

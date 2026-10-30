@@ -292,21 +292,12 @@ body {
   flex: 1 1 10rem;
 }
 
-/* Los detalles y el formulario van en su propia línea debajo del equipo. */
-.list__detail,
+/* El formulario va en su propia línea debajo del equipo. */
 .list__form {
   flex-basis: 100%;
   margin: 0;
   padding: 0;
   font-size: 0.9rem;
-  list-style: none;
-}
-
-.list__detail {
-  color: var(--color-muted);
-}
-
-.list__form {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;

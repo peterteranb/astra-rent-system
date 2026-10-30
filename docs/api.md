@@ -1,6 +1,14 @@
 # API JSON para el frontend
 
-> Versión del 28/10/2026. La API vive bajo `/api/` y llama a las **mismas** funciones de `rentals/use_cases/` (y de `accounts/registration.py`) que las páginas HTML: no repite ninguna regla. Las páginas de Django siguen funcionando como respaldo. El código está en `rentals/api/` y `accounts/api.py`; las pruebas, en `tests/integration/test_api.py`.
+> Versión del 29/10/2026. La API vive bajo `/api/` y llama a las **mismas** funciones de `rentals/use_cases/` (y de `accounts/registration.py` y `accounts/account.py`) que las páginas HTML: no repite ninguna regla. Las páginas de Django siguen funcionando como respaldo. El código está en `rentals/api/` y `accounts/api.py`; las pruebas, en `tests/integration/test_api.py` y `tests/integration/test_api_mi_cuenta.py`.
+
+**Cambios del 29/10 para el frontend:**
+
+- `GET /api/catalog/`: los equipos ya no traen `busy_periods` (ENT-99).
+- `GET /api/staff/reservations/` y `GET /api/staff/returns/`: la más nueva primero; aceptan `?order=date` (ENT-100). Las demás listas también vienen con lo último primero.
+- Renta: `payment_label` es solo `"Pagado"` o `"Pago pendiente"`; nuevos `payment_method` y `payment_method_label` (ENT-104).
+- `POST /api/staff/clients/`: ya no lleva `password` ni `password_confirmation`; la respuesta trae `email_sent` y otro `message` (ENT-102).
+- Nuevos: `POST /api/auth/profile/`, `POST /api/auth/password/` y `POST /api/auth/password-reset/` (CU-17).
 
 ## 1. Reglas comunes
 
@@ -51,6 +59,8 @@
   "total_price": "40.00",
   "is_paid": false,
   "payment_label": "Pago pendiente",
+  "payment_method": "",
+  "payment_method_label": "",
   "client_can_change": true,
   "registered_by": null,
   "picked_up_at": null,
@@ -58,6 +68,8 @@
   "cancelled_at": null
 }
 ```
+
+`payment_label` es solo `"Pagado"` o `"Pago pendiente"` (ENT-104); la forma de pago va aparte en `payment_method` (`"qr"`, `"cash"` o `""` sin pagar) y `payment_method_label` (`"QR"`, `"Efectivo"` o `""`).
 
 **Equipo** (`equipment`): `{"inventory_id": "MES-00001", "name": "Mesa plegable 1,80 m", "status": "available", "status_label": "Disponible", "daily_price": "20.00"}`.
 
@@ -77,6 +89,19 @@ Los mensajes de error de cada endpoint son los de su caso de uso en [casos-de-us
 | `POST /api/auth/login/` | Todos | `{"username": "cl01", "password": "Demo1234"}` | el usuario + `debt_total`; `message`: `"Hola, Carla."` |
 | `POST /api/auth/logout/` | Todos | — | `null`; `message`: `"Sesión cerrada."` |
 | `GET /api/auth/me/` | Con sesión | — | el usuario + `"debt_total": "0.00"` |
+
+### CU-17 · Mi cuenta
+
+| Método y ruta | Quién | Cuerpo | Respuesta |
+|---|---|---|---|
+| `POST /api/auth/profile/` | Con sesión | `{"first_name": "Carla", "last_name": "Mendoza", "email": "carla@correo.com", "phone": "71000001"}` | el usuario + `debt_total`; `message`: `"Tus datos se guardaron."` |
+| `POST /api/auth/password/` | Con sesión | `{"old_password": "Demo1234", "new_password1": "Nueva2026x", "new_password2": "Nueva2026x"}` | `null`; `message`: `"Tu contraseña se cambió."`; la sesión sigue abierta |
+| `POST /api/auth/password-reset/` | Todos | `{"email": "carla@correo.com"}` | `null`; `message`: `"Si el correo es de una cuenta activa, te mandamos un enlace para crear tu contraseña."` |
+
+- El usuario y el rol no se cambian: `username` en el cuerpo de `profile/` se ignora.
+- `profile/` usa las reglas del registro y trae todas las causas juntas, por ejemplo `["Falta el campo Nombre.", "El correo ya está registrado."]`. Tu propio correo no choca contigo.
+- `password/` usa `PasswordChangeForm` de Django y los mismos validadores del registro: `"Contraseña antigua: …"`, `"Contraseña nueva: Esta contraseña es demasiado común."`.
+- `password-reset/` responde lo mismo exista o no la cuenta. El enlace del correo abre la página de Django `/reset/<uid>/<token>/`, donde se escribe la contraseña nueva.
 
 Errores del login: `"Usuario o contraseña incorrectos."` · `"Tu cuenta está desactivada. Comunícate con la tienda."` (solo con la contraseña correcta, ENT-79).
 
@@ -98,11 +123,12 @@ Respuesta: `data` = el usuario; `message`: `"Cuenta creada. Ya puedes iniciar se
 ```json
 {"data": {"count": 25, "page": 1, "pages": 2, "results": [
   {"inventory_id": "MES-00001", "name": "Mesa plegable 1,80 m", "status": "available", "status_label": "Disponible",
-   "daily_price": "20.00", "busy_periods": [{"start": "2026-11-05T18:00:00-04:00", "end": "2026-11-07T09:00:00-04:00"}]}
+   "daily_price": "20.00"}
 ]}, "message": ""}
 ```
 
-- De 20 en 20 (ENT-86); cada equipo trae hasta 3 periodos ocupados (ENT-64).
+- De 20 en 20 (ENT-86). Sin `busy_periods`: el catálogo no dice cuándo usan el equipo otras personas (ENT-99).
+- Sin `free_from` y `free_to` trae los equipos disponibles; con las dos fechas, solo los libres en ese periodo.
 - El cliente ve solo los disponibles; `status` solo filtra para el personal.
 - Errores: `"Elige las dos fechas para ver los equipos libres."` · `"La fecha final debe ser posterior a la inicial."`. Un combo (`CMB-00001`) aparece como cualquier equipo (ENT-96).
 
@@ -165,7 +191,7 @@ Respuesta: la renta cancelada; `message`: `"Reserva cancelada: MES-00005 de cl01
 
 `GET /api/staff/clients/?q=rojas` · Operador → `data` = hasta 10 usuarios cuyo usuario, nombre, apellido o correo contiene el texto (ENT-54). Sin `q`, lista vacía.
 
-`POST /api/staff/clients/` · Operador · 201 · mismo cuerpo que el registro → `message`: `"Cuenta creada para lucia. Ya puedes registrar su renta."`.
+`POST /api/staff/clients/` · Operador · 201 · el cuerpo del registro **sin** `password` ni `password_confirmation` (ENT-102: el operador no conoce la contraseña del cliente) → `data` = el usuario + `"email_sent": true`; `message`: `"Cuenta creada para lucia. Le enviamos un correo para crear su contraseña. Ya puedes registrar su renta."`. Si el correo falla, `"email_sent": false` y `message`: `"La cuenta se creó, pero no se pudo enviar el correo. Pide al cliente que use \"Olvidé mi contraseña\" con su correo."`.
 
 ### CU-05 · Renta en tienda
 
@@ -179,7 +205,7 @@ Respuesta: la renta cancelada; `message`: `"Reserva cancelada: MES-00005 de cl01
 
 ### CU-08 · Entregar
 
-`GET /api/staff/reservations/` · Operador → `data` = las rentas «Reservadas», la más próxima primero.
+`GET /api/staff/reservations/?order=recent` · Operador → `data` = las rentas «Reservadas», la más nueva primero (ENT-100); con `?order=date`, la de recojo más próximo primero. Un valor desconocido usa `recent`.
 
 `POST /api/staff/rentals/<id>/pickup/` · Operador · `{"paid_now": true}` solo si cobró en efectivo en ese momento
 
@@ -188,7 +214,7 @@ Respuesta: la renta cancelada; `message`: `"Reserva cancelada: MES-00005 de cl01
 
 ### CU-09 · Devolver
 
-`GET /api/staff/returns/` · Operador → `data` = las rentas «Rentadas», la que vence primero arriba: solo esas se devuelven (ENT-93).
+`GET /api/staff/returns/?order=recent` · Operador → `data` = las rentas «Rentadas», la más nueva primero (ENT-100); con `?order=date`, la que vence primero. Solo esas se devuelven (ENT-93).
 
 `POST /api/staff/rentals/<id>/return/` · Operador · `{"note": "Una pata floja"}`
 
@@ -203,11 +229,13 @@ Respuesta: la renta cancelada; `message`: `"Reserva cancelada: MES-00005 de cl01
 {"data": {"debts": [/* deudas sin pagar */], "totals": [{"username": "cl02", "first_name": "Diego", "last_name": "Rojas", "total": "40.00"}]}, "message": ""}
 ```
 
+`debts` viene con la deuda más nueva primero y `totals` con el cliente de la deuda más nueva primero (ENT-100).
+
 `POST /api/staff/debts/<id>/pay/` · Operador · sin cuerpo. Las deudas se pagan solo en la tienda (ENT-92): no hay endpoint para que el cliente pague una deuda → `message`: `"Pago registrado: deuda de 40,00 Bs de cl02."`. Error: `"Esta deuda ya se pagó el 28/10/2026 10:15."`.
 
 ### CU-10 · Mantenimiento
 
-`GET /api/maintenance/equipment/?status=in_review` · Mantenimiento → `data` = todos los equipos que no están de baja, primero los «En revisión»; `status` filtra por estado (ENT-90).
+`GET /api/maintenance/equipment/?status=in_review` · Mantenimiento → `data` = todos los equipos que no están de baja, el que cambió de estado más recientemente primero (ENT-100); `status` filtra por estado (ENT-90).
 
 ```json
 {"data": [{"inventory_id": "SIL-00003", "name": "Silla plegable blanca", "status": "in_review", "status_label": "En revisión", "daily_price": "4.00",
@@ -256,7 +284,7 @@ Respuesta: el equipo «Disponible», con el código en mayúsculas; `message`: `
 }, "message": ""}
 ```
 
-Cada lista trae su total y sus primeras 10 filas.
+Cada lista trae su total y sus primeras 10 filas, lo último primero: las rentas por fecha de creación, los equipos por su último cambio de estado y los clientes por su deuda más nueva (ENT-100).
 
 CU-13 (corregir el estado de un equipo) y CU-14 (historial) siguen en el admin de Django.
 

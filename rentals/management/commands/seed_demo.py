@@ -197,7 +197,7 @@ def create_scenario(users, equipment):
     returned_in_past(late, op01, at(-2, 12, 30), "Volvió dos días tarde")
     change_status(equipment["SIL-00006"], EquipmentStatus.AVAILABLE, mt01, "Revisada, en buen estado")
     late.refresh_from_db()
-    charge_debt(late, DebtReason.LATE_RETURN, late.late_charge)
+    charge_debt(late, DebtReason.LATE_RETURN, late.late_charge, op01)
 
 
 def picked_up_in_store(client, unit, operator, start, end):

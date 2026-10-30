@@ -22,7 +22,7 @@ from ..errors import (
     RentalStateError,
 )
 from ..models import Debt, Equipment, Rental
-from ..services.events import log_event, logs_rejection
+from ..services.events import log_event, logs_rejection, period_text, rental_context
 from ..services.formatting import client_debt_message, days_text, local_text, money_text, rental_state_message
 from ..services.notifications import send_rental_cancelled, send_rental_confirmed, send_rental_modified
 from ..statuses import PaymentMethod, RentalStatus
@@ -89,7 +89,18 @@ def rentals_visible_to(user):
     return Rental.objects.filter(Q(client=user) | Q(registered_by=user))
 
 
-@logs_rejection("RENTAL_REJECTED")
+def acting_username(client, registered_by):
+    """Devuelve quién hizo la renta: el operador en la tienda o el cliente en línea."""
+    return (registered_by or client).username
+
+
+def attempted_rental(client, equipment, start_datetime, end_datetime, registered_by=None):
+    """Lo que se intentó rentar, para el log del rechazo: todavía no tiene id ni precio."""
+    rental = Rental(client=client, equipment=equipment, start_datetime=start_datetime, end_datetime=end_datetime)
+    return rental_context(rental, acting_username(client, registered_by))
+
+
+@logs_rejection("RENTAL_REJECTED", attempted_rental)
 def create_rental(client, equipment, start_datetime, end_datetime, registered_by=None) -> Rental:
     """Guarda una renta confirmada de un equipo y la devuelve (ENT-16: se confirma al instante).
 
@@ -135,19 +146,13 @@ def new_rental(client, equipment, start, end, registered_by) -> Rental:
 
 def log_rental_created(rental):
     """Escribe RENTAL_CREATED y, en la tienda, el cobro en efectivo y el correo de confirmación."""
-    registered_by = rental.registered_by.username if rental.registered_by else "web"
-    log_event(
-        "RENTAL_CREATED",
-        id=rental.pk,
-        equipment=rental.equipment.inventory_id,
-        client=rental.client.username,
-        paid="yes" if rental.is_paid else "no",
-        registered_by=registered_by,
-    )
+    context = rental_context(rental, acting_username(rental.client, rental.registered_by))
+    # «payment» y no «paid»: en línea nace pendiente y el PAYMENT_APPROVED de después no la contradice.
+    log_event("RENTAL_CREATED", **context, payment="paid" if rental.is_paid else "pending")
     # En línea, el correo sale cuando el cliente presiona un botón del QR (payments.pay_with_qr).
     if rental.registered_by is None:
         return
-    log_event("PAYMENT_CASH", rental=rental.pk, amount=rental.total_price, received_by=registered_by)
+    log_event("PAYMENT_CASH", **context)
     send_rental_confirmed(rental)
 
 
@@ -225,7 +230,12 @@ def busy_message(equipment, rental, start):
     return message
 
 
-@logs_rejection("MODIFY_REJECTED")
+def attempted_modification(rental, start_datetime, end_datetime, changed_by):
+    """La reserva con las fechas que se pidieron, para el log del rechazo."""
+    return {**rental_context(rental, changed_by.username), "period": period_text(start_datetime, end_datetime)}
+
+
+@logs_rejection("MODIFY_REJECTED", attempted_modification)
 def modify_rental(rental, start_datetime, end_datetime, changed_by) -> Rental:
     """Cambia las fechas de una reserva por otras con la misma cantidad de días y la devuelve (ENT-81).
 
@@ -247,14 +257,7 @@ def modify_rental(rental, start_datetime, end_datetime, changed_by) -> Rental:
         locked_rental.start_datetime = start
         locked_rental.end_datetime = end
         locked_rental.save(update_fields=["start_datetime", "end_datetime"])
-    log_event(
-        "RENTAL_MODIFIED",
-        id=locked_rental.pk,
-        equipment=locked_rental.equipment.inventory_id,
-        start=f"{start:%Y-%m-%dT%H:%M}",
-        end=f"{end:%Y-%m-%dT%H:%M}",
-        by=changed_by.username,
-    )
+    log_event("RENTAL_MODIFIED", **rental_context(locked_rental, changed_by.username))
     if changed_by.pk != locked_rental.client_id:
         send_rental_modified(locked_rental)
     return locked_rental
@@ -271,7 +274,12 @@ def check_same_days(rental, start, end):
     )
 
 
-@logs_rejection("CANCEL_REJECTED")
+def attempted_cancellation(rental, cancelled_by, reason=""):
+    """La reserva que se quiso cancelar, para el log del rechazo."""
+    return rental_context(rental, cancelled_by.username)
+
+
+@logs_rejection("CANCEL_REJECTED", attempted_cancellation)
 def cancel_rental(rental, cancelled_by, reason="") -> Rental:
     """Cancela una reserva todavía no recogida, guarda quién la canceló y avisa al cliente (ENT-80).
 
@@ -289,14 +297,7 @@ def cancel_rental(rental, cancelled_by, reason="") -> Rental:
         locked_rental.cancelled_by = cancelled_by
         locked_rental.save(update_fields=["cancelled_at", "cancelled_by"])
     reason = reason or default_cancellation_reason(locked_rental, cancelled_by)
-    log_event(
-        "RENTAL_CANCELLED",
-        id=locked_rental.pk,
-        equipment=locked_rental.equipment.inventory_id,
-        client=locked_rental.client.username,
-        by=cancelled_by.username,
-        reason=reason,
-    )
+    log_event("RENTAL_CANCELLED", **rental_context(locked_rental, cancelled_by.username), reason=reason)
     send_rental_cancelled(locked_rental, reason)
     return locked_rental
 

@@ -13,7 +13,7 @@ from ..use_cases.catalog import browse_catalog
 from ..use_cases.payments import online_rentals_of, pay_with_qr
 from ..use_cases.renting import cancel_rental, create_rental, modify_rental, my_rentals, rentals_visible_to
 from .responses import api_view, read_json, success, valid_form
-from .serializers import catalog_entry_data, debt_data, money, rental_data
+from .serializers import debt_data, equipment_data, money, rental_data
 
 
 @api_view("GET")
@@ -27,7 +27,7 @@ def catalog(request):
             "count": page.paginator.count,
             "page": page.number,
             "pages": page.paginator.num_pages,
-            "results": [catalog_entry_data(entry) for entry in page.object_list],
+            "results": [equipment_data(equipment) for equipment in page.object_list],
         }
     )
 

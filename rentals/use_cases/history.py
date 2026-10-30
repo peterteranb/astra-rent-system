@@ -3,7 +3,7 @@ from django.db import transaction
 
 from ..errors import InvalidStatusChangeError
 from ..models import Equipment, Rental, StatusChange
-from ..services.events import log_event, logs_rejection
+from ..services.events import equipment_text, log_event, logs_rejection
 from ..statuses import EquipmentStatus
 from .renting import cancel_reservations
 
@@ -14,7 +14,12 @@ OUT_OF_SERVICE_REASONS = {
 }
 
 
-@logs_rejection("STATUS_CHANGE_REJECTED")
+def attempted_status_change(equipment, new_status, user, comment=""):
+    """El equipo y el estado que se pidieron, para el log del rechazo."""
+    return {"equipment": equipment_text(equipment), "new": new_status, "by": user.username}
+
+
+@logs_rejection("STATUS_CHANGE_REJECTED", attempted_status_change)
 def change_status(equipment, new_status, user, comment="") -> StatusChange:
     """Pone el estado nuevo del equipo y guarda quién lo cambió, desde cuál y por qué.
 
@@ -38,7 +43,7 @@ def change_status(equipment, new_status, user, comment="") -> StatusChange:
         change.save()
     log_event(
         "STATUS_CHANGED",
-        equipment=locked_equipment.inventory_id,
+        equipment=equipment_text(locked_equipment),
         old=change.old_status,
         new=new_status,
         by=user.username,

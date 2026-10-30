@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+
+{% block title %}Mi cuenta{% endblock %}
+{% block heading %}Mi cuenta{% endblock %}
+
+{% block content %}
+  <section class="card login">
+    <dl class="details">
+      <dt>Usuario</dt>
+      <dd>{{ user.username }}</dd>
+      <dt>Rol</dt>
+      <dd>{{ user.role.name }}</dd>
+    </dl>
+    <p class="hint">El usuario y el rol no se cambian.</p>
+
+    {% include "includes/rejection.html" %}
+
+    <form class="form" method="post" action="{% url 'my_account' %}">
+      {% csrf_token %}
+      {% for field in form %}
+        <div class="form__field">
+          {{ field.label_tag }}
+          {{ field }}
+          {% if field.help_text %}<small class="form__help">{{ field.help_text }}</small>{% endif %}
+          {{ field.errors }}
+        </div>
+      {% endfor %}
+      <div class="form__actions">
+        <button class="button" type="submit">Guardar mis datos</button>
+        <a class="button button--secondary" href="{% url 'password_change' %}">Cambiar contraseña</a>
+      </div>
+    </form>
+  </section>
+{% endblock %}

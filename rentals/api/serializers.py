@@ -46,14 +46,6 @@ def period_data(rental):
     return {"start": moment(rental.start_datetime), "end": moment(rental.end_datetime)}
 
 
-def catalog_entry_data(entry):
-    """Un equipo del catálogo con sus próximos periodos ocupados (CU-03)."""
-    return {
-        **equipment_data(entry.equipment),
-        "busy_periods": [period_data(rental) for rental in entry.busy_rentals],
-    }
-
-
 def rental_data(rental):
     """Datos de una renta con su estado calculado, su pago y sus momentos."""
     status = rental.status
@@ -69,6 +61,8 @@ def rental_data(rental):
         "total_price": money(rental.total_price),
         "is_paid": rental.is_paid,
         "payment_label": rental.payment_label,
+        "payment_method": rental.payment_method,
+        "payment_method_label": rental.get_payment_method_display(),
         "client_can_change": rental.client_can_change,
         "registered_by": username_or_none(rental.registered_by),
         "picked_up_at": moment(rental.picked_up_at),
