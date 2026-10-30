@@ -1,6 +1,6 @@
 # astra-rent-system
 
-Qué contiene: qué es el sistema de renta de mesas y sillas de SergioCorp, cómo instalarlo y correrlo en Windows desde cero (también el frontend de React), los usuarios de la demo, cómo crear personal, ver la base y los logs, cómo correrlo en modo producción y publicarlo en internet, y qué hacer si algo falla.
+Qué contiene: qué es el sistema de renta de mesas y sillas de SergioCorp, cómo instalarlo en Windows desde cero y usarlo (con React o con las páginas clásicas de Django), los usuarios de la demo, cómo crear personal, ver la base y los logs, cómo correrlo en modo producción y publicarlo en internet, y qué hacer si algo falla.
 Cuándo leerlo: primero, para tener el sistema funcionando. La documentación completa está en [docs/README.md](docs/README.md); los IDs (ENT, D, CU, RF, RC) se explican en su [glosario de IDs](docs/README.md#glosario-de-ids).
 
 ## Qué es
@@ -12,7 +12,7 @@ Un sistema web para que SergioCorp rente mesas, sillas y combos para eventos ([E
 - **Mantenimiento:** revisa los equipos: disponible, en revisión, en reparación o de baja, y decide si cobra el daño.
 - **Administrador:** registra equipos, ve el panel del responsable y gestiona todo desde el admin de Django (`/admin/`).
 
-Hay dos interfaces que usan las mismas reglas: las páginas de Django (`http://localhost:8080`) y el frontend en React (`http://localhost:5173`, carpeta [`frontend/`](frontend/README.md)), que habla con Django por la API JSON ([docs/api.md](docs/api.md)).
+Se usa desde el **frontend en React** (`http://localhost:5173`, carpeta [`frontend/`](frontend/README.md)), que habla con Django por la API JSON ([docs/api.md](docs/api.md)). Las **páginas clásicas** de Django (`http://localhost:8080`) siguen funcionando y tienen el admin.
 
 Equipo: Uriel ([@peterteranb](https://github.com/peterteranb)), Andrew ([@andrewest-andrew](https://github.com/andrewest-andrew)) y Sofia ([@arduz-in-zugzwang](https://github.com/arduz-in-zugzwang)).
 
@@ -25,7 +25,7 @@ Los comandos de esta guía son para **PowerShell** (búscalo en el menú Inicio)
 | **Python 3.12 o superior** (lo exige Django 6.1) | Corre el sistema | https://www.python.org/downloads/ | Marca la casilla **«Add python.exe to PATH»** en la primera pantalla. | `python --version` |
 | **PostgreSQL 15 o superior** | La base de datos | https://www.postgresql.org/download/windows/ | Deja el puerto `5432`. El instalador pide una contraseña para el usuario **`postgres`**: **anótala**, se usa en el paso 5. Trae **pgAdmin**, para ver la base. | `& "C:\Program Files\PostgreSQL\17\bin\psql.exe" --version` (cambia `17` por tu versión) |
 | **Git** | Descarga el código | https://git-scm.com/download/win | Las opciones por defecto sirven. | `git --version` |
-| **Node.js 20.19 o superior** (la versión LTS) | Solo para el frontend de React | https://nodejs.org/ | Las opciones por defecto sirven. | `node --version` |
+| **Node.js 20.19 o superior** (la versión LTS) | El frontend de React, la forma principal de usar el sistema | https://nodejs.org/ | Las opciones por defecto sirven. | `node --version` |
 
 `psql` no queda en el PATH: por eso se llama con su ruta completa. Para saber qué versión de PostgreSQL tienes (el número de la carpeta):
 
@@ -80,34 +80,37 @@ dir "C:\Program Files\PostgreSQL"
 
 Después de cada `git pull`, vuelve a ejecutar `python -m pip install -r requirements.txt` y `python manage.py migrate`.
 
-## Correr
+## Usar el sistema
 
-Para programar, con el servidor de desarrollo de Django:
+La forma principal de usarlo es el **frontend en React**. Necesita **dos terminales abiertas a la vez**, cada una en la carpeta del proyecto:
 
-```powershell
-python manage.py runserver 8080
-```
-
-Abre http://localhost:8080/ e inicia sesión con un [usuario de la demo](#usuarios-de-demo). El servidor se reinicia solo al guardar un archivo. Para detenerlo: `Ctrl+C`. Se usa el puerto 8080 porque en Windows el 8000 a veces está reservado ([D-09](docs/decisiones.md#d-09)).
-
-## Correr el frontend de React
-
-El frontend necesita **dos terminales abiertas a la vez**, cada una en la carpeta del proyecto:
-
-1. **Terminal 1, Django** (con el entorno activado):
+1. **Terminal 1, Django en el puerto 8080** (con el entorno activado). Atiende la API y la base:
    ```powershell
    .venv\Scripts\activate
    python manage.py runserver 8080
    ```
-2. **Terminal 2, React:**
+2. **Terminal 2, React en el puerto 5173:**
    ```powershell
    cd frontend
    npm install     # solo la primera vez
    npm run dev
    ```
-3. Abre **http://localhost:5173** e inicia sesión con un usuario de la demo.
+3. Abre **http://localhost:5173** e inicia sesión con un [usuario de la demo](#usuarios-de-demo).
 
-Las páginas de Django siguen en **http://localhost:8080**. Las dos interfaces usan la misma base: lo que hagas en una se ve en la otra. Más detalles en [frontend/README.md](frontend/README.md).
+Para detener cada servidor: `Ctrl+C` en su terminal. Django se reinicia solo al guardar un archivo de Python y React se actualiza solo al guardar uno de `frontend/`. Se usa el puerto 8080 porque en Windows el 8000 a veces está reservado ([D-09](docs/decisiones.md#d-09)).
+
+React no tiene reglas de negocio: cada pantalla le pide los datos a la **API JSON** de Django ([docs/api.md](docs/api.md)).
+La API llama a los mismos casos de uso (`rentals/use_cases/`) que las páginas de Django, así que una renta se valida igual desde cualquiera de las dos.
+Las dos usan la misma base: lo que hagas en una se ve en la otra.
+
+### Páginas clásicas (Django, puerto 8080)
+
+Las páginas hechas con plantillas de Django siguen funcionando en **http://localhost:8080**, con los mismos usuarios y las mismas funciones. Además, son las únicas que tienen:
+
+- el **admin de Django** (`/admin/`), donde el administrador gestiona usuarios, equipos, rentas, deudas e historial (en React es el enlace «Admin» del menú);
+- la página del enlace **«Crea tu contraseña»** (`/reset/…/`) de los correos. Si el enlace viene con la dirección de React (`localhost:5173`), Vite se lo pasa a Django y se abre igual.
+
+Más detalles del frontend en [frontend/README.md](frontend/README.md).
 
 ## Usuarios de demo
 
@@ -258,7 +261,7 @@ Con un **túnel de Cloudflare** cualquiera puede abrir el sistema desde cualquie
    cloudflared tunnel --url http://localhost:8080
    ```
    Entre sus mensajes imprime una dirección `https://<algo>.trycloudflare.com`. Esa dirección la abre cualquiera, desde cualquier red, mientras la computadora, waitress y `cloudflared` sigan encendidos.
-3. **Para el frontend de React**, con `npm run dev` corriendo (ver [Correr el frontend de React](#correr-el-frontend-de-react)), abre otro túnel en otra terminal:
+3. **Para el frontend de React**, con `npm run dev` corriendo (ver [Usar el sistema](#usar-el-sistema)), abre otro túnel en otra terminal:
    ```powershell
    cloudflared tunnel --url http://localhost:5173
    ```

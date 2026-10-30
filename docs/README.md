@@ -3,6 +3,8 @@
 Qué contiene: el índice de los documentos del sistema de renta de mesas y sillas de SergioCorp, el orden en que conviene leerlos y el glosario de IDs (ENT, D, CU, HU, RF, RC, PRE).
 Cuándo leerlo: primero, antes que cualquier otro documento. Cómo instalar y correr el sistema está en el [README del proyecto](../README.md).
 
+El sistema se usa sobre todo desde el frontend en React (`frontend/`), que no tiene reglas propias: llama a la API JSON ([api.md](api.md)), y la API llama a los mismos casos de uso que las páginas clásicas de Django.
+
 ## Índice
 
 | Pregunta | Dónde está la respuesta |
