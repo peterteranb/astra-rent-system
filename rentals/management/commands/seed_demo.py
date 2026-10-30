@@ -64,7 +64,7 @@ CATALOG = [
     ("SIL", "Silla plegable blanca", "DURAPLAST", 2024, "80.00", 8),
     ("SIL", "Silla Tiffany dorada", "RESINART", 2025, "150.00", 5),
     ("SIL", "Silla de madera", "MADEANDINA", 2023, "120.00", 3),
-    ("CMB", "Combo 6 sillas y 1 mesa", "SERGIOCORP", 2025, "880.00", 1),
+    ("CMB", "Combo 6 sillas y 1 mesa", "SERGIOCORP", 2025, "3000.00", 1),
     ("CMB", "Combo 10 sillas Tiffany y 1 mesa redonda", "SERGIOCORP", 2025, "2150.00", 1),
 ]
 
@@ -81,7 +81,7 @@ DEMO_PURPOSE = {
     "SIL-00005": "CU-13: una baja ya no cambia",
     "SIL-00006": "CU-11: volvió con atraso; deuda pendiente de cl02",
     "SIL-00007": "CU-09: rentada, se devuelve a tiempo",
-    "CMB-00001": "Combo: un equipo más, 44 Bs por día (ENT-96)",
+    "CMB-00001": "Combo: un equipo más, 150 Bs por día (ENT-96)",
 }
 
 # Pasadas, a mano (D-31), días desde hoy: (cliente, equipo, recojo, devolución, vuelta (día, hora, min) o None, nota).
