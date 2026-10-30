@@ -19,7 +19,7 @@ Versión final del 29/10/2026. Cómo instalar y correr el sistema está en el [R
 | ¿Qué endpoints JSON tiene el frontend, qué mandan y qué responden? | [api.md](api.md): cada endpoint con quién lo usa, ejemplos y errores, y cómo conectar React en desarrollo. |
 | ¿Qué respondió el cliente? | [respuestas-del-cliente.md](respuestas-del-cliente.md): ENT-01 a ENT-104; desde ENT-66 separa lo que dijo el cliente de lo que completó el equipo. |
 | ¿Qué decidió el equipo donde el cliente no respondió? | [decisiones.md](decisiones.md): D-01 a D-40, con su motivo y su ENT. |
-| ¿Qué pruebas hay y cómo se corren? | [pruebas.md](pruebas.md): tipos, cómo correrlas, la prueba de carga, `check --deploy`, la cobertura y qué CU, RF y RC cubre cada archivo. También [arquitectura.md](arquitectura.md#pruebas-y-ci) (CI) y la columna «Cómo se verifica» de cada RF. |
+| ¿Qué pruebas hay y cómo se corren? | [pruebas.md](pruebas.md): tipos, cómo correrlas, `check --deploy`, la cobertura y qué CU, RF y RC cubre cada archivo. También [arquitectura.md](arquitectura.md#pruebas-y-ci) (CI) y la columna «Cómo se verifica» de cada RF. |
 
 ## Cómo leer los IDs
 

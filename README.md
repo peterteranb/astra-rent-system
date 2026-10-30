@@ -149,7 +149,7 @@ Usan una base temporal que crea pytest-django; la base de la demo y `logs/negoci
 | Sistema (recorridos por la web) | `tests/system/` | 12 | 2,3 s |
 | **Total** | | **76** | **6,6 s** |
 
-Los tiempos de integración y sistema incluyen crear la base de pruebas. Son 70 funciones de prueba; las que verifican lo mismo con otros datos usan `parametrize`, por eso hay 76 casos. La prueba de carga, la cobertura y `check --deploy` están en [docs/pruebas.md](docs/pruebas.md).
+Los tiempos de integración y sistema incluyen crear la base de pruebas. Son 70 funciones de prueba; las que verifican lo mismo con otros datos usan `parametrize`, por eso hay 76 casos. La cobertura y `check --deploy` están en [docs/pruebas.md](docs/pruebas.md).
 
 ## Estructura
 

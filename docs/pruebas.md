@@ -26,23 +26,7 @@ python -m pytest -q tests/unit/test_etiqueta_de_pago.py -k qr  # los casos cuyo 
 
 Usan una base temporal; la base de la demo y `logs/negocio.log` no se tocan. En `config/settings_test.py` los correos salen en el mismo hilo (`EMAIL_IN_BACKGROUND=False`) para leerlos al instante, y el log sube al logger raíz para que `caplog` lo capture. GitHub Actions corre la suite completa en cada push.
 
-## Prueba de carga
-
-`python manage.py stress_test --rentas 50` (solo con `DEBUG=True`) registra 50 clientes con `register_client` y 50 mesas con `register_equipment`, y lanza dos escenarios con 50 hilos que llaman a `create_rental`, el mismo caso de uso que la web. Una barrera (`threading.Barrier`) suelta todos los hilos juntos; cada hilo cierra su conexión y al final el comando borra todo lo que creó. Sale con error si el resultado no es el esperado.
-
-1. **El mismo equipo, el mismo periodo:** debe guardarse 1 renta y rechazarse 49 por «ocupado» (RF-01, RC-02, ENT-21: gana el primer clic). Lo asegura `select_for_update()` sobre la fila del equipo en `create_rental`.
-2. **50 equipos distintos:** las 50 rentas se guardan; se mide el tiempo total.
-
-Salida sobre PostgreSQL 18.6 (Python 3.14.6, Windows 11), sin las líneas del log de negocio:
-
-```text
-> python manage.py stress_test --rentas 50
-1) 50 clientes rentan MES-90000 a la vez en el mismo periodo:
-   guardadas 1, rechazadas por «ocupado» 49, otros errores 0, 1.19 s
-2) 50 clientes rentan 50 equipos distintos a la vez:
-   guardadas 50, rechazadas 0, 1.21 s
-Prueba de carga correcta.
-```
+## Muchos equipos
 
 Para probar el catálogo con muchos equipos: `python manage.py seed_demo --equipos 1000` deja el escenario de la demo y completa 1000 equipos con mesas y sillas.
 
@@ -92,9 +76,9 @@ python -m pytest --cov=rentals --cov=accounts --cov-branch -q
 | `rentals/errors.py` | 100 % | | `rentals/views/home.py` | 78 % |
 | `rentals/forms.py` | 94 % | | `rentals/views/inventory.py` | 45 % |
 | `rentals/management/commands/seed_demo.py` | 99 % | | `rentals/views/renting.py` | 79 % |
-| `rentals/management/commands/stress_test.py` | 0 % | | `rentals/views/review.py` | 92 % |
+| | | | `rentals/views/review.py` | 92 % |
 
-Las reglas y los casos de uso están sobre el 90 %. Lo más bajo son vistas y endpoints que solo leen la petición y llaman a un caso de uso ya probado, y `stress_test`, que se corre a mano sobre PostgreSQL (arriba). No se escribieron pruebas solo para subir el número.
+Las reglas y los casos de uso están sobre el 90 %. Lo más bajo son vistas y endpoints que solo leen la petición y llaman a un caso de uso ya probado. No se escribieron pruebas solo para subir el número.
 
 ## Qué cubre cada archivo de pruebas
 
