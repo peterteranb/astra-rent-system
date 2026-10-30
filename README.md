@@ -1,46 +1,77 @@
 # astra-rent-system
 
-Qué contiene: qué es el sistema de renta de mesas y sillas de SergioCorp, cómo instalarlo y correrlo en Windows, los usuarios de la demo, cómo crear personal, ver la base y los logs, y qué revisar antes de producción.
+Qué contiene: qué es el sistema de renta de mesas y sillas de SergioCorp, cómo instalarlo y correrlo en Windows desde cero (también el frontend de React), los usuarios de la demo, cómo crear personal, ver la base y los logs, cómo correrlo en modo producción y publicarlo en internet, y qué hacer si algo falla.
 Cuándo leerlo: primero, para tener el sistema funcionando. La documentación completa está en [docs/README.md](docs/README.md); los IDs (ENT, D, CU, RF, RC) se explican en su [glosario de IDs](docs/README.md#glosario-de-ids).
 
 ## Qué es
 
-Un sistema web para que SergioCorp (cliente simulado del curso) rente mesas, sillas y combos para eventos ([ENT-07](docs/respuestas-del-cliente.md#ent-07), [ENT-96](docs/respuestas-del-cliente.md#ent-96)). Está hecho con **Django** 6.1 (un framework web de Python) y **PostgreSQL** (la base de datos). Hay 4 roles y 17 casos de uso ([docs/casos-de-uso.md](docs/casos-de-uso.md)):
+Un sistema web para que SergioCorp rente mesas, sillas y combos para eventos ([ENT-07](docs/respuestas-del-cliente.md#ent-07), [ENT-96](docs/respuestas-del-cliente.md#ent-96)). Está hecho con **Django** 6.1 (un framework web de Python) y **PostgreSQL** (la base de datos). Hay 4 roles y 17 casos de uso ([docs/casos-de-uso.md](docs/casos-de-uso.md)):
 
 - **Cliente:** crea su cuenta, busca equipos libres, renta y paga con un QR simulado, modifica o cancela sus reservas, ve su deuda y gestiona su cuenta en «Mi cuenta».
 - **Operador** (la persona de la tienda): crea cuentas (sin conocer la contraseña del cliente) y rentas en la tienda, entrega (cobrando si falta el pago), recibe devoluciones y cobra deudas.
 - **Mantenimiento:** revisa los equipos: disponible, en revisión, en reparación o de baja, y decide si cobra el daño.
 - **Administrador:** registra equipos, ve el panel del responsable y gestiona todo desde el admin de Django (`/admin/`).
 
+Hay dos interfaces que usan las mismas reglas: las páginas de Django (`http://localhost:8080`) y el frontend en React (`http://localhost:5173`, carpeta [`frontend/`](frontend/README.md)), que habla con Django por la API JSON ([docs/api.md](docs/api.md)).
+
 Equipo: Uriel ([@peterteranb](https://github.com/peterteranb)), Andrew ([@andrewest-andrew](https://github.com/andrewest-andrew)) y Sofia ([@arduz-in-zugzwang](https://github.com/arduz-in-zugzwang)).
+
+## Antes de empezar: qué instalar
+
+Los comandos de esta guía son para **PowerShell** (búscalo en el menú Inicio). Instala estos programas una sola vez. Después de instalar cada uno, **abre una terminal nueva** (las abiertas no ven los programas recién instalados) y comprueba que responde con su versión.
+
+| Programa | Para qué | Descarga | Al instalar | Comprobar |
+|---|---|---|---|---|
+| **Python 3.12 o superior** (lo exige Django 6.1) | Corre el sistema | https://www.python.org/downloads/ | Marca la casilla **«Add python.exe to PATH»** en la primera pantalla. | `python --version` |
+| **PostgreSQL 15 o superior** | La base de datos | https://www.postgresql.org/download/windows/ | Deja el puerto `5432`. El instalador pide una contraseña para el usuario **`postgres`**: **anótala**, se usa en el paso 5. Trae **pgAdmin**, para ver la base. | `& "C:\Program Files\PostgreSQL\17\bin\psql.exe" --version` (cambia `17` por tu versión) |
+| **Git** | Descarga el código | https://git-scm.com/download/win | Las opciones por defecto sirven. | `git --version` |
+| **Node.js 20.19 o superior** (la versión LTS) | Solo para el frontend de React | https://nodejs.org/ | Las opciones por defecto sirven. | `node --version` |
+
+`psql` no queda en el PATH: por eso se llama con su ruta completa. Para saber qué versión de PostgreSQL tienes (el número de la carpeta):
+
+```powershell
+dir "C:\Program Files\PostgreSQL"
+```
 
 ## Instalar en Windows
 
-Necesitas Python 3.12 o superior (lo exige Django 6.1), PostgreSQL 15 o superior en el puerto 5432 y Git. Los comandos son para PowerShell.
-
-1. Clonar el repositorio:
+1. Descargar el código y entrar a su carpeta:
    ```powershell
    git clone https://github.com/peterteranb/astra-rent-system.git
    cd astra-rent-system
    ```
-2. Crear y activar el **entorno virtual** (una carpeta `.venv` con las librerías de este proyecto, separadas de las de tu computadora). Si PowerShell no deja activarlo, ejecuta una vez `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`:
+2. Crear y activar el **entorno virtual** (una carpeta `.venv` con las librerías de este proyecto, separadas de las de tu computadora):
    ```powershell
    python -m venv .venv
    .venv\Scripts\activate
    ```
-3. Instalar las dependencias:
+   Si PowerShell responde que «la ejecución de scripts está deshabilitada», ejecuta una vez `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`, responde `S` y vuelve a activarlo. Sabes que está activo porque la línea empieza con `(.venv)`. Cada vez que abras una terminal nueva para este proyecto, entra a la carpeta y actívalo otra vez.
+3. Instalar las librerías:
    ```powershell
    python -m pip install -r requirements.txt
    ```
-4. Crear `.env` (el archivo con la configuración y los secretos de tu máquina; nunca se sube a git) y editarlo: pon tu contraseña en `DB_PASSWORD` y, para programar, `DEBUG=True`:
+4. Crear `.env`, el archivo con la configuración y los secretos de tu máquina (nunca se sube a git), copiando el ejemplo:
    ```powershell
    copy .env.example .env
    notepad .env
    ```
-5. Crear el usuario `astra` y la base `astra_rent` con la misma contraseña del paso 4 (ajusta `17` a tu versión de PostgreSQL):
+   Qué poner en cada línea:
+
+   | Línea | Qué poner |
+   |---|---|
+   | `DB_NAME`, `DB_USER`, `DB_HOST`, `DB_PORT` | Déjalas como están (`astra_rent`, `astra`, `localhost`, `5432`). |
+   | `DB_PASSWORD` | Una contraseña **nueva** que inventas ahora para el usuario `astra` de la base (no es la de `postgres`). Por ejemplo `Astra2026`. La vas a usar en el paso 5. |
+   | `SECRET_KEY` | Para usarlo en tu máquina con `DEBUG=True`, la del ejemplo sirve. Para tener una propia, genera una y pega el resultado después del `=`: `python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"` |
+   | `DEBUG` | `True` para usarlo en tu máquina (ya viene así). En producción va `False`. |
+   | `ALLOWED_HOSTS`, `CSRF_TRUSTED_ORIGINS`, `USE_HTTPS` | Déjalas como están; solo cambian para [producción](#producción-paso-a-paso). |
+   | `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD` | **Opcional.** Si quedan vacías el sistema funciona igual: los correos se imprimen en la terminal del servidor, con sus enlaces (por ejemplo el de «Crea tu contraseña»), y se copian al navegador. Para mandarlos de verdad: [Correo](#correo). |
+
+   Guarda el archivo y cierra el Bloc de notas.
+5. Crear el usuario `astra` y la base `astra_rent`. Cambia `17` por tu versión de PostgreSQL y `TU_CONTRASEÑA` por la que pusiste en `DB_PASSWORD`:
    ```powershell
    & "C:\Program Files\PostgreSQL\17\bin\psql.exe" -U postgres -h localhost -v db_password=TU_CONTRASEÑA -f scripts/create_db.sql
    ```
+   Pide `Contraseña para usuario postgres:`: es la que anotaste al instalar PostgreSQL (mientras la escribes no se ve nada; es normal). Debe responder `CREATE ROLE`, `ALTER ROLE` y `CREATE DATABASE`.
 6. Crear las tablas y cargar la demo. `migrate` aplica las **migraciones** (los archivos que crean las tablas) y `seed_demo` llena la base con datos de ejemplo:
    ```powershell
    python manage.py migrate
@@ -57,7 +88,26 @@ Para programar, con el servidor de desarrollo de Django:
 python manage.py runserver 8080
 ```
 
-Abre http://127.0.0.1:8080/ e inicia sesión con un usuario de la demo. El servidor se reinicia solo al guardar un archivo. Para detenerlo: `Ctrl+C`. Se usa el puerto 8080 porque en Windows el 8000 a veces está reservado ([D-09](docs/decisiones.md#d-09)).
+Abre http://localhost:8080/ e inicia sesión con un [usuario de la demo](#usuarios-de-demo). El servidor se reinicia solo al guardar un archivo. Para detenerlo: `Ctrl+C`. Se usa el puerto 8080 porque en Windows el 8000 a veces está reservado ([D-09](docs/decisiones.md#d-09)).
+
+## Correr el frontend de React
+
+El frontend necesita **dos terminales abiertas a la vez**, cada una en la carpeta del proyecto:
+
+1. **Terminal 1, Django** (con el entorno activado):
+   ```powershell
+   .venv\Scripts\activate
+   python manage.py runserver 8080
+   ```
+2. **Terminal 2, React:**
+   ```powershell
+   cd frontend
+   npm install     # solo la primera vez
+   npm run dev
+   ```
+3. Abre **http://localhost:5173** e inicia sesión con un usuario de la demo.
+
+Las páginas de Django siguen en **http://localhost:8080**. Las dos interfaces usan la misma base: lo que hagas en una se ve en la otra. Más detalles en [frontend/README.md](frontend/README.md).
 
 ## Usuarios de demo
 
@@ -119,7 +169,7 @@ Pide usuario, correo, teléfono y contraseña, y el usuario nace con el rol admi
 ## Ver la base de datos
 
 - **pgAdmin 4** (se instala con PostgreSQL): «Servers» → tu servidor → «Databases» → `astra_rent` → «Schemas» → «public» → «Tables». Clic derecho en una tabla → «View/Edit Data» → «All Rows». Para escribir consultas: «Tools» → «Query Tool».
-- **psql** (la consola de PostgreSQL), con su ruta completa (ajusta `17` a tu versión):
+- **psql** (la consola de PostgreSQL), con su ruta completa (ajusta `17` a tu versión); pide la contraseña de `DB_PASSWORD`:
   ```powershell
   & "C:\Program Files\PostgreSQL\17\bin\psql.exe" -U astra -h localhost -d astra_rent
   ```
@@ -151,32 +201,88 @@ Por defecto los correos (bienvenida, «Crea tu contraseña», «Olvidé mi contr
 
 Los correos salen en un hilo aparte, así la página no espera a Gmail; «Crea tu contraseña» sale en el momento, para que el operador sepa si salió ([D-37](docs/decisiones.md#d-37), [D-40](docs/decisiones.md#d-40)). Si un correo falla, la operación sigue y el log escribe `EMAIL_FAILED`.
 
-## Antes de producción
+## Producción, paso a paso
 
-- [ ] **Nunca** correr `seed_demo` en producción: borra todos los datos (por eso se niega a correr con `DEBUG=False`).
-- [ ] En `.env`:
-  - `DEBUG=False`;
-  - una `SECRET_KEY` nueva (la clave con que Django firma las sesiones y los enlaces de contraseña), generada con:
-    ```powershell
-    python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"
-    ```
-  - `ALLOWED_HOSTS` con el nombre del servidor (por ejemplo `localhost,127.0.0.1`);
-  - la cuenta de Gmail (`EMAIL_HOST_USER` y `EMAIL_HOST_PASSWORD`);
-  - `USE_HTTPS=True` solo si el sitio está detrás de HTTPS.
-- [ ] Crear las tablas, el primer administrador y juntar los estilos:
-  ```powershell
-  python manage.py migrate
-  python manage.py createsuperuser
-  python manage.py collectstatic --noinput
-  ```
-  `collectstatic` copia los estilos a `staticfiles/`, donde whitenoise los sirve; vuelve a correrlo cada vez que cambie algo en `static/`.
-- [ ] Correr con **waitress**, un servidor web de producción en Python que funciona en Windows (`runserver` es solo para programar):
-  ```powershell
-  python -m waitress --port=8080 config.wsgi:application
-  ```
-- [ ] Revisar la configuración: `python manage.py check --deploy` ([docs/pruebas.md](docs/pruebas.md#revisión-de-seguridad-check---deploy)).
+`runserver` es solo para programar. En producción el sistema corre con **waitress**, un servidor web de producción en Python que funciona en Windows ([D-21](docs/decisiones.md#d-21)). Haz estos pasos **en este orden**, con el entorno activado:
+
+1. **Con `DEBUG=True` todavía**, carga la demo:
+   ```powershell
+   python manage.py migrate
+   python manage.py seed_demo
+   ```
+   Va primero porque `seed_demo` se niega a correr con `DEBUG=False`. Si el sistema va a guardar datos reales, **no** corras `seed_demo` (borra todo): crea el primer administrador con `python manage.py createsuperuser`.
+2. **Edita `.env`** (`notepad .env`):
+   - `DEBUG=False`;
+   - una `SECRET_KEY` nueva, la clave con que Django firma las sesiones y los enlaces de contraseña. Genérala y pega el resultado:
+     ```powershell
+     python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"
+     ```
+   - `ALLOWED_HOSTS=localhost,127.0.0.1,.trycloudflare.com` (los nombres por los que se puede entrar; el punto inicial acepta cualquier dirección del túnel);
+   - `CSRF_TRUSTED_ORIGINS=https://*.trycloudflare.com` (deja enviar formularios desde la dirección `https` del túnel);
+   - la cuenta de Gmail (`EMAIL_HOST_USER` y `EMAIL_HOST_PASSWORD`, ver [Correo](#correo));
+   - `USE_HTTPS=False`. El túnel ya da HTTPS. Con `True`, la página se redirigiría sin fin: el túnel le habla a waitress por HTTP y Django, que no sabe que hay un proxy delante, vuelve a mandar al navegador a `https` en cada visita ([D-10](docs/decisiones.md#d-10)).
+3. **Junta los estilos** en `staticfiles/`, de donde whitenoise los sirve con `DEBUG=False`. Repítelo cada vez que cambie algo en `static/`:
+   ```powershell
+   python manage.py collectstatic --noinput
+   ```
+4. **Revisa la configuración:**
+   ```powershell
+   python manage.py check --deploy
+   ```
+   Con esta configuración quedan 4 avisos de HTTPS, esperados: `security.W004` (sin HSTS), `security.W008` (sin redirección a HTTPS), `security.W012` y `security.W016` (las cookies de sesión y de CSRF no son «solo HTTPS»). Los cuatro dependen de `USE_HTTPS`, que queda en `False` por lo explicado en el paso 2: entre el navegador y Cloudflare la conexión ya va cifrada, y el tramo sin cifrar es el de `cloudflared` a waitress, dentro de la misma computadora. Si falta Gmail aparece también `mail.E001`: el correo usa la consola, que es solo para desarrollo. Detalle de cada aviso: [docs/arquitectura.md](docs/arquitectura.md#revisión-de-seguridad-python-managepy-check---deploy).
+5. **Arranca waitress:**
+   ```powershell
+   python -m waitress --port=8080 config.wsgi:application
+   ```
+   Abre http://localhost:8080/. Para detenerlo: `Ctrl+C`.
+
+Qué pasa de verdad al correrlo:
+
+- waitress atiende en el **puerto 8080 de esa computadora**. Escucha en todas sus direcciones IPv4 (`0.0.0.0`, lo que trae waitress por defecto), pero Django solo responde a los nombres de `ALLOWED_HOSTS`.
+- Atiende **4 peticiones a la vez** (4 hilos, lo que trae por defecto); las demás esperan su turno. `--threads=8`, por ejemplo, lo cambia.
+- Que varias personas a la vez no se pisen lo cuidan **PostgreSQL y los bloqueos**: cada operación que escribe (rentar, modificar, entregar, devolver, pagar, cambiar el estado de un equipo) corre en una transacción y bloquea con `select_for_update` la renta o el equipo que toca. Si dos personas rentan el mismo equipo en las mismas fechas al mismo tiempo, la segunda espera a que termine la primera y recibe el rechazo de equipo ocupado ([ENT-21](docs/respuestas-del-cliente.md#ent-21): el equipo es del primero que confirmó).
 
 Por qué waitress y no `runserver`, qué hacen `collectstatic` y whitenoise, y qué es la `SECRET_KEY`: [docs/arquitectura.md](docs/arquitectura.md#cómo-se-sirve-el-sistema).
+
+## Publicarlo en internet (URL pública)
+
+Con un **túnel de Cloudflare** cualquiera puede abrir el sistema desde cualquier red, sin abrir puertos en el router. No hace falta una cuenta de Cloudflare ni cambiar código: `ALLOWED_HOSTS` y `CSRF_TRUSTED_ORIGINS` se leen de `.env` en `config/settings.py`, y ya los pusiste en el paso 2 de [producción](#producción-paso-a-paso).
+
+1. Instala `cloudflared` (una sola vez):
+   ```powershell
+   winget install --id Cloudflare.cloudflared
+   ```
+   Abre una terminal nueva y comprueba: `cloudflared --version`.
+2. Con waitress corriendo, en **otra terminal**:
+   ```powershell
+   cloudflared tunnel --url http://localhost:8080
+   ```
+   Entre sus mensajes imprime una dirección `https://<algo>.trycloudflare.com`. Esa dirección la abre cualquiera, desde cualquier red, mientras la computadora, waitress y `cloudflared` sigan encendidos.
+3. **Para el frontend de React**, con `npm run dev` corriendo (ver [Correr el frontend de React](#correr-el-frontend-de-react)), abre otro túnel en otra terminal:
+   ```powershell
+   cloudflared tunnel --url http://localhost:5173
+   ```
+   Da otra dirección `https://<otra-cosa>.trycloudflare.com`. React le pide los datos a Django en el 8080 de esa misma computadora, así que Django debe seguir corriendo con el `.env` del paso 2. Por esa dirección, el enlace «Admin» del menú sigue apuntando a `localhost:8080`: solo funciona en la computadora que corre Django.
+
+Límites:
+
+- La dirección **cambia cada vez** que se abre el túnel.
+- Depende de que **esa computadora esté encendida** y con los programas corriendo.
+- Cloudflare ofrece estos túneles rápidos **para pruebas**, sin garantía de disponibilidad.
+
+Un servidor fijo con dominio propio queda como trabajo futuro.
+
+## Problemas comunes
+
+| Qué pasa | Por qué | Qué hacer |
+|---|---|---|
+| `psql : El término 'psql' no se reconoce…` | El instalador de PostgreSQL no agrega `psql` al PATH. | Llámalo con su ruta completa: `& "C:\Program Files\PostgreSQL\17\bin\psql.exe" …`, con tu versión en lugar de `17` (la ves con `dir "C:\Program Files\PostgreSQL"`). |
+| Al activar el entorno: «la ejecución de scripts está deshabilitada en este sistema» | PowerShell bloquea scripts por defecto. | Ejecuta una vez `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`, responde `S` y vuelve a correr `.venv\Scripts\activate`. |
+| `Error: That port is already in use.` o waitress no arranca en el 8080 | Otro programa (o un servidor que quedó abierto en otra terminal) usa el puerto. | Cierra la otra terminal con `Ctrl+C`. Si no la encuentras: `Get-NetTCPConnection -LocalPort 8080` muestra el `OwningProcess`; ciérralo con `Stop-Process -Id <ese número>`. |
+| `password authentication failed for user "astra"` | La contraseña de `DB_PASSWORD` en `.env` no es la del usuario `astra` de la base. | Pon en `.env` la misma que usaste en el paso 5, o cámbiala en la base para que coincida: `& "C:\Program Files\PostgreSQL\17\bin\psql.exe" -U postgres -h localhost -c "ALTER USER astra WITH PASSWORD 'la-de-tu-env';"` |
+| `seed_demo borra los datos de la demo; solo se usa con DEBUG=True` | `.env` tiene `DEBUG=False`. | Pon `DEBUG=True`, corre `seed_demo` y, si vas a producción, vuelve a `DEBUG=False`. |
+| La página sale sin estilos o con «Server Error (500)» | Con `DEBUG=False` los estilos salen de `staticfiles/`, y no se corrió `collectstatic` (o se corrió antes de cambiar `static/`). | `python manage.py collectstatic --noinput`, o `DEBUG=True` para usarlo en tu máquina. |
+| React muestra «Algo salió mal. Inténtalo de nuevo.» en todo, y la terminal de Vite dice `http proxy error … ECONNREFUSED 127.0.0.1:8080` | Django está apagado: React le pide los datos al puerto 8080. | Arranca Django en otra terminal: `python manage.py runserver 8080` (o waitress). |
 
 ## Pruebas
 
