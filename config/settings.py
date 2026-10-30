@@ -182,6 +182,9 @@ else:
     MAILERS = {"default": {"BACKEND": "django.core.mail.backends.console.EmailBackend"}}
     DEFAULT_FROM_EMAIL = "SergioCorp <no-responder@sergiocorp.local>"
 
+# Los correos de rentas y deudas salen en un hilo aparte: Gmail tarda más de 1,6 s y la pantalla no lo espera.
+EMAIL_IN_BACKGROUND = True
+
 # La API responde el rechazo CSRF en JSON; las páginas siguen con templates/403_csrf.html.
 CSRF_FAILURE_VIEW = "rentals.api.responses.csrf_failure"
 

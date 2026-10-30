@@ -11,6 +11,9 @@ from .settings import LOGGING, STORAGES  # noqa: E402
 # y MD5 es instantáneo. Las contraseñas de la base real siguen con el hash seguro.
 PASSWORD_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]
 
+# Las pruebas leen mail.outbox apenas termina la operación: sin hilo, el correo ya está ahí.
+EMAIL_IN_BACKGROUND = False
+
 # Las pruebas no escriben en logs/negocio.log: ese archivo es el de la demo.
 LOGGING["loggers"]["rentals"]["handlers"] = ["console"]
 

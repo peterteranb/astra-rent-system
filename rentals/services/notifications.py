@@ -1,12 +1,15 @@
 """Correos al cliente: bienvenida, crear la contraseña, renta confirmada, reserva modificada por la tienda, renta cancelada y deuda creada (ENT-85).
 
-Se mandan cuando la transacción se confirma, así nunca avisan algo que se deshizo.
-Si el envío falla, la operación no se cae: el log escribe EMAIL_FAILED.
+Se mandan cuando la transacción se confirma, así nunca avisan algo que se deshizo; los de las rentas y deudas,
+en un hilo aparte para que la pantalla no espere al servidor de correo. Si el envío falla, la operación no se cae:
+el log escribe EMAIL_FAILED.
 """
 import logging
 import smtplib
+import threading
 from urllib.parse import urljoin
 
+from django.conf import settings
 from django.contrib.auth.tokens import default_token_generator
 from django.core.mail import send_mail
 from django.db import transaction
@@ -60,7 +63,7 @@ def send_rental_confirmed(rental):
         payment = (
             f"Pago pendiente: paga {money_text(rental.total_price)} en la tienda al recoger el equipo."
         )
-    send_after_commit(
+    send_in_background_after_commit(
         rental.client,
         f"Renta confirmada: {rental.equipment.inventory_id}",
         f"Hola {rental.client.first_name}:\n\n"
@@ -73,7 +76,7 @@ def send_rental_confirmed(rental):
 
 def send_rental_modified(rental):
     """Avisa al cliente las fechas nuevas de la reserva que cambió la tienda (ENT-95)."""
-    send_after_commit(
+    send_in_background_after_commit(
         rental.client,
         f"Reserva modificada: {rental.equipment.inventory_id}",
         f"Hola {rental.client.first_name}:\n\n"
@@ -85,7 +88,7 @@ def send_rental_modified(rental):
 
 def send_rental_cancelled(rental, reason):
     """Avisa al cliente que su reserva se canceló y por qué (ENT-82: el dinero se devuelve en la tienda)."""
-    send_after_commit(
+    send_in_background_after_commit(
         rental.client,
         f"Renta cancelada: {rental.equipment.inventory_id}",
         f"Hola {rental.client.first_name}:\n\n"
@@ -99,7 +102,7 @@ def send_rental_cancelled(rental, reason):
 def send_debt_created(debt):
     """Avisa al cliente la deuda, su motivo y que no podrá rentar hasta pagarla (ENT-77)."""
     rental = debt.rental
-    send_after_commit(
+    send_in_background_after_commit(
         rental.client,
         f"Tienes una deuda de {money_text(debt.amount)}",
         f"Hola {rental.client.first_name}:\n\n"
@@ -112,6 +115,20 @@ def send_debt_created(debt):
 def send_after_commit(user, subject, body):
     """Manda el correo cuando la transacción se confirme; si se deshace, no se manda."""
     transaction.on_commit(lambda: send_safely(user, subject, body))
+
+
+def send_in_background_after_commit(user, subject, body):
+    """Como send_after_commit, pero con EMAIL_IN_BACKGROUND el envío corre en otro hilo y la petición no lo espera."""
+    transaction.on_commit(lambda: start_sending(user, subject, body))
+
+
+def start_sending(user, subject, body):
+    """Manda el correo en un hilo aparte si EMAIL_IN_BACKGROUND está activo; si no, en este mismo."""
+    if not settings.EMAIL_IN_BACKGROUND:
+        send_safely(user, subject, body)
+        return
+    # El hilo no toca la base: el asunto y el cuerpo ya están armados. daemon: no frena el apagado del servidor.
+    threading.Thread(target=send_safely, args=(user, subject, body), daemon=True).start()
 
 
 def send_safely(user, subject, body) -> bool:

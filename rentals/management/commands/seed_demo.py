@@ -124,7 +124,8 @@ class Command(BaseCommand):
             raise CommandError("seed_demo borra los datos de la demo; solo se usa con DEBUG=True")
         extra = extra_count(options["equipos"])
         start_business_log()
-        with override_settings(MAILERS=NO_EMAIL), transaction.atomic():
+        # Sin hilo: un correo en segundo plano podría salir cuando override_settings ya devolvió Gmail.
+        with override_settings(MAILERS=NO_EMAIL, EMAIL_IN_BACKGROUND=False), transaction.atomic():
             # PROTECT: se borra de las hojas hacia la raíz.
             Debt.objects.all().delete()
             Rental.objects.all().delete()
