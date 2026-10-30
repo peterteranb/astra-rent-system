@@ -128,14 +128,14 @@ Un requisito funcional (RF) es una regla que el sistema cumple. «Dónde se cump
 | <a id="rf-14"></a>RF-14 | Solo una renta «Reservada» se cancela o modifica. El cliente, hasta 24 h antes del inicio. El operador o el admin cancelan hasta el recojo y modifican hasta antes del inicio; si modifican, el cliente recibe las fechas nuevas por correo. Modificar es cambiar las fechas con la misma cantidad de días. | [ENT-80](respuestas-del-cliente.md#ent-80), [ENT-81](respuestas-del-cliente.md#ent-81), [ENT-89](respuestas-del-cliente.md#ent-89), [ENT-95](respuestas-del-cliente.md#ent-95) | `reservation_changes.cancel_rental`, `reservation_changes.modify_rental` | `unit/test_reglas_de_cancelacion.py`, `unit/test_precio_y_plazos.py` (plazo de 24 h), `integration/test_cancelar.py`, `integration/test_modificar.py` |
 | <a id="rf-15"></a>RF-15 | El cliente crea su cuenta en la web con su contraseña: al menos 8 caracteres, una mayúscula y un número. El operador la crea en la tienda **sin** contraseña: la cuenta nace con una contraseña inutilizable y el cliente la crea con el enlace del correo ([ENT-102](respuestas-del-cliente.md#ent-102)). En los dos, las mismas reglas de datos: correo y teléfono únicos. | [ENT-15](respuestas-del-cliente.md#ent-15), [ENT-54](respuestas-del-cliente.md#ent-54), [ENT-84](respuestas-del-cliente.md#ent-84), [ENT-102](respuestas-del-cliente.md#ent-102) | `accounts/registration.register_client` y `register_store_client` | `unit/test_contrasena_y_telefono.py`, `integration/test_registro.py`, `integration/test_usuarios.py`, `integration/test_contrasena_del_cliente.py`, `system/test_registro_web.py` |
 | <a id="rf-16"></a>RF-16 | Solo el admin registra equipos, a mano: código `AAA-00000` único, número de serie único, nombre y valor mayor que 0. Un combo es un equipo más (por ejemplo `CMB-00001` «Combo 6 sillas y 1 mesa»): su precio sale de su valor y no descuenta las sillas y mesas sueltas. | [ENT-14](respuestas-del-cliente.md#ent-14), [ENT-83](respuestas-del-cliente.md#ent-83), [ENT-96](respuestas-del-cliente.md#ent-96), [PRE-01](presentacion12-10.md) | `inventory.register_equipment`, `Equipment` | `unit/test_codigo_de_equipo.py`, `integration/test_registrar_equipo.py` |
-| <a id="rf-17"></a>RF-17 | El catálogo se pagina de 20 en 20 y se filtra por código o nombre, por fechas libres y, para el personal, por estado. No muestra «Libre» ni «Ocupado del … al …»: sin fechas, los equipos disponibles; con fechas, solo los libres en ese periodo. | [ENT-86](respuestas-del-cliente.md#ent-86), [ENT-99](respuestas-del-cliente.md#ent-99), [PRE-02](presentacion12-10.md) | `catalog.browse_catalog` (con `search_catalog` y `catalog_page`) | `integration/test_catalogo.py`, `integration/test_catalogo_sin_etiquetas.py`, `system/test_recorridos.py` (filtro y páginas) |
+| <a id="rf-17"></a>RF-17 | El catálogo muestra primero el equipo registrado más recientemente (si empatan, por código), se pagina de 20 en 20 y se filtra por código o nombre, por fechas libres y, para el personal, por estado. No muestra «Libre» ni «Ocupado del … al …»: sin fechas, los equipos disponibles; con fechas, solo los libres en ese periodo. | [ENT-86](respuestas-del-cliente.md#ent-86), [ENT-99](respuestas-del-cliente.md#ent-99), [PRE-02](presentacion12-10.md) | `catalog.browse_catalog` (con `search_catalog`, `newest_first` y `catalog_page`) | `integration/test_catalogo.py`, `integration/test_catalogo_sin_etiquetas.py`, `integration/test_lo_ultimo_primero.py` (el equipo recién registrado va primero, para el admin y el cliente), `system/test_recorridos.py` (filtro y páginas) |
 | <a id="rf-18"></a>RF-18 | El responsable ve en una página las rentas activas, vencidas, reservas de hoy, pagos pendientes, equipos en revisión o reparación y deudas pendientes. | [ENT-87](respuestas-del-cliente.md#ent-87), [PRE-06](presentacion12-10.md), [PRE-08](presentacion12-10.md) | `dashboard.manager_summary` | `integration/test_panel.py`, `integration/test_acceso.py` |
 | <a id="rf-19"></a>RF-19 | Cada rol ve solo lo suyo y el admin ve todo. Solo el admin bloquea a un usuario desmarcando «Activo»: con su contraseña correcta ve «Tu cuenta está desactivada. Comunícate con la tienda.», su sesión abierta deja de valer, la tienda ya no lo encuentra para rentarle y sus reservas no recogidas se cancelan ([D-27](decisiones.md#d-27)). | [ENT-53](respuestas-del-cliente.md#ent-53), [ENT-55](respuestas-del-cliente.md#ent-55), [ENT-79](respuestas-del-cliente.md#ent-79), [ENT-98](respuestas-del-cliente.md#ent-98) | `accounts/roles.role_required`, `LoginForm.confirm_login_allowed`, `AUTHENTICATION_BACKENDS`, `reservation_changes.cancel_reservations_of_deactivated` | `unit/test_roles.py`, `integration/test_acceso.py`, `integration/test_cuenta_desactivada.py` |
 | <a id="rf-20"></a>RF-20 | El cliente recibe un correo al crear su cuenta (en la tienda, «Crea tu contraseña» con el enlace), al pedir «Olvidé mi contraseña», al confirmar o cancelar una renta, cuando la tienda modifica su reserva y al crearse una deuda. Todos salen en un hilo aparte, menos «Crea tu contraseña» ([D-40](decisiones.md#d-40)). Si el correo falla, la operación sigue; en la tienda el operador ve qué hacer. | [ENT-85](respuestas-del-cliente.md#ent-85), [ENT-88](respuestas-del-cliente.md#ent-88), [ENT-95](respuestas-del-cliente.md#ent-95), [ENT-102](respuestas-del-cliente.md#ent-102) | `rentals/services/notifications.py` | `integration/test_log_y_correo.py` (confirmación del QR, deuda por atraso, un correo que falla y el hilo aparte), `integration/test_registro.py` (bienvenida, también en el hilo aparte), `integration/test_modificar.py` (modificación de la tienda), `integration/test_revisar.py` (cancelación por reparación), `integration/test_contrasena_del_cliente.py` (crear y recuperar la contraseña), `integration/test_rentar.py` (renta en tienda confirmada) |
 | <a id="rf-21"></a>RF-21 | El admin corrige el estado de un equipo desde el admin de Django, con historial y sin crear deudas; si lo manda a reparación o baja, se cancelan sus reservas no recogidas. | [ENT-40](respuestas-del-cliente.md#ent-40), [ENT-75](respuestas-del-cliente.md#ent-75), [ENT-88](respuestas-del-cliente.md#ent-88), [PRE-07](presentacion12-10.md) | `rentals/admin.py`, `equipment_status.correct_status` | `system/test_recorridos.py` (el admin manda a reparación y queda el historial), `integration/test_revisar.py` (la baja del admin cancela sin cobrar) |
 | <a id="rf-22"></a>RF-22 | Nunca se borra nada: el admin no borra usuarios, roles, equipos, rentas, deudas ni cambios de estado; un equipo se da de baja y un usuario se desactiva. `seed_demo` borra todo para la demo, así que solo corre con `DEBUG=True`. | [ENT-97](respuestas-del-cliente.md#ent-97) | `has_delete_permission` en `rentals/admin.py` y `accounts/admin.py`, `seed_demo` | `integration/test_cuenta_desactivada.py` (el admin no borra), `integration/test_log_y_correo.py` (`seed_demo` con `DEBUG=False`) |
 | <a id="rf-23"></a>RF-23 | Cada usuario gestiona su cuenta en «Mi cuenta»: edita nombre, apellido, correo y teléfono con las reglas del registro (su propio correo no choca con él), cambia su contraseña con la actual y los mismos validadores, y la recupera por correo con «Olvidé mi contraseña». El usuario y el rol no cambian. | [ENT-103](respuestas-del-cliente.md#ent-103) | `accounts/account.update_profile`; `PasswordChangeView` y `PasswordResetView` de Django con `accounts/forms.py` | `integration/test_mi_cuenta.py`, `integration/test_contrasena_del_cliente.py`, `integration/test_api_mi_cuenta.py` |
-| <a id="rf-24"></a>RF-24 | Lo último primero: el admin ordena rentas, equipos y deudas por su creación, los cambios de estado por su fecha y los usuarios por su alta, con `date_hierarchy` y filtro por fecha; las páginas del personal y la API muestran lo más reciente arriba. «Reservas por entregar» y «Devoluciones» se pueden ordenar por fecha de recojo o de devolución. | [ENT-100](respuestas-del-cliente.md#ent-100) | `ordering` y `date_hierarchy` en `rentals/admin.py` y `accounts/admin.py`, `handover.order_field`, `dashboard.manager_summary`, `debts.pending_debts`, `review.latest_change_first` | `integration/test_lo_ultimo_primero.py` |
+| <a id="rf-24"></a>RF-24 | Lo último primero en **todas** las listas: el admin ordena rentas, equipos y deudas por su creación, los cambios de estado por su fecha, los usuarios por su alta y los roles por su `id`, con `date_hierarchy` y filtro por fecha; las páginas de todos los roles y la API muestran lo más reciente arriba, también el catálogo (por el registro del equipo), «Mis rentas» (por la creación de la renta) y la búsqueda de clientes de la tienda (por el alta). «Reservas por entregar» y «Devoluciones» se pueden ordenar además por fecha de recojo o de devolución. El orden se pide en cada consulta; `Meta.ordering` no cambia ([D-33](decisiones.md#d-33), [D-34](decisiones.md#d-34)). | [ENT-100](respuestas-del-cliente.md#ent-100) | `ordering` y `date_hierarchy` en `rentals/admin.py` y `accounts/admin.py`, `catalog.newest_first`, `renting.rentals_of`, `renting.find_clients`, `handover.order_field`, `dashboard.manager_summary`, `debts.pending_debts`, `review.latest_change_first` | `integration/test_lo_ultimo_primero.py`, `integration/test_catalogo.py` |
 | <a id="rf-25"></a>RF-25 | La etiqueta del pago dice solo «Pagado» o «Pago pendiente» en las páginas, el admin y la API; la forma de pago (QR o efectivo) se ve en el detalle de la renta y en su columna del admin. | [ENT-104](respuestas-del-cliente.md#ent-104) | `Rental.payment_label`, `templates/rentals/rental_confirmation.html`, `RentalAdmin` | `unit/test_etiqueta_de_pago.py`, `integration/test_forma_de_pago.py` |
 
 ## Requisitos de calidad
@@ -346,9 +346,9 @@ flowchart TD
 - **Objetivo:** encontrar un equipo que se pueda rentar en las fechas del evento.
 - **Precondición:** tiene sesión.
 - **Flujo normal:**
-  1. Abre el catálogo: ve 20 equipos disponibles por página, cada uno con su precio por día, **sin** etiquetas «Libre» ni «Ocupado del … al …» ([ENT-99](respuestas-del-cliente.md#ent-99): a quien renta no le interesa cuándo usan el equipo otras personas).
+  1. Abre el catálogo: ve 20 equipos disponibles por página, el registrado más recientemente primero ([ENT-100](respuestas-del-cliente.md#ent-100), [D-33](decisiones.md#d-33)), cada uno con su precio por día, **sin** etiquetas «Libre» ni «Ocupado del … al …» ([ENT-99](respuestas-del-cliente.md#ent-99): a quien renta no le interesa cuándo usan el equipo otras personas).
   2. Escribe un código o un nombre, o elige «Libre desde» y «Libre hasta».
-  3. Presiona «Buscar» y ve solo los equipos que cumplen; con las dos fechas, solo los libres en ese periodo (desde las 18:00 del primer día hasta las 09:00 del último, [D-13](decisiones.md#d-13)).
+  3. Presiona «Buscar» y ve solo los equipos que cumplen, en el mismo orden; con las dos fechas, solo los libres en ese periodo (desde las 18:00 del primer día hasta las 09:00 del último, [D-13](decisiones.md#d-13)).
   4. Pasa de página con «Anterior» y «Siguiente».
 - **Flujos alternativos:**
   - si elige una sola fecha → «Elige las dos fechas para ver los equipos libres.» y el catálogo sin filtros;
@@ -358,9 +358,9 @@ flowchart TD
 - **Qué guarda:** nada.
 - **Log:** nada (es una consulta).
 - **Correo:** ninguno.
-- **Origen:** [ENT-02](respuestas-del-cliente.md#ent-02), [ENT-86](respuestas-del-cliente.md#ent-86), [ENT-99](respuestas-del-cliente.md#ent-99), [D-13](decisiones.md#d-13), [PRE-02](presentacion12-10.md).
+- **Origen:** [ENT-02](respuestas-del-cliente.md#ent-02), [ENT-86](respuestas-del-cliente.md#ent-86), [ENT-99](respuestas-del-cliente.md#ent-99), [ENT-100](respuestas-del-cliente.md#ent-100), [D-13](decisiones.md#d-13), [D-33](decisiones.md#d-33), [PRE-02](presentacion12-10.md).
 - **Dónde está en el código:** [`rentals/views/renting.py`](../rentals/views/renting.py) (`catalog`) → [`rentals/forms.py`](../rentals/forms.py) (`CatalogFilterForm`) → [`rentals/use_cases/catalog.py`](../rentals/use_cases/catalog.py) (`browse_catalog`).
-- **Prueba:** [`tests/integration/test_catalogo.py`](../tests/integration/test_catalogo.py), [`tests/integration/test_catalogo_sin_etiquetas.py`](../tests/integration/test_catalogo_sin_etiquetas.py).
+- **Prueba:** [`tests/integration/test_catalogo.py`](../tests/integration/test_catalogo.py), [`tests/integration/test_catalogo_sin_etiquetas.py`](../tests/integration/test_catalogo_sin_etiquetas.py), [`tests/integration/test_lo_ultimo_primero.py`](../tests/integration/test_lo_ultimo_primero.py).
 
 ```mermaid
 sequenceDiagram
@@ -378,7 +378,7 @@ sequenceDiagram
         F-->>V: CatalogFilters
     end
     V->>U: browse_catalog(usuario, filtros, página 2, ahora)
-    U->>U: search_catalog: el cliente ve solo los «Disponibles», el personal ve todos
+    U->>U: search_catalog: el cliente ve solo los «Disponibles», el personal ve todos, el registrado más recientemente primero
     opt eligió las dos fechas
         U->>U: excluye los equipos de busy_equipment: una renta que ocupa ese periodo
     end
@@ -396,7 +396,7 @@ flowchart TD
     A(["Abre el catálogo con texto, fechas y página"]) --> B{"¿Hay una sola fecha o la final no es posterior a la inicial?"}
     B -- sí --> C[/"«Elige las dos fechas…» o «La fecha final debe ser posterior…», sin filtros"/]
     B -- no --> D["catalog_filters: de las 18:00 del primer día a las 09:00 del último"]
-    C --> E["search_catalog: el cliente ve solo los «Disponibles», el personal todos"]
+    C --> E["search_catalog: el cliente ve solo los «Disponibles», el personal todos, el más reciente primero"]
     D --> E
     E --> F{"¿Eligió las dos fechas?"}
     F -- sí --> G["Quita los equipos ocupados en ese periodo"]
@@ -1225,8 +1225,8 @@ flowchart TD
 - **Precondición:** tiene sesión.
 - **Flujo normal:**
   1. Abre «Mis rentas».
-  2. Ve cada renta con sus fechas, total, estado y pago: solo «Pagado» o «Pago pendiente» ([ENT-104](respuestas-del-cliente.md#ent-104)); la forma de pago está en el detalle de la renta.
-  3. Si debe, ve arriba «Tienes una deuda pendiente de 12,00 Bs. Págala en la tienda para volver a rentar.» y el detalle de cada deuda.
+  2. Ve sus rentas, la creada más recientemente primero ([ENT-100](respuestas-del-cliente.md#ent-100), [D-33](decisiones.md#d-33)), cada una con sus fechas, total, estado y pago: solo «Pagado» o «Pago pendiente» ([ENT-104](respuestas-del-cliente.md#ent-104)); la forma de pago está en el detalle de la renta.
+  3. Si debe, ve arriba «Tienes una deuda pendiente de 12,00 Bs. Págala en la tienda para volver a rentar.» y el detalle de cada deuda, la más nueva primero.
   4. En sus reservas con más de 24 h para el recojo ve «Modificar» y «Cancelar».
 - **Flujos alternativos:**
   - si no tiene rentas → «Todavía no tienes rentas.»;
@@ -1238,7 +1238,7 @@ flowchart TD
 - **Qué guarda:** nada.
 - **Log:** nada.
 - **Correo:** ninguno.
-- **Origen:** [ENT-55](respuestas-del-cliente.md#ent-55), [ENT-76](respuestas-del-cliente.md#ent-76), [ENT-88](respuestas-del-cliente.md#ent-88), [ENT-92](respuestas-del-cliente.md#ent-92), [ENT-104](respuestas-del-cliente.md#ent-104), [D-22](decisiones.md#d-22), [PRE-08](presentacion12-10.md).
+- **Origen:** [ENT-55](respuestas-del-cliente.md#ent-55), [ENT-76](respuestas-del-cliente.md#ent-76), [ENT-88](respuestas-del-cliente.md#ent-88), [ENT-92](respuestas-del-cliente.md#ent-92), [ENT-100](respuestas-del-cliente.md#ent-100), [ENT-104](respuestas-del-cliente.md#ent-104), [D-22](decisiones.md#d-22), [D-33](decisiones.md#d-33), [PRE-08](presentacion12-10.md).
 - **Dónde está en el código:** [`rentals/views/renting.py`](../rentals/views/renting.py) (`client_rentals`) → [`rentals/use_cases/renting.py`](../rentals/use_cases/renting.py) (`my_rentals`), que lee las deudas con [`debts.py`](../rentals/use_cases/debts.py) (`pending_debts_of`, `debt_total_of`).
 - **Prueba:** [`tests/integration/test_forma_de_pago.py`](../tests/integration/test_forma_de_pago.py), [`tests/unit/test_etiqueta_de_pago.py`](../tests/unit/test_etiqueta_de_pago.py), [`tests/system/test_recorridos.py`](../tests/system/test_recorridos.py).
 
@@ -1250,7 +1250,7 @@ sequenceDiagram
     participant BD as PostgreSQL
     C->>V: GET /my-rentals/
     V->>U: my_rentals(cl02)
-    U->>BD: sus rentas, sus deudas pendientes y su suma
+    U->>BD: sus rentas y sus deudas pendientes, la más nueva primero, y su suma
     U-->>V: ClientRentals
     alt debe dinero
         V-->>C: arriba, «Tienes una deuda pendiente de 12,00 Bs. Págala en la tienda para volver a rentar.» y cada deuda

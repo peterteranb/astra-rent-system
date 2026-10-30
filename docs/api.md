@@ -133,6 +133,7 @@ Respuesta: `data` = el usuario; `message`: `"Cuenta creada. Ya puedes iniciar se
 ]}, "message": ""}
 ```
 
+- Del equipo registrado más recientemente al más antiguo; si empatan, por código ([ENT-100](respuestas-del-cliente.md#ent-100), [D-33](decisiones.md#d-33)). Vale para el cliente y el personal.
 - De 20 en 20 ([ENT-86](respuestas-del-cliente.md#ent-86)). Sin `busy_periods`: el catálogo no dice cuándo usan el equipo otras personas ([ENT-99](respuestas-del-cliente.md#ent-99)).
 - Sin `free_from` y `free_to` trae los equipos disponibles; con las dos fechas, solo los libres en ese periodo.
 - El cliente ve solo los disponibles; `status` solo filtra para el personal.
@@ -168,11 +169,11 @@ Respuesta: `data` = la renta «Reservada» con el pago pendiente; `message`: `"R
 `GET /api/my-rentals/` · Con sesión
 
 ```json
-{"data": {"rentals": [/* rentas, la más reciente primero */], "debts": [/* deudas sin pagar */], "debt_total": "40.00"},
+{"data": {"rentals": [/* rentas, la creada más recientemente primero */], "debts": [/* deudas sin pagar, la más nueva primero */], "debt_total": "40.00"},
  "message": "Tienes una deuda pendiente de 40,00 Bs. Págala en la tienda para volver a rentar."}
 ```
 
-Sin deuda, `message` viene vacío.
+Sin deuda, `message` viene vacío. `rentals` va de la renta creada más recientemente a la más antigua ([ENT-100](respuestas-del-cliente.md#ent-100)).
 
 ### [CU-06](casos-de-uso.md#cu-06) y [CU-07](casos-de-uso.md#cu-07) · Modificar y cancelar
 
@@ -195,7 +196,7 @@ Respuesta: la renta cancelada; `message`: `"Reserva cancelada: MES-00005 de cl01
 
 ### [CU-02](casos-de-uso.md#cu-02) · Clientes en la tienda
 
-`GET /api/staff/clients/?q=rojas` · Operador → `data` = hasta 10 usuarios cuyo usuario, nombre, apellido o correo contiene el texto ([ENT-54](respuestas-del-cliente.md#ent-54)). Sin `q`, lista vacía.
+`GET /api/staff/clients/?q=rojas` · Operador → `data` = hasta 10 usuarios cuyo usuario, nombre, apellido o correo contiene el texto, la cuenta más nueva primero ([ENT-54](respuestas-del-cliente.md#ent-54), [ENT-100](respuestas-del-cliente.md#ent-100)). Sin `q`, lista vacía.
 
 `POST /api/staff/clients/` · Operador · 201 · el cuerpo del registro **sin** `password` ni `password_confirmation` ([ENT-102](respuestas-del-cliente.md#ent-102): el operador no conoce la contraseña del cliente) → `data` = el usuario + `"email_sent": true`; `message`: `"Cuenta creada para lucia. Le enviamos un correo para crear su contraseña. Ya puedes registrar su renta."`. Si el correo falla, `"email_sent": false` y `message`: `"La cuenta se creó, pero no se pudo enviar el correo. Pide al cliente que use \"Olvidé mi contraseña\" con su correo."`.
 

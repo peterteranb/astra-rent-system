@@ -10,9 +10,9 @@ Una **prueba** es una función que prepara una situación, ejecuta el código y 
 | Tipo | Carpeta | Qué prueba | Cómo | Funciones (casos) |
 |---|---|---|---|---|
 | Unitarias | `tests/unit/` | Las reglas puras de `rules.py`, los validadores, los formularios y el estado calculado de una renta. | Objetos sin guardar (`Rental(...)`, `Equipment(...)`), sin base de datos y con la hora fija (`con_la_hora`). | 28 (30) |
-| Integración | `tests/integration/` | Cada caso de uso de `use_cases/` y `accounts/` con la base, la API JSON, el admin, el log y el correo. | Una base PostgreSQL temporal; en cada rechazo se compara `foto_de_la_base()` antes y después, para comprobar que no se guardó nada. | 37 (41) |
+| Integración | `tests/integration/` | Cada caso de uso de `use_cases/` y `accounts/` con la base, la API JSON, el admin, el log y el correo. | Una base PostgreSQL temporal; en cada rechazo se compara `foto_de_la_base()` antes y después, para comprobar que no se guardó nada. | 39 (43) |
 | Sistema | `tests/system/` | Recorridos completos por la web: del formulario a lo guardado. | El cliente de pruebas de Django inicia sesión y navega como una persona. | 12 (12) |
-| **Total** | | | | **77 (83)** |
+| **Total** | | | | **79 (85)** |
 
 Algunas pruebas antiguas verifican lo mismo con otros datos usando `parametrize`, por eso hay más casos que funciones.
 
@@ -170,7 +170,7 @@ Cada archivo con los casos de uso y los requisitos que comprueba.
 | `test_deudas.py` | [CU-04](casos-de-uso.md#cu-04), [CU-05](casos-de-uso.md#cu-05), [CU-09](casos-de-uso.md#cu-09), [CU-10](casos-de-uso.md#cu-10), [CU-11](casos-de-uso.md#cu-11) | [RF-09](casos-de-uso.md#rf-09), [RF-11](casos-de-uso.md#rf-11), [RF-12](casos-de-uso.md#rf-12), [RF-13](casos-de-uso.md#rf-13) |
 | `test_entregar_y_devolver.py` | [CU-08](casos-de-uso.md#cu-08), [CU-09](casos-de-uso.md#cu-09) | [RF-06](casos-de-uso.md#rf-06), [RF-10](casos-de-uso.md#rf-10) |
 | `test_forma_de_pago.py` | [CU-16](casos-de-uso.md#cu-16) | [RF-25](casos-de-uso.md#rf-25) |
-| `test_lo_ultimo_primero.py` | [CU-08](casos-de-uso.md#cu-08) | [RF-24](casos-de-uso.md#rf-24) |
+| `test_lo_ultimo_primero.py` | [CU-03](casos-de-uso.md#cu-03), [CU-08](casos-de-uso.md#cu-08) | [RF-17](casos-de-uso.md#rf-17), [RF-24](casos-de-uso.md#rf-24) |
 | `test_log_explicito.py` | [CU-01](casos-de-uso.md#cu-01), [CU-05](casos-de-uso.md#cu-05), [CU-06](casos-de-uso.md#cu-06), [CU-09](casos-de-uso.md#cu-09) | [RC-05](casos-de-uso.md#rc-05) |
 | `test_log_y_correo.py` | [CU-01](casos-de-uso.md#cu-01), [CU-04](casos-de-uso.md#cu-04), [CU-07](casos-de-uso.md#cu-07), [CU-09](casos-de-uso.md#cu-09) | [RF-20](casos-de-uso.md#rf-20), [RF-22](casos-de-uso.md#rf-22), [RC-05](casos-de-uso.md#rc-05) |
 | `test_mi_cuenta.py` | [CU-17](casos-de-uso.md#cu-17) | [RF-23](casos-de-uso.md#rf-23) |

@@ -189,8 +189,8 @@ Usan una base temporal que crea pytest-django; la base de la demo y `logs/negoci
 | Tipo | Carpeta | Funciones (casos) |
 |---|---|---|
 | Unitarias (sin base de datos) | `tests/unit/` | 28 (30) |
-| Integración (casos de uso y API con la base, el log y el correo) | `tests/integration/` | 37 (41) |
+| Integración (casos de uso y API con la base, el log y el correo) | `tests/integration/` | 39 (43) |
 | Sistema (recorridos por la web) | `tests/system/` | 12 (12) |
-| **Total** | | **77 (83)** |
+| **Total** | | **79 (85)** |
 
 Cobertura: 92 %. Cómo correr un archivo o una sola prueba, qué prueba cubre cada caso de uso y la revisión de seguridad: [docs/pruebas.md](docs/pruebas.md).

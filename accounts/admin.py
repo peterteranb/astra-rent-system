@@ -16,6 +16,8 @@ class RoleAdmin(admin.ModelAdmin):
 
     list_display = ["code", "name", "description"]
     search_fields = ["code", "name"]
+    # ENT-100: el rol creado más recientemente primero; Role no tiene fecha, su id crece con cada fila.
+    ordering = ["-id"]
 
     def has_delete_permission(self, request, obj=None):
         """No deja borrar roles: cada usuario tiene uno (ENT-97: nunca se borra nada)."""

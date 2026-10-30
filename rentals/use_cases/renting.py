@@ -45,7 +45,7 @@ def client_accounts():
 
 
 def find_clients(text):
-    """Devuelve hasta MAX_CLIENTS_FOUND clientes cuyo usuario, nombre, apellido o correo contiene text (ENT-54)."""
+    """Devuelve hasta MAX_CLIENTS_FOUND clientes cuyo usuario, nombre, apellido o correo contiene text, la cuenta más nueva primero (ENT-54, ENT-100)."""
     text = text.strip()
     # Una búsqueda vacía listaría a todos los clientes: el operador debe escribir algo.
     if not text:
@@ -56,12 +56,12 @@ def find_clients(text):
         | Q(last_name__icontains=text)
         | Q(email__icontains=text)
     )
-    return client_accounts().filter(matches).order_by("username")[:MAX_CLIENTS_FOUND]
+    return client_accounts().filter(matches).order_by("-date_joined", "username")[:MAX_CLIENTS_FOUND]
 
 
 def rentals_of(client):
-    """Devuelve las rentas del cliente, la más reciente primero (CU-16)."""
-    return Rental.objects.filter(client=client).select_related("equipment").order_by("-start_datetime")
+    """Devuelve las rentas del cliente, la creada más recientemente primero (CU-16, ENT-100)."""
+    return Rental.objects.filter(client=client).select_related("equipment").order_by("-created_at")
 
 
 def my_rentals(client) -> ClientRentals:
