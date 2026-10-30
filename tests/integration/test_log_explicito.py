@@ -5,7 +5,8 @@ import pytest
 from accounts.registration import SignUpData, register_client
 from rentals.errors import InvalidModificationError, RegistrationRejectedError
 from rentals.use_cases.handover import register_return
-from rentals.use_cases.renting import create_rental, modify_rental
+from rentals.use_cases.renting import create_rental
+from rentals.use_cases.reservation_changes import modify_rental
 from tests.helpers import con_la_hora, foto_de_la_base, local_datetime, renta_entregada
 
 HOY = local_datetime(2026, 10, 29, 10)

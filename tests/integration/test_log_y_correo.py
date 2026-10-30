@@ -16,7 +16,8 @@ from rentals.models import Equipment
 from rentals.services.events import log_event
 from rentals.use_cases.handover import register_return
 from rentals.use_cases.payments import pay_with_qr
-from rentals.use_cases.renting import cancel_rental, create_rental
+from rentals.use_cases.renting import create_rental
+from rentals.use_cases.reservation_changes import cancel_rental
 from tests.helpers import con_la_hora, dentro_de, foto_de_la_base, local_datetime, renta_entregada
 
 HOY = local_datetime(2026, 10, 29, 10)

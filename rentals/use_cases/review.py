@@ -11,8 +11,8 @@ from ..models import Debt, Equipment, Rental, StatusChange
 from ..services.events import equipment_text, log_event, logs_rejection, rental_context
 from ..services.formatting import charge_label
 from ..statuses import DebtReason, EquipmentStatus
-from .history import cancel_if_out_of_service, change_status
-from .payments import charge_debt
+from .debts import charge_debt
+from .equipment_status import cancel_if_out_of_service, change_status
 
 
 @dataclass(frozen=True)

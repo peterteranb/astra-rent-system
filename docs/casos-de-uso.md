@@ -72,21 +72,21 @@ Las funciones de «Dónde se cumple» están en `rentals/use_cases/` (por ejempl
 | RF-07 | Una reserva no recogida hasta la medianoche de su día de inicio pasa sola a «No recogida» y libera el equipo. | ENT-69 | `rules.is_pickup_expired`, `Rental.status_at` | `unit/test_reserva_vencida.py`, `unit/test_estado_de_la_renta.py`, `unit/test_reglas_de_entrega.py` |
 | RF-08 | El estado de la renta se calcula, no se guarda: Cancelada > Devuelta > Rentada > No recogida > Reservada. | ENT-57, ENT-61 | `Rental.status_at` | `unit/test_estado_de_la_renta.py` |
 | RF-09 | Solo se devuelve una renta «Rentada». La devolución hasta las 09:00 del día de vencimiento es a tiempo; hasta las 12:00, tolerancia sin cobro; desde las 12:01, deuda por atraso = días de atraso × precio diario. | ENT-73, ENT-93, PRE-05 | `rules.classify_return`, `rules.late_days`, `handover.register_return` | `unit/test_clasificar_devolucion.py`, `integration/test_deudas.py` |
-| RF-10 | El equipo devuelto pasa a «En revisión». Mantenimiento cambia el estado de **cualquier** equipo que no esté de baja; la baja es definitiva. Cada cambio queda en el historial con quién, cuándo y por qué. | ENT-03, ENT-34, ENT-49, ENT-90, PRE-06, PRE-07 | `history.change_status`, `review.review_equipment` | `unit/test_reglas_de_revision.py`, `integration/test_entregar_y_devolver.py`, `integration/test_revisar.py` |
-| RF-11 | Mantenimiento decide si cobra el daño: con «Cobrar el daño al último cliente» marcado, reparación crea una deuda del 20 % del valor y baja una del 100 %, para el cliente de la última renta devuelta; sin marcar, no hay deuda y el log escribe `DAMAGE_NOT_CHARGED`. Las deudas por daño de una renta nunca suman más que el valor (D-06). Reparación o baja, por mantenimiento o por el admin, cancelan las reservas no recogidas del equipo y avisan por correo. | ENT-74, ENT-88, ENT-90 | `review.review_equipment`, `history.cancel_if_out_of_service`, `rules.damage_charge` | `unit/test_precio_y_plazos.py`, `integration/test_deudas.py`, `integration/test_revisar.py` |
-| RF-12 | Cada deuda es de una renta y un motivo, y se paga una por una; el operador registra el pago. La deuda total se calcula y se muestra. | ENT-76, ENT-78 | `payments.pay_debt`, `payments.debt_total_of` | `integration/test_deudas.py`, `integration/test_panel.py` |
+| RF-10 | El equipo devuelto pasa a «En revisión». Mantenimiento cambia el estado de **cualquier** equipo que no esté de baja; la baja es definitiva. Cada cambio queda en el historial con quién, cuándo y por qué. | ENT-03, ENT-34, ENT-49, ENT-90, PRE-06, PRE-07 | `equipment_status.change_status`, `review.review_equipment` | `unit/test_reglas_de_revision.py`, `integration/test_entregar_y_devolver.py`, `integration/test_revisar.py` |
+| RF-11 | Mantenimiento decide si cobra el daño: con «Cobrar el daño al último cliente» marcado, reparación crea una deuda del 20 % del valor y baja una del 100 %, para el cliente de la última renta devuelta; sin marcar, no hay deuda y el log escribe `DAMAGE_NOT_CHARGED`. Las deudas por daño de una renta nunca suman más que el valor (D-06). Reparación o baja, por mantenimiento o por el admin, cancelan las reservas no recogidas del equipo y avisan por correo. | ENT-74, ENT-88, ENT-90 | `review.review_equipment`, `equipment_status.cancel_if_out_of_service`, `rules.damage_charge` | `unit/test_precio_y_plazos.py`, `integration/test_deudas.py`, `integration/test_revisar.py` |
+| RF-12 | Cada deuda es de una renta y un motivo, y se paga una por una; el operador registra el pago. La deuda total se calcula y se muestra. | ENT-76, ENT-78 | `debts.pay_debt`, `debts.debt_total_of` | `integration/test_deudas.py`, `integration/test_panel.py` |
 | RF-13 | Un cliente con deuda pendiente no puede crear rentas, ni en línea ni en tienda; sí puede devolver. | ENT-77 | `renting.check_client_has_no_debt` | `integration/test_deudas.py`, `system/test_recorridos.py` (cliente con deuda) |
-| RF-14 | Solo una renta «Reservada» se cancela o modifica. El cliente, hasta 24 h antes del inicio. El operador o el admin cancelan hasta el recojo y modifican hasta antes del inicio; si modifican, el cliente recibe las fechas nuevas por correo. Modificar es cambiar las fechas con la misma cantidad de días. | ENT-80, ENT-81, ENT-89, ENT-95 | `renting.cancel_rental`, `renting.modify_rental` | `unit/test_reglas_de_cancelacion.py`, `unit/test_precio_y_plazos.py` (plazo de 24 h), `integration/test_cancelar.py`, `integration/test_modificar.py` |
+| RF-14 | Solo una renta «Reservada» se cancela o modifica. El cliente, hasta 24 h antes del inicio. El operador o el admin cancelan hasta el recojo y modifican hasta antes del inicio; si modifican, el cliente recibe las fechas nuevas por correo. Modificar es cambiar las fechas con la misma cantidad de días. | ENT-80, ENT-81, ENT-89, ENT-95 | `reservation_changes.cancel_rental`, `reservation_changes.modify_rental` | `unit/test_reglas_de_cancelacion.py`, `unit/test_precio_y_plazos.py` (plazo de 24 h), `integration/test_cancelar.py`, `integration/test_modificar.py` |
 | RF-15 | El cliente crea su cuenta en la web con su contraseña: al menos 8 caracteres, una mayúscula y un número. El operador la crea en la tienda **sin** contraseña: la cuenta nace con una contraseña inutilizable y el cliente la crea con el enlace del correo (ENT-102). En los dos, las mismas reglas de datos: correo y teléfono únicos. | ENT-15, ENT-54, ENT-84, ENT-102 | `accounts/registration.register_client` y `register_store_client` | `unit/test_contrasena_y_telefono.py`, `integration/test_registro.py`, `integration/test_usuarios.py`, `integration/test_contrasena_del_cliente.py`, `system/test_registro_web.py` |
 | RF-16 | Solo el admin registra equipos, a mano: código `AAA-00000` único, número de serie único, nombre y valor mayor que 0. Un combo es un equipo más (por ejemplo `CMB-00001` «Combo 6 sillas y 1 mesa»): su precio sale de su valor y no descuenta las sillas y mesas sueltas del inventario, es una unidad aparte. | ENT-14, ENT-83, ENT-96, PRE-01 | `inventory.register_equipment`, `Equipment` | `unit/test_codigo_de_equipo.py`, `integration/test_registrar_equipo.py` |
 | RF-17 | El catálogo se pagina de 20 en 20 y se filtra por código o nombre, por fechas libres y, para el personal, por estado. No muestra «Libre» ni «Ocupado del … al …»: sin fechas, los equipos disponibles; con fechas, solo los libres en ese periodo. | ENT-86, ENT-99, PRE-02 | `catalog.browse_catalog` (con `search_catalog` y `catalog_page`) | `integration/test_catalogo.py`, `integration/test_catalogo_sin_etiquetas.py`, `system/test_recorridos.py` (filtro y páginas) |
 | RF-18 | El responsable ve en una página las rentas activas, vencidas, reservas de hoy, pagos pendientes, equipos en revisión o reparación y deudas pendientes. | ENT-87, PRE-06, PRE-08 | `dashboard.manager_summary` | `integration/test_panel.py`, `integration/test_acceso.py` |
 | RF-19 | Cada rol ve solo lo suyo y el admin ve todo. Solo el admin bloquea a un usuario desmarcando «Activo»: con su contraseña correcta ve «Tu cuenta está desactivada. Comunícate con la tienda.», su sesión abierta deja de valer, la tienda ya no lo encuentra para rentarle y sus reservas no recogidas se cancelan (D-27). | ENT-53, ENT-55, ENT-79, ENT-98 | `accounts/roles.role_required`, `LoginForm.confirm_login_allowed`, `AUTHENTICATION_BACKENDS` | `unit/test_roles.py`, `integration/test_acceso.py`, `integration/test_cuenta_desactivada.py` |
 | RF-20 | El cliente recibe un correo al crear su cuenta (en la tienda, «Crea tu contraseña» con el enlace), al pedir «Olvidé mi contraseña», al confirmar o cancelar una renta, cuando la tienda modifica su reserva y al crearse una deuda. Si el correo falla, la operación sigue; en la tienda el operador ve qué hacer. | ENT-85, ENT-88, ENT-95, ENT-102 | `rentals/services/notifications.py` | `integration/test_log_y_correo.py` (confirmación del QR, deuda por atraso y un correo que falla al crear la cuenta), `integration/test_modificar.py` (modificación de la tienda), `integration/test_revisar.py` (cancelación por reparación), `integration/test_contrasena_del_cliente.py` (crear y recuperar la contraseña), `integration/test_registro.py` (bienvenida), `integration/test_rentar.py` (renta en tienda confirmada). |
-| RF-21 | El admin corrige el estado de un equipo desde el admin de Django, con historial y sin crear deudas; si lo manda a reparación o baja, se cancelan sus reservas no recogidas. | ENT-40, ENT-75, ENT-88, PRE-07 | `rentals/admin.py`, `history.correct_status` | `system/test_recorridos.py` (el admin manda a reparación y queda el historial), `integration/test_revisar.py` (la baja del admin cancela sin cobrar). |
+| RF-21 | El admin corrige el estado de un equipo desde el admin de Django, con historial y sin crear deudas; si lo manda a reparación o baja, se cancelan sus reservas no recogidas. | ENT-40, ENT-75, ENT-88, PRE-07 | `rentals/admin.py`, `equipment_status.correct_status` | `system/test_recorridos.py` (el admin manda a reparación y queda el historial), `integration/test_revisar.py` (la baja del admin cancela sin cobrar). |
 | RF-22 | Nunca se borra nada: el admin no borra usuarios, roles, equipos, rentas, deudas ni cambios de estado; un equipo se da de baja y un usuario se desactiva. `seed_demo` borra los datos de la demo, así que solo corre con `DEBUG=True`. | ENT-97 | `has_delete_permission` en `rentals/admin.py` y `accounts/admin.py`, `seed_demo` | `integration/test_cuenta_desactivada.py` (el admin no borra), `integration/test_log_y_correo.py` (`seed_demo` con `DEBUG=False`) |
 | RF-23 | Cada usuario gestiona su cuenta en «Mi cuenta»: edita nombre, apellido, correo y teléfono con las reglas del registro (su propio correo no choca con él), cambia su contraseña con la actual y los mismos validadores, y la recupera por correo con «Olvidé mi contraseña». El usuario y el rol no cambian. | ENT-103 | `accounts/account.update_profile`; `PasswordChangeView` y `PasswordResetView` de Django con `accounts/forms.py` | `integration/test_mi_cuenta.py`, `integration/test_contrasena_del_cliente.py`, `integration/test_api_mi_cuenta.py` |
-| RF-24 | Lo último primero: el admin ordena rentas, equipos y deudas por su creación, los cambios de estado por su fecha y los usuarios por su alta, con `date_hierarchy` y filtro por fecha; las páginas del personal y la API muestran lo más reciente arriba. «Reservas por entregar» y «Devoluciones» se pueden ordenar por fecha de recojo o de devolución. | ENT-100 | `ordering` y `date_hierarchy` en `rentals/admin.py` y `accounts/admin.py`, `handover.order_field`, `dashboard.manager_summary`, `payments.pending_debts`, `review.latest_change_first` | `integration/test_lo_ultimo_primero.py` |
+| RF-24 | Lo último primero: el admin ordena rentas, equipos y deudas por su creación, los cambios de estado por su fecha y los usuarios por su alta, con `date_hierarchy` y filtro por fecha; las páginas del personal y la API muestran lo más reciente arriba. «Reservas por entregar» y «Devoluciones» se pueden ordenar por fecha de recojo o de devolución. | ENT-100 | `ordering` y `date_hierarchy` en `rentals/admin.py` y `accounts/admin.py`, `handover.order_field`, `dashboard.manager_summary`, `debts.pending_debts`, `review.latest_change_first` | `integration/test_lo_ultimo_primero.py` |
 | RF-25 | La etiqueta del pago dice solo «Pagado» o «Pago pendiente» en las páginas, el admin y la API; la forma de pago (QR o efectivo) se ve en el detalle de la renta y en su columna del admin. | ENT-104 | `Rental.payment_label`, `templates/rentals/rental_confirmation.html`, `RentalAdmin` | `unit/test_etiqueta_de_pago.py`, `integration/test_forma_de_pago.py` |
 
 ## 3. Requisitos de calidad
@@ -480,7 +480,7 @@ flowchart TD
 sequenceDiagram
     actor C as Cliente u operador
     participant V as views.renting.modify_reservation
-    participant U as use_cases.renting.modify_rental
+    participant U as use_cases.reservation_changes.modify_rental
     participant BD as PostgreSQL
     C->>V: POST /rentals/12/modify/ con las fechas nuevas
     V->>U: modify_rental(renta, inicio, fin, usuario)
@@ -551,7 +551,7 @@ flowchart TD
 sequenceDiagram
     actor C as Cliente u operador
     participant V as views.renting.cancel_reservation
-    participant U as use_cases.renting.cancel_rental
+    participant U as use_cases.reservation_changes.cancel_rental
     participant BD as PostgreSQL
     C->>V: POST /rentals/12/cancel/
     V->>U: cancel_rental(renta, usuario)
@@ -669,7 +669,7 @@ sequenceDiagram
     actor O as Operador
     participant V as views.handover (staff_returns y return_rental)
     participant U as use_cases.handover
-    participant H as use_cases.history.change_status
+    participant H as use_cases.equipment_status.change_status
     participant BD as PostgreSQL
     O->>V: GET /staff/returns/?order=recent (o date)
     V->>U: rentals_to_receive(orden): la más nueva primero o la que vence primero
@@ -736,7 +736,7 @@ sequenceDiagram
     actor T as Mantenimiento
     participant V as views.review (maintenance y review_equipment_view)
     participant U as use_cases.review
-    participant H as use_cases.history
+    participant H as use_cases.equipment_status
     participant BD as PostgreSQL
     T->>V: GET /maintenance/?status=in_review
     V->>U: review_queue(estado)
@@ -811,7 +811,7 @@ flowchart TD
 sequenceDiagram
     actor O as Operador
     participant V as views.debts.pay_debt_view
-    participant U as use_cases.payments.pay_debt
+    participant U as use_cases.debts.pay_debt
     participant BD as PostgreSQL
     O->>V: POST /staff/debts/3/pay/
     V->>U: pay_debt(deuda, op01)
@@ -911,7 +911,7 @@ flowchart TD
 sequenceDiagram
     actor A as Administrador
     participant V as admin.EquipmentAdmin.change_selected
-    participant U as use_cases.history
+    participant U as use_cases.equipment_status
     participant BD as PostgreSQL
     A->>V: acción «Mandar a reparación» con los equipos marcados
     loop por cada equipo marcado (apply_to_selected)
@@ -1208,15 +1208,15 @@ Las funciones están en `rentals/use_cases/`, salvo `accounts.registration`, `ac
 | Enviar el enlace | `PasswordResetView` de Django con `ClientPasswordResetForm` | Nada: manda el correo con el enlace |
 | Continuar al pago / Registrar renta | `renting.create_rental` | Una fila en `rentals_rental` (en tienda, ya pagada) |
 | Simular pago exitoso | `payments.pay_with_qr` | `paid_at`, `payment_method` |
-| Guardar cambios (modificar) | `renting.modify_rental` | `start_datetime`, `end_datetime` |
-| Cancelar | `renting.cancel_rental` | `cancelled_at`, `cancelled_by` |
+| Guardar cambios (modificar) | `reservation_changes.modify_rental` | `start_datetime`, `end_datetime` |
+| Cancelar | `reservation_changes.cancel_rental` | `cancelled_at`, `cancelled_by` |
 | Registrar recojo / Cobrar y entregar | `handover.register_pickup` | `picked_up_at`, `handed_over_by` (y `paid_at`, `payment_method`) |
 | Registrar devolución | `handover.register_return` | `returned_at`, `received_by`, `return_note`, estado del equipo, historial y, con atraso, una deuda |
 | Guardar (mantenimiento) | `review.review_equipment` | Estado del equipo, historial, deuda si se marcó «Cobrar el daño» y reservas canceladas si es reparación o baja |
-| Registrar pago (deuda) | `payments.pay_debt` | `paid_at`, `paid_received_by` |
+| Registrar pago (deuda) | `debts.pay_debt` | `paid_at`, `paid_received_by` |
 | Registrar equipo | `inventory.register_equipment` | Una fila en `rentals_equipment` |
-| Acciones del admin | `history.correct_status`, `renting.cancel_rental`, `payments.pay_debt` | Lo mismo que arriba; corregir el estado nunca crea deudas |
-| Guardar (admin de usuarios, «Activo») | `UserAdmin.save_model`, `renting.cancel_reservations_of_deactivated` | `is_active`; el log escribe `ACCOUNT_DEACTIVATED user=cl01 by=ad01` o `ACCOUNT_REACTIVATED`; al desactivar, sus reservas no recogidas quedan canceladas (D-27) |
+| Acciones del admin | `equipment_status.correct_status`, `reservation_changes.cancel_rental`, `debts.pay_debt` | Lo mismo que arriba; corregir el estado nunca crea deudas |
+| Guardar (admin de usuarios, «Activo») | `UserAdmin.save_model`, `reservation_changes.cancel_reservations_of_deactivated` | `is_active`; el log escribe `ACCOUNT_DEACTIVATED user=cl01 by=ad01` o `ACCOUNT_REACTIVATED`; al desactivar, sus reservas no recogidas quedan canceladas (D-27) |
 
 ## 7. Fuera de alcance
 
@@ -1239,7 +1239,7 @@ Las funciones están en `rentals/use_cases/`, salvo `accounts.registration`, `ac
 
 ## 8. Estados
 
-Cada transición dice quién la hace y qué la provoca. El estado de la renta **no se guarda**: `Rental.status_at` lo calcula desde sus momentos (RF-08). El del equipo sí: solo `history.change_status` lo cambia, con su fila de historial (RF-10).
+Cada transición dice quién la hace y qué la provoca. El estado de la renta **no se guarda**: `Rental.status_at` lo calcula desde sus momentos (RF-08). El del equipo sí: solo `equipment_status.change_status` lo cambia, con su fila de historial (RF-10).
 
 ### Renta
 

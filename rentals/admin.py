@@ -6,10 +6,10 @@ from .errors import OperationRejectedError
 from .forms import EquipmentAdminForm
 from .models import Debt, Equipment, Rental, StatusChange
 from .statuses import EquipmentStatus
-from .use_cases.history import correct_status
+from .use_cases.debts import pay_debt
+from .use_cases.equipment_status import correct_status
 from .use_cases.inventory import log_equipment_registered
-from .use_cases.payments import pay_debt
-from .use_cases.renting import cancel_rental
+from .use_cases.reservation_changes import cancel_rental
 
 admin.site.site_header = "SergioCorp · Administración"
 admin.site.site_title = "SergioCorp"
@@ -53,7 +53,7 @@ class EquipmentAdmin(admin.ModelAdmin):
     list_per_page = ADMIN_PAGE_SIZE
     ordering = ["-created_at"]
     date_hierarchy = "created_at"
-    # El estado solo cambia con las acciones, que pasan por history.correct_status
+    # El estado solo cambia con las acciones, que pasan por equipment_status.correct_status
     # y dejan cada cambio en el historial (ENT-34).
     readonly_fields = ["status", "created_at"]
     actions = ["mark_available", "send_to_repair", "retire"]

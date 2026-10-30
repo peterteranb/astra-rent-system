@@ -11,7 +11,8 @@ from ..forms import CatalogFilterForm, OnlineRentalForm, RentalForm, WalkInRenta
 from ..services.formatting import cancelled_message, modified_message, payment_result_message
 from ..use_cases.catalog import browse_catalog
 from ..use_cases.payments import online_rentals_of, pay_with_qr
-from ..use_cases.renting import cancel_rental, create_rental, modify_rental, my_rentals, rentals_visible_to
+from ..use_cases.renting import create_rental, my_rentals, rentals_visible_to
+from ..use_cases.reservation_changes import cancel_rental, modify_rental
 from .responses import api_view, read_json, success, valid_form
 from .serializers import debt_data, equipment_data, money, rental_data
 

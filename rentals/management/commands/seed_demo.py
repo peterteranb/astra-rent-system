@@ -24,9 +24,11 @@ from rentals import rules
 from rentals.models import Debt, Equipment, EquipmentStatus, Rental, StatusChange
 from rentals.services.events import log_event
 from rentals.statuses import DebtReason, PaymentMethod
-from rentals.use_cases.history import change_status
-from rentals.use_cases.payments import charge_debt, pay_debt, pay_with_qr
-from rentals.use_cases.renting import cancel_rental, create_rental, log_rental_created
+from rentals.use_cases.debts import charge_debt, pay_debt
+from rentals.use_cases.equipment_status import change_status
+from rentals.use_cases.payments import pay_with_qr
+from rentals.use_cases.renting import create_rental, log_rental_created
+from rentals.use_cases.reservation_changes import cancel_rental
 
 # El nombre del módulo empieza con un número: se importa así para usar su create_roles con get_or_create.
 ROLES_MIGRATION = import_module("accounts.migrations.0002_roles")

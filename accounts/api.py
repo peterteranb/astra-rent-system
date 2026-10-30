@@ -9,7 +9,7 @@ from django.views.decorators.csrf import ensure_csrf_cookie
 from rentals.api.responses import api_view, read_json, success, valid_form
 from rentals.api.serializers import money, user_data
 from rentals.services.formatting import account_created_message, store_account_message
-from rentals.use_cases.payments import debt_total_of
+from rentals.use_cases.debts import debt_total_of
 from rentals.use_cases.renting import find_clients
 
 from .account import update_profile

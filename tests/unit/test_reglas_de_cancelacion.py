@@ -1,10 +1,10 @@
-"""Prueba rentals/use_cases/renting.py: check_can_cancel() y check_can_modify(), validando plazos y roles de cancelación."""
+"""Prueba rentals/use_cases/reservation_changes.py: check_can_cancel() y check_can_modify(), validando plazos y roles de cancelación."""
 import pytest
 
 from accounts.models import User
 from rentals.errors import DeadlinePassedError, RentalStateError
 from rentals.models import Equipment, Rental
-from rentals.use_cases.renting import check_can_cancel, check_can_modify
+from rentals.use_cases.reservation_changes import check_can_cancel, check_can_modify
 from tests.helpers import local_datetime
 
 MES01 = Equipment(inventory_id="MES-00001")

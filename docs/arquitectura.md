@@ -41,8 +41,8 @@ rentals/
     models.py  admin.py  forms.py  urls.py  apps.py  context_processors.py
     rules.py  statuses.py  errors.py          ← dominio: reglas puras, estados y errores
     use_cases/                                ← un archivo por grupo de casos de uso
-        catalog.py  renting.py  payments.py  handover.py  review.py
-        inventory.py  history.py  dashboard.py
+        catalog.py  renting.py  payments.py  reservation_changes.py  debts.py
+        handover.py  review.py  inventory.py  equipment_status.py  dashboard.py
     services/                                 ← lo que usan los casos de uso sin ser una regla
         events.py  notifications.py  formatting.py
     views/  management/  migrations/
@@ -64,12 +64,14 @@ rentals/
 | `rentals/statuses.py` | Opciones fijas: estados del equipo y de la renta, resultado de la devolución, forma de pago y motivo de la deuda. | Todos |
 | `rentals/errors.py` | Los rechazos con su causa para el usuario. | Todos (RC-04) |
 | `rentals/use_cases/catalog.py` | Catálogo con filtros y páginas de 20, sin etiquetas de libre u ocupado (ENT-99). | CU-03 |
-| `rentals/use_cases/renting.py` | Búsqueda de clientes, rentar en línea y en tienda, modificar, cancelar y «Mis rentas». | CU-04 a CU-07, CU-16 |
-| `rentals/use_cases/payments.py` | QR simulado; crear, sumar, listar y cobrar deudas. | CU-04, CU-11 |
+| `rentals/use_cases/renting.py` | Búsqueda de clientes, rentar en línea y en tienda y «Mis rentas». | CU-04, CU-05, CU-16 |
+| `rentals/use_cases/payments.py` | El pago con el QR simulado. | CU-04 |
+| `rentals/use_cases/reservation_changes.py` | Modificar y cancelar una reserva, también la cancelación automática (equipo fuera de servicio o cuenta desactivada). | CU-06, CU-07 |
+| `rentals/use_cases/debts.py` | Crear, sumar, listar y cobrar deudas. | CU-11 |
 | `rentals/use_cases/handover.py` | Entregar (cobra si falta el pago) y devolver (crea la deuda por atraso). | CU-08, CU-09 |
 | `rentals/use_cases/review.py` | Revisión de mantenimiento de cualquier equipo: estado nuevo, deuda por daño solo si se marca el cobro y, con reparación o baja, cancela las reservas no recogidas. | CU-10 |
 | `rentals/use_cases/inventory.py` | Registrar un equipo con las reglas del modelo. | CU-12 |
-| `rentals/use_cases/history.py` | `change_status`: el único lugar que cambia `Equipment.status`, siempre con su fila de historial; `correct_status` (admin) y `cancel_if_out_of_service` (cancela las reservas al pasar a reparación o baja). | CU-09, CU-10, CU-13 |
+| `rentals/use_cases/equipment_status.py` | `change_status`: el único lugar que cambia `Equipment.status`, siempre con su fila de historial; `correct_status` (admin) y `cancel_if_out_of_service` (cancela las reservas al pasar a reparación o baja). | CU-09, CU-10, CU-13 |
 | `rentals/use_cases/dashboard.py` | Las seis listas del panel del responsable, lo último primero. | CU-15 |
 | `rentals/services/events.py` | Log de negocio: el contexto de una renta (`rental_context`) y el decorador que escribe cada rechazo una sola vez, con lo que se intentó. | Todos (RC-05, ENT-101) |
 | `rentals/services/notifications.py` | Correos al cliente, enviados cuando la transacción se confirma (los de rentas y deudas, en un hilo aparte); «Crea tu contraseña» sale en el momento y dice si salió. | CU-01, CU-02, CU-04 a CU-07, CU-09, CU-10 |

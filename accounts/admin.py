@@ -4,7 +4,7 @@ from django.contrib.auth.admin import UserAdmin as DjangoUserAdmin
 from django.db.models import Q, Sum
 
 from rentals.services.events import log_event
-from rentals.use_cases.renting import cancel_reservations_of_deactivated
+from rentals.use_cases.reservation_changes import cancel_reservations_of_deactivated
 
 from .forms import UserChangeAdminForm, UserCreationAdminForm
 from .models import Role, User

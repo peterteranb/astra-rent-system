@@ -1,4 +1,4 @@
-"""Prueba rentals/use_cases/renting.py con la base: modify_rental(), modificación de fechas y duraciones de reservas."""
+"""Prueba rentals/use_cases/reservation_changes.py con la base: modify_rental(), modificación de fechas y duraciones de reservas."""
 from decimal import Decimal
 
 import pytest
@@ -6,7 +6,8 @@ from django.core import mail
 
 from rentals.errors import EquipmentNotAvailableError, InvalidModificationError
 from rentals.models import Rental
-from rentals.use_cases.renting import create_rental, modify_rental
+from rentals.use_cases.renting import create_rental
+from rentals.use_cases.reservation_changes import modify_rental
 from tests.helpers import dentro_de, foto_de_la_base
 
 

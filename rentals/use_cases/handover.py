@@ -8,8 +8,8 @@ from ..models import Equipment, Rental
 from ..services.events import log_event, logs_rejection, rental_context
 from ..services.formatting import money_text, rental_state_message
 from ..statuses import DebtReason, EquipmentStatus, PaymentMethod, RentalStatus
-from . import history
-from .payments import charge_debt
+from . import equipment_status
+from .debts import charge_debt
 
 # ENT-100: por defecto lo último primero; para atender en la tienda también sirve el orden por fecha.
 ORDER_RECENT = "recent"
@@ -137,7 +137,7 @@ def register_return(rental, staff_user, note) -> Rental:
         # Si mantenimiento ya le cambió el estado mientras estaba afuera (ENT-90), se
         # respeta: la devolución no puede fallar por eso (D-28).
         if rules.is_rentable_status(locked_rental.equipment.status):
-            history.change_status(
+            equipment_status.change_status(
                 locked_rental.equipment, EquipmentStatus.IN_REVIEW, staff_user, comment=note
             )
         log_event(

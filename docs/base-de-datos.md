@@ -141,6 +141,6 @@ erDiagram
 
 ## Redundancias conscientes
 
-- **`EQUIPO.status` y `old_status`:** se podrían deducir del historial. Se guardan para consultar rápido y para que cada cambio se lea solo. Solo `history.change_status` los escribe.
+- **`EQUIPO.status` y `old_status`:** se podrían deducir del historial. Se guardan para consultar rápido y para que cada cambio se lea solo. Solo `equipment_status.change_status` los escribe.
 - **`is_staff` e `is_superuser`:** Django los necesita para entrar al admin. Se ponen solos según el rol, nunca a mano.
 - **`daily_price` y `DEUDA.amount`:** son el precio y el cargo **de ese momento**. Si el valor del equipo cambia después, no deben cambiar.

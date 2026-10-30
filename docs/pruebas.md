@@ -65,7 +65,7 @@ python -m pytest --cov=rentals --cov=accounts --cov-branch -q
 | `accounts/roles.py` | 100 % | | `rentals/use_cases/catalog.py` | 100 % |
 | `accounts/validators.py` | 100 % | | `rentals/use_cases/dashboard.py` | 100 % |
 | `accounts/views.py` | 89 % | | `rentals/use_cases/handover.py` | 99 % |
-| `rentals/admin.py` | 84 % | | `rentals/use_cases/history.py` | 98 % |
+| `rentals/admin.py` | 84 % | | `rentals/use_cases/equipment_status.py` | 98 % |
 | `rentals/api/debts.py` | 69 % | | `rentals/use_cases/inventory.py` | 93 % |
 | `rentals/api/handover.py` | 71 % | | `rentals/use_cases/payments.py` | 94 % |
 | `rentals/api/inventory.py` | 84 % | | `rentals/use_cases/renting.py` | 98 % |
