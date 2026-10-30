@@ -45,7 +45,6 @@ Antes de cada commit, además de las pruebas:
 ```powershell
 python manage.py makemigrations --check --dry-run    # no falta ninguna migración
 python manage.py check                               # la configuración de Django está bien
-ruff check .                                         # el estilo del código
 ```
 
 ## Qué prueba cubre cada caso de uso
