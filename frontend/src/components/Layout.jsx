@@ -22,7 +22,8 @@ function linksFor(role) {
       { to: "/staff/debts", label: "Deudas" },
     );
   }
-  if (can("mantenimiento")) links.push({ to: "/maintenance", label: "Mantenimiento" });
+  if (can("mantenimiento"))
+    links.push({ to: "/maintenance", label: "Mantenimiento" });
   if (isAdmin) {
     links.push(
       { to: "/manager", label: "Panel" },
@@ -45,7 +46,11 @@ export default function Layout({ title, children }) {
           </Link>
           <div className="layout__user">
             <span>{user.first_name || user.username}</span>
-            <button className="btn btn--secondary layout__logout" type="button" onClick={logout}>
+            <button
+              className="btn btn--secondary layout__logout"
+              type="button"
+              onClick={logout}
+            >
               Cerrar sesión
             </button>
           </div>
@@ -53,7 +58,9 @@ export default function Layout({ title, children }) {
 
         <nav className="layout__nav" aria-label="Menú principal">
           {linksFor(user.role).map(({ to, label, end }) => (
-            <NavLink key={to} to={to} end={end}>{label}</NavLink>
+            <NavLink key={to} to={to} end={end}>
+              {label}
+            </NavLink>
           ))}
           {user.role === "administrador" && <a href={DJANGO_ADMIN}>Admin</a>}
         </nav>

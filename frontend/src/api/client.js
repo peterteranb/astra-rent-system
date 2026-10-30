@@ -24,7 +24,11 @@ async function send(path, method, body) {
     body: body === undefined ? undefined : JSON.stringify(body),
   });
   let payload = {};
-  try { payload = await response.json(); } catch { /* respuesta sin JSON */ }
+  try {
+    payload = await response.json();
+  } catch {
+    /* respuesta sin JSON */
+  }
   return { response, payload };
 }
 
@@ -32,7 +36,10 @@ export async function api(path, { method = "GET", body } = {}) {
   let { response, payload } = await send(path, method, body);
 
   // Llave de seguridad vieja: se pide una nueva y se reintenta una sola vez.
-  if (response.status === 403 && payload.errors?.[0]?.startsWith(CSRF_EXPIRED)) {
+  if (
+    response.status === 403 &&
+    payload.errors?.[0]?.startsWith(CSRF_EXPIRED)
+  ) {
     await send("/csrf/", "GET");
     ({ response, payload } = await send(path, method, body));
   }
@@ -43,7 +50,10 @@ export async function api(path, { method = "GET", body } = {}) {
   }
 
   if (!response.ok) {
-    throw new ApiError(payload.errors ?? ["Algo salió mal. Inténtalo de nuevo."], response.status);
+    throw new ApiError(
+      payload.errors ?? ["Algo salió mal. Inténtalo de nuevo."],
+      response.status,
+    );
   }
   return payload; // { data, message }
 }

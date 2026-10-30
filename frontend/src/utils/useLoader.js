@@ -15,7 +15,9 @@ export function useLoader(load, deps = []) {
       .then((payload) => !cancelled && setData(payload.data))
       .catch((err) => !cancelled && setError(errorsFrom(err)[0]))
       .finally(() => !cancelled && setLoading(false));
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [version, ...deps]);
 

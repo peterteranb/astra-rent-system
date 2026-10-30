@@ -1,7 +1,28 @@
-.account { max-width: 520px; }
-.account__fixed { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 0 0 6px; }
-.account__fixed dt { font-size: 12px; font-weight: 700; color: var(--color-muted); }
-.account__fixed dd { margin: 0; font-family: var(--font-title); font-size: 18px; }
-.account .form { margin-top: 22px; }
-.account .field__input { font-size: 16px; }
-.account .btn { width: 100%; }
+.account {
+  max-width: 520px;
+}
+.account__fixed {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin: 0 0 6px;
+}
+.account__fixed dt {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-muted);
+}
+.account__fixed dd {
+  margin: 0;
+  font-family: var(--font-title);
+  font-size: 18px;
+}
+.account .form {
+  margin-top: 22px;
+}
+.account .field__input {
+  font-size: 16px;
+}
+.account .btn {
+  width: 100%;
+}

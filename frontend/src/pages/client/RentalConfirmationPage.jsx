@@ -35,28 +35,37 @@ export default function RentalConfirmationPage() {
         <p className="eyebrow">TU RESERVA</p>
         <h1 className="flow-title">Renta confirmada</h1>
 
-        {message && <Alert type={approved ? "success" : "info"}>{message}</Alert>}
+        {message && (
+          <Alert type={approved ? "success" : "info"}>{message}</Alert>
+        )}
         <FormErrors errors={errors} />
         {loading && <p className="flow-message">Cargando tu renta…</p>}
 
         {rental && (
           <>
-            <EquipmentImage inventoryId={rental.equipment.inventory_id} name={rental.equipment.name} />
+            <EquipmentImage
+              inventoryId={rental.equipment.inventory_id}
+              name={rental.equipment.name}
+            />
             <dl className="flow-details">
               <dt>Equipo</dt>
-              <dd>{rental.equipment.inventory_id} · {rental.equipment.name}</dd>
+              <dd>
+                {rental.equipment.inventory_id} · {rental.equipment.name}
+              </dd>
               <dt>Recojo</dt>
               <dd>{formatDate(rental.start)}</dd>
               <dt>Devolución</dt>
               <dd>{formatDate(rental.end)}</dd>
               <dt>Total</dt>
               <dd>
-                {rental.rental_days} día{rental.rental_days === 1 ? "" : "s"} × {rental.daily_price} Bs ={" "}
-                {rental.total_price} Bs
+                {rental.rental_days} día{rental.rental_days === 1 ? "" : "s"} ×{" "}
+                {rental.daily_price} Bs = {rental.total_price} Bs
               </dd>
               <dt>Pago</dt>
               <dd>
-                <span className={`rental-badge ${rental.is_paid ? "rental-badge--paid" : "rental-badge--pending"}`}>
+                <span
+                  className={`rental-badge ${rental.is_paid ? "rental-badge--paid" : "rental-badge--pending"}`}
+                >
                   {rental.payment_label}
                 </span>
               </dd>
@@ -71,10 +80,17 @@ export default function RentalConfirmationPage() {
             <p className="flow-hint">Entregamos los equipos desde las 18:00.</p>
 
             <div className="flow-actions">
-              <Link className="btn btn--primary" to="/">Volver al catálogo</Link>
-              <Link className="btn btn--secondary" to="/my-rentals">Ver mis rentas</Link>
+              <Link className="btn btn--primary" to="/">
+                Volver al catálogo
+              </Link>
+              <Link className="btn btn--secondary" to="/my-rentals">
+                Ver mis rentas
+              </Link>
               {!rental.is_paid && rental.status === "reserved" && (
-                <Link className="btn btn--secondary" to={`/rentals/${rental.id}/pay`}>
+                <Link
+                  className="btn btn--secondary"
+                  to={`/rentals/${rental.id}/pay`}
+                >
                   Intentar pagar de nuevo
                 </Link>
               )}

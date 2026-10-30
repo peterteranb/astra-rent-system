@@ -5,7 +5,11 @@ export default function DataTable({ columns, rows, rowKey }) {
   return (
     <table className="table">
       <thead>
-        <tr>{columns.map((column, index) => <th key={index}>{column.label}</th>)}</tr>
+        <tr>
+          {columns.map((column, index) => (
+            <th key={index}>{column.label}</th>
+          ))}
+        </tr>
       </thead>
       <tbody>
         {rows.map((row) => (

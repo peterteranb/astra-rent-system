@@ -11,19 +11,30 @@ import OrderSelect from "../../components/OrderSelect";
 
 export default function StaffReturnsPage() {
   const [order, setOrder] = useState("");
-  const { data, loading, error } = useLoader(() => getStaffReturns(order), [order]);
+  const { data, loading, error } = useLoader(
+    () => getStaffReturns(order),
+    [order],
+  );
   const message = useLocation().state?.message; // viene de la pantalla de devolución
 
   const columns = [
-    { label: "Equipo", render: (r) => `${r.equipment.inventory_id} · ${r.equipment.name}` },
+    {
+      label: "Equipo",
+      render: (r) => `${r.equipment.inventory_id} · ${r.equipment.name}`,
+    },
     { label: "Cliente", render: (r) => r.client },
-    { label: "Estado", render: (r) => <Badge tone={r.status}>{r.status_label}</Badge> },
+    {
+      label: "Estado",
+      render: (r) => <Badge tone={r.status}>{r.status_label}</Badge>,
+    },
     { label: "Vence", render: (r) => formatDateTime(r.end) },
     {
       label: "",
       render: (r) => (
         <div className="row-actions">
-          <Link className="btn btn--primary" to={`/staff/returns/${r.id}`}>Registrar devolución</Link>
+          <Link className="btn btn--primary" to={`/staff/returns/${r.id}`}>
+            Registrar devolución
+          </Link>
         </div>
       ),
     },
@@ -31,12 +42,22 @@ export default function StaffReturnsPage() {
 
   return (
     <Layout title="Devoluciones pendientes">
-      <OrderSelect value={order} onChange={setOrder} dateLabel="Vencen primero" />
+      <OrderSelect
+        value={order}
+        onChange={setOrder}
+        dateLabel="Vencen primero"
+      />
       {message && <Alert type="success">{message}</Alert>}
       {error && <Alert>{error}</Alert>}
-      {loading && !data && <p className="list-message">Cargando devoluciones…</p>}
-      {data && data.length === 0 && <p className="list-message">No hay devoluciones pendientes.</p>}
-      {data && data.length > 0 && <DataTable columns={columns} rows={data} rowKey={(r) => r.id} />}
+      {loading && !data && (
+        <p className="list-message">Cargando devoluciones…</p>
+      )}
+      {data && data.length === 0 && (
+        <p className="list-message">No hay devoluciones pendientes.</p>
+      )}
+      {data && data.length > 0 && (
+        <DataTable columns={columns} rows={data} rowKey={(r) => r.id} />
+      )}
     </Layout>
   );
 }

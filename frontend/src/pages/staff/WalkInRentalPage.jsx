@@ -18,7 +18,8 @@ const EMPTY = {
   end_time: RETURN_UNTIL,
 };
 
-const name = (u) => [u.first_name, u.last_name].filter(Boolean).join(" ") || "sin nombre";
+const name = (u) =>
+  [u.first_name, u.last_name].filter(Boolean).join(" ") || "sin nombre";
 
 export default function WalkInRentalPage() {
   const [params] = useSearchParams();
@@ -54,7 +55,9 @@ export default function WalkInRentalPage() {
     try {
       const { data } = await getCatalog({ q: eqQuery, status: "available" });
       setEquipmentList(
-        data.results.filter((x) => x.inventory_id.includes(eqQuery.toUpperCase()))
+        data.results.filter((x) =>
+          x.inventory_id.includes(eqQuery.toUpperCase()),
+        ),
       );
     } catch (x) {
       setError(errorsFrom(x)[0]);
@@ -130,15 +133,15 @@ export default function WalkInRentalPage() {
           <form className="search-row" onSubmit={findEquipment}>
             <Field
               id="equipment"
-                label={
-                    <>
-                      Buscar por código
-                      <br />
-                      <small style={{ fontWeight: "normal", opacity: 0.8 }}>
-                        MES para mesas, SIL para sillas y CMB para combos
-                      </small>
-                    </>
-                  }
+              label={
+                <>
+                  Buscar por código
+                  <br />
+                  <small style={{ fontWeight: "normal", opacity: 0.8 }}>
+                    MES para mesas, SIL para sillas y CMB para combos
+                  </small>
+                </>
+              }
               value={eqQuery}
               onChange={(e) => setEqQuery(e.target.value)}
             />
@@ -166,7 +169,8 @@ export default function WalkInRentalPage() {
           <PeriodFields
             values={period}
             onChange={(f) => (e) =>
-              setPeriod({ ...period, [f]: e.target.value })}
+              setPeriod({ ...period, [f]: e.target.value })
+            }
           />
           <button className="btn btn--primary">Registrar renta</button>
         </form>

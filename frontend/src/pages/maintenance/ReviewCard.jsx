@@ -16,7 +16,8 @@ export default function ReviewCard({ item, onSaved }) {
   const [sending, setSending] = useState(false);
   const [errors, setErrors] = useState([]);
 
-  const showCharge = Boolean(item.last_client) && DAMAGE_STATES.includes(status);
+  const showCharge =
+    Boolean(item.last_client) && DAMAGE_STATES.includes(status);
 
   const submit = async (e) => {
     e.preventDefault();
@@ -37,7 +38,11 @@ export default function ReviewCard({ item, onSaved }) {
 
   return (
     <li className="maint-item">
-      <EquipmentImage inventoryId={item.inventory_id} name={item.name} className="maint-item__image" />
+      <EquipmentImage
+        inventoryId={item.inventory_id}
+        name={item.name}
+        className="maint-item__image"
+      />
       <div className="maint-item__details">
         <div className="maint-item__head">
           <span className="maint-item__id">{item.inventory_id}</span>
@@ -46,40 +51,68 @@ export default function ReviewCard({ item, onSaved }) {
         </div>
 
         <form className="maint-form" onSubmit={submit} noValidate>
-        <FormErrors errors={errors} />
+          <FormErrors errors={errors} />
 
-        <div className="maint-form__row">
-          <div className="field">
-            <label className="field__label" htmlFor={`status-${item.inventory_id}`}>Nuevo estado</label>
-            <div className="field__control">
-              <select id={`status-${item.inventory_id}`} className="field__input"
-                value={status} onChange={(e) => setStatus(e.target.value)}>
-                {item.choices.map(({ value, label }) => (
-                  <option key={value} value={value}>{label}</option>
-                ))}
-              </select>
+          <div className="maint-form__row">
+            <div className="field">
+              <label
+                className="field__label"
+                htmlFor={`status-${item.inventory_id}`}
+              >
+                Nuevo estado
+              </label>
+              <div className="field__control">
+                <select
+                  id={`status-${item.inventory_id}`}
+                  className="field__input"
+                  value={status}
+                  onChange={(e) => setStatus(e.target.value)}
+                >
+                  {item.choices.map(({ value, label }) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
+
+            <div className="field">
+              <label
+                className="field__label"
+                htmlFor={`comment-${item.inventory_id}`}
+              >
+                Comentario (opcional)
+              </label>
+              <div className="field__control">
+                <input
+                  id={`comment-${item.inventory_id}`}
+                  className="field__input"
+                  value={comment}
+                  onChange={(e) => setComment(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <button
+              className="btn btn--primary"
+              type="submit"
+              disabled={sending}
+            >
+              {sending ? "Guardando…" : "Guardar"}
+            </button>
           </div>
 
-          <div className="field">
-            <label className="field__label" htmlFor={`comment-${item.inventory_id}`}>Comentario (opcional)</label>
-            <div className="field__control">
-              <input id={`comment-${item.inventory_id}`} className="field__input"
-                value={comment} onChange={(e) => setComment(e.target.value)} />
-            </div>
-          </div>
-
-          <button className="btn btn--primary" type="submit" disabled={sending}>
-            {sending ? "Guardando…" : "Guardar"}
-          </button>
-        </div>
-
-        {showCharge && (
-          <label className="maint-check">
-            <input type="checkbox" checked={charge} onChange={(e) => setCharge(e.target.checked)} />
-            {item.charge_label}
-          </label>
-        )}
+          {showCharge && (
+            <label className="maint-check">
+              <input
+                type="checkbox"
+                checked={charge}
+                onChange={(e) => setCharge(e.target.checked)}
+              />
+              {item.charge_label}
+            </label>
+          )}
         </form>
       </div>
     </li>

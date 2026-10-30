@@ -34,7 +34,9 @@ export default function ReturnFormPage() {
     }
   };
 
-  const title = rental ? `Devolver ${rental.equipment.inventory_id}` : "Devolver equipo";
+  const title = rental
+    ? `Devolver ${rental.equipment.inventory_id}`
+    : "Devolver equipo";
 
   return (
     <Layout title={title}>
@@ -43,8 +45,14 @@ export default function ReturnFormPage() {
 
       {data && !rental && (
         <section className="card account">
-          <Alert type="info">Esta renta ya no está pendiente de devolución.</Alert>
-          <Link className="btn btn--secondary" style={{ marginTop: 16 }} to="/staff/returns">
+          <Alert type="info">
+            Esta renta ya no está pendiente de devolución.
+          </Alert>
+          <Link
+            className="btn btn--secondary"
+            style={{ marginTop: 16 }}
+            to="/staff/returns"
+          >
             Volver a devoluciones
           </Link>
         </section>
@@ -52,29 +60,47 @@ export default function ReturnFormPage() {
 
       {rental && (
         <section className="card account">
-          <EquipmentImage inventoryId={rental.equipment.inventory_id} name={rental.equipment.name} />
+          <EquipmentImage
+            inventoryId={rental.equipment.inventory_id}
+            name={rental.equipment.name}
+          />
           <p>{rental.equipment.name}</p>
           <p className="lead">
-            Cliente {rental.client} · <Badge tone={rental.status}>{rental.status_label}</Badge> ·
-            vence el {formatDateTime(rental.end)}.
+            Cliente {rental.client} ·{" "}
+            <Badge tone={rental.status}>{rental.status_label}</Badge> · vence el{" "}
+            {formatDateTime(rental.end)}.
           </p>
 
           <form className="form" onSubmit={submit} noValidate>
             <FormErrors errors={errors} />
 
             <div className="field">
-              <label className="field__label" htmlFor="note">Observación</label>
+              <label className="field__label" htmlFor="note">
+                Observación
+              </label>
               <div className="field__control">
-                <textarea id="note" className="field__input" rows={3} maxLength={200}
-                  value={note} onChange={(e) => setNote(e.target.value)} />
+                <textarea
+                  id="note"
+                  className="field__input"
+                  rows={3}
+                  maxLength={200}
+                  value={note}
+                  onChange={(e) => setNote(e.target.value)}
+                />
               </div>
               <p className="field__hint">Cuenta cómo llegó el equipo.</p>
             </div>
 
-            <button className="btn btn--primary" type="submit" disabled={sending}>
+            <button
+              className="btn btn--primary"
+              type="submit"
+              disabled={sending}
+            >
               {sending ? "Guardando…" : "Registrar devolución"}
             </button>
-            <Link className="btn btn--secondary" to="/staff/returns">Volver a devoluciones</Link>
+            <Link className="btn btn--secondary" to="/staff/returns">
+              Volver a devoluciones
+            </Link>
           </form>
         </section>
       )}

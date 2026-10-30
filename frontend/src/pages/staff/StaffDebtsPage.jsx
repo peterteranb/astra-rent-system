@@ -14,7 +14,8 @@ export default function StaffDebtsPage() {
 
   const pay = async (debt) => {
     // El dinero se cobra en persona: se confirma antes de registrar.
-    if (!window.confirm(`¿El cliente ya pagó ${formatMoney(debt.amount)}?`)) return;
+    if (!window.confirm(`¿El cliente ya pagó ${formatMoney(debt.amount)}?`))
+      return;
     setBusy(true);
     setNotice(null);
     try {
@@ -38,7 +39,11 @@ export default function StaffDebtsPage() {
       label: "",
       render: (d) => (
         <div className="row-actions">
-          <button className="btn btn--primary" disabled={busy} onClick={() => pay(d)}>
+          <button
+            className="btn btn--primary"
+            disabled={busy}
+            onClick={() => pay(d)}
+          >
             Registrar pago
           </button>
         </div>
@@ -51,7 +56,9 @@ export default function StaffDebtsPage() {
       {notice && <Alert type={notice.type}>{notice.text}</Alert>}
       {error && <Alert>{error}</Alert>}
       {loading && !data && <p className="list-message">Cargando deudas…</p>}
-      {data && data.debts.length === 0 && <p className="list-message">No hay deudas pendientes.</p>}
+      {data && data.debts.length === 0 && (
+        <p className="list-message">No hay deudas pendientes.</p>
+      )}
 
       {data && data.debts.length > 0 && (
         <>
@@ -60,7 +67,8 @@ export default function StaffDebtsPage() {
             <ul>
               {data.totals.map((row) => (
                 <li key={row.username}>
-                  {row.first_name} {row.last_name} ({row.username}): <strong>{formatMoney(row.total)}</strong>
+                  {row.first_name} {row.last_name} ({row.username}):{" "}
+                  <strong>{formatMoney(row.total)}</strong>
                 </li>
               ))}
             </ul>

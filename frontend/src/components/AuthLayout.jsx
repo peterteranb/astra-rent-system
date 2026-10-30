@@ -12,10 +12,17 @@ export default function AuthLayout({ heading, text, children }) {
 
       <div className="auth__body">
         <aside className="auth__brand">
-          <img className="auth__art" src={tigre} alt="Tigre de SergioCorp con un carrito" />
+          <img
+            className="auth__art"
+            src={tigre}
+            alt="Tigre de SergioCorp con un carrito"
+          />
           <h2 className="auth__brand-title">{heading}</h2>
           <p className="auth__brand-text">{text}</p>
-          <div className="auth__stripes auth__stripes--light" aria-hidden="true" />
+          <div
+            className="auth__stripes auth__stripes--light"
+            aria-hidden="true"
+          />
           <div className="auth__values">
             <span>DESDE SANTA CRUZ DE LA SIERRA BOLIVIA</span>
             <span>MESAS Y SILLAS</span>

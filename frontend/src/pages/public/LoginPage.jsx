@@ -17,7 +17,8 @@ export default function LoginPage() {
   if (loading) return null;
   if (user) return <Navigate to={homePathFor(user.role)} replace />;
 
-  const update = (field) => (e) => setForm({ ...form, [field]: e.target.value });
+  const update = (field) => (e) =>
+    setForm({ ...form, [field]: e.target.value });
 
   const submit = async (e) => {
     e.preventDefault();
@@ -43,28 +44,49 @@ export default function LoginPage() {
       <section className="card">
         <p className="eyebrow">ACCESO A TU CUENTA</p>
         <h1 className="auth__title">Iniciar sesión</h1>
-        <p className="lead">Entra para consultar equipos y gestionar tus rentas.</p>
+        <p className="lead">
+          Entra para consultar equipos y gestionar tus rentas.
+        </p>
 
         <form className="form" onSubmit={submit} noValidate>
-          {location.state?.message && <Alert type="success">{location.state.message}</Alert>}
+          {location.state?.message && (
+            <Alert type="success">{location.state.message}</Alert>
+          )}
           <FormErrors errors={errors} />
 
-          <Field id="username" label="Usuario o correo" autoComplete="username"
-            value={form.username} onChange={update("username")} />
-          <Field id="password" label="Contraseña" type="password" autoComplete="current-password"
-            value={form.password} onChange={update("password")} />
+          <Field
+            id="username"
+            label="Usuario o correo"
+            autoComplete="username"
+            value={form.username}
+            onChange={update("username")}
+          />
+          <Field
+            id="password"
+            label="Contraseña"
+            type="password"
+            autoComplete="current-password"
+            value={form.password}
+            onChange={update("password")}
+          />
 
-          <Link className="auth__link" to="/forgot-password">¿Olvidaste tu contraseña?</Link>
+          <Link className="auth__link" to="/forgot-password">
+            ¿Olvidaste tu contraseña?
+          </Link>
 
           <button className="btn btn--primary" type="submit" disabled={sending}>
             {sending ? "Iniciando sesión…" : "Iniciar sesión"}
           </button>
-          <Link className="auth__forgot" to="/forgot-password">¿Olvidaste tu contraseña?</Link>
+          <Link className="auth__forgot" to="/forgot-password">
+            ¿Olvidaste tu contraseña?
+          </Link>
 
           <hr className="divider" />
           <div className="auth__switch">
             <p>¿Es tu primera vez en SergioCorp?</p>
-            <Link className="btn btn--secondary" to="/signup">Crear una cuenta</Link>
+            <Link className="btn btn--secondary" to="/signup">
+              Crear una cuenta
+            </Link>
           </div>
         </form>
       </section>

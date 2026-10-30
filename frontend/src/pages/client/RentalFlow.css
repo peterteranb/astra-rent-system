@@ -1,85 +1,85 @@
 .flow-card {
-    max-width: 560px;
-    margin: 0 auto;
+  max-width: 560px;
+  margin: 0 auto;
 }
 
 .flow-title {
-    margin: 4px 0 16px;
-    font-size: 28px;
+  margin: 4px 0 16px;
+  font-size: 28px;
 }
 
 .flow-details {
-    display: grid;
-    grid-template-columns: max-content 1fr;
-    gap: 8px 20px;
-    margin: 0 0 20px;
-    overflow-wrap: anywhere;
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 8px 20px;
+  margin: 0 0 20px;
+  overflow-wrap: anywhere;
 }
 
 .flow-details dt {
-    color: var(--color-muted);
-    font-size: 13px;
-    font-weight: 700;
+  color: var(--color-muted);
+  font-size: 13px;
+  font-weight: 700;
 }
 
 .flow-details dd {
-    margin: 0;
+  margin: 0;
 }
 
 .qr-box {
-    position: relative;
-    display: grid;
-    place-items: center;
-    width: 200px;
-    height: 200px;
-    margin: 0 auto 12px;
-    overflow: hidden;
-    color: var(--color-muted);
-    font-size: 36px;
-    font-weight: 700;
-    border: 3px dashed var(--color-ink);
-    border-radius: var(--radius-lg);
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 200px;
+  height: 200px;
+  margin: 0 auto 12px;
+  overflow: hidden;
+  color: var(--color-muted);
+  font-size: 36px;
+  font-weight: 700;
+  border: 3px dashed var(--color-ink);
+  border-radius: var(--radius-lg);
 }
 
 .qr-box img {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
-    background: var(--color-surface);
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: var(--color-surface);
 }
 
 .flow-hint {
-    color: var(--color-muted);
-    font-size: 14px;
-    text-align: center;
+  color: var(--color-muted);
+  font-size: 14px;
+  text-align: center;
 }
 
 .flow-actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-    justify-content: center;
-    margin-top: 16px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+  margin-top: 16px;
 }
 
 .flow-actions .btn {
-    width: auto;
+  width: auto;
 }
 
 .flow-message {
-    padding: 24px;
-    color: var(--color-muted);
-    text-align: center;
+  padding: 24px;
+  color: var(--color-muted);
+  text-align: center;
 }
 
 /* Mismas etiquetas de ClientRentalsPage.css; si ya las tenés ahí, mové ese bloque a un CSS global */
 .rental-badge {
-    padding: 2px 10px;
-    font-size: 12px;
-    font-weight: 700;
-    border-radius: 999px;
+  padding: 2px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  border-radius: 999px;
 }
 
 /* ==== Layout del flujo de renta ==== */
@@ -93,7 +93,10 @@
 }
 
 @media (min-width: 480px) {
-  .rental-flow { padding: 48px 24px; align-items: center; }
+  .rental-flow {
+    padding: 48px 24px;
+    align-items: center;
+  }
 }
 
 .rental-card {
@@ -115,7 +118,9 @@
 }
 
 @media (min-width: 480px) {
-  .rental-card__title { font-size: 28px; }
+  .rental-card__title {
+    font-size: 28px;
+  }
 }
 
 /* ==== Bloque de fechas (dos columnas en pantallas medianas) ==== */
@@ -207,5 +212,11 @@
   opacity: 1;
 }
 
-.rental-badge--paid { color: #1b7a3d; background: #e6f4ea; }
-.rental-badge--pending { color: #b42318; background: #fdecea; }
+.rental-badge--paid {
+  color: #1b7a3d;
+  background: #e6f4ea;
+}
+.rental-badge--pending {
+  color: #b42318;
+  background: #fdecea;
+}

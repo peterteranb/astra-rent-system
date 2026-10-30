@@ -60,17 +60,23 @@ export default function PayRentalPage() {
 
         {rental && (
           <>
-            <EquipmentImage inventoryId={rental.equipment.inventory_id} name={rental.equipment.name} />
+            <EquipmentImage
+              inventoryId={rental.equipment.inventory_id}
+              name={rental.equipment.name}
+            />
             <dl className="flow-details">
               <dt>Equipo</dt>
-              <dd>{rental.equipment.inventory_id} · {rental.equipment.name}</dd>
+              <dd>
+                {rental.equipment.inventory_id} · {rental.equipment.name}
+              </dd>
               <dt>Recojo</dt>
               <dd>{formatDate(rental.start)}</dd>
               <dt>Devolución</dt>
               <dd>{formatDate(rental.end)}</dd>
               <dt>Total</dt>
               <dd>
-                {rental.rental_days} día{rental.rental_days === 1 ? "" : "s"} × {rental.daily_price} Bs ={" "}
+                {rental.rental_days} día{rental.rental_days === 1 ? "" : "s"} ×{" "}
+                {rental.daily_price} Bs ={" "}
                 <strong>{rental.total_price} Bs</strong>
               </dd>
             </dl>
@@ -81,18 +87,31 @@ export default function PayRentalPage() {
               <img
                 src="/img/qr.png"
                 alt="Código QR de pago"
-                onError={(e) => { e.currentTarget.style.display = "none"; }}
+                onError={(e) => {
+                  e.currentTarget.style.display = "none";
+                }}
               />
             </div>
             <p className="flow-hint">
-              Escanea el QR para pagar {rental.total_price} Bs. Si prefieres, paga en la tienda al recoger el equipo.
+              Escanea el QR para pagar {rental.total_price} Bs. Si prefieres,
+              paga en la tienda al recoger el equipo.
             </p>
 
             <div className="flow-actions">
-              <button className="btn btn--primary" type="button" disabled={sending} onClick={() => choose(true)}>
+              <button
+                className="btn btn--primary"
+                type="button"
+                disabled={sending}
+                onClick={() => choose(true)}
+              >
                 Ya pagué con QR
               </button>
-              <button className="btn btn--secondary" type="button" disabled={sending} onClick={() => choose(false)}>
+              <button
+                className="btn btn--secondary"
+                type="button"
+                disabled={sending}
+                onClick={() => choose(false)}
+              >
                 Pagar en la tienda al recoger
               </button>
             </div>

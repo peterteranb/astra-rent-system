@@ -42,28 +42,67 @@ export default function App() {
 
       {/* Cliente (cualquiera con sesión) */}
       <Route path="/" element={guard(<CatalogPage />)} />
-      <Route path="/equipment/:inventoryId/rent" element={guard(<RentFormPage />)} />
+      <Route
+        path="/equipment/:inventoryId/rent"
+        element={guard(<RentFormPage />)}
+      />
       <Route path="/rentals/:rentalId/pay" element={guard(<PayRentalPage />)} />
-      <Route path="/rentals/:rentalId" element={guard(<RentalConfirmationPage />)} />
-      <Route path="/rentals/:rentalId/modify" element={guard(<ModifyFormPage />)} />
-      <Route path="/my-rentals" element={guard(<ClientRentalsPage />, ["cliente"])} />
+      <Route
+        path="/rentals/:rentalId"
+        element={guard(<RentalConfirmationPage />)}
+      />
+      <Route
+        path="/rentals/:rentalId/modify"
+        element={guard(<ModifyFormPage />)}
+      />
+      <Route
+        path="/my-rentals"
+        element={guard(<ClientRentalsPage />, ["cliente"])}
+      />
       <Route path="/account" element={guard(<AccountPage />)} />
       <Route path="/account/password" element={guard(<ChangePasswordPage />)} />
 
       {/* Operador */}
-      <Route path="/staff/reservations" element={guard(<StaffReservationsPage />, ["operador"])} />
-      <Route path="/staff/returns" element={guard(<StaffReturnsPage />, ["operador"])} />
-      <Route path="/staff/returns/:rentalId" element={guard(<ReturnFormPage />, ["operador"])} />
-      <Route path="/staff/walk-in" element={guard(<WalkInRentalPage />, ["operador"])} />
-      <Route path="/staff/clients/new" element={guard(<NewClientPage />, ["operador"])} />
-      <Route path="/staff/debts" element={guard(<StaffDebtsPage />, ["operador"])} />
+      <Route
+        path="/staff/reservations"
+        element={guard(<StaffReservationsPage />, ["operador"])}
+      />
+      <Route
+        path="/staff/returns"
+        element={guard(<StaffReturnsPage />, ["operador"])}
+      />
+      <Route
+        path="/staff/returns/:rentalId"
+        element={guard(<ReturnFormPage />, ["operador"])}
+      />
+      <Route
+        path="/staff/walk-in"
+        element={guard(<WalkInRentalPage />, ["operador"])}
+      />
+      <Route
+        path="/staff/clients/new"
+        element={guard(<NewClientPage />, ["operador"])}
+      />
+      <Route
+        path="/staff/debts"
+        element={guard(<StaffDebtsPage />, ["operador"])}
+      />
 
       {/* Mantenimiento */}
-      <Route path="/maintenance" element={guard(<MaintenancePage />, ["mantenimiento"])} />
+      <Route
+        path="/maintenance"
+        element={guard(<MaintenancePage />, ["mantenimiento"])}
+      />
 
       {/* Administrador (solo lo que no es el admin de Django) */}
-      <Route path="/manager" element={guard(<ManagerDashboardPage />, ["administrador"])} />
-      <Route path="/equipment/new" element={guard(<EquipmentFormPage />, ["administrador"])} />
+      <Route
+        path="/manager"
+        element={guard(<ManagerDashboardPage />, ["administrador"])}
+      />
+      <Route
+        path="/equipment/new"
+        element={guard(<EquipmentFormPage />, ["administrador"])}
+      />
 
       <Route path="*" element={<NotFoundPage />} />
     </Routes>

@@ -30,7 +30,9 @@ export default function MaintenancePage() {
       .then(({ data }) => !cancelled && setItems(data))
       .catch((err) => !cancelled && setError(errorsFrom(err)[0]))
       .finally(() => !cancelled && setLoading(false));
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [status, version]);
 
   const saved = (text) => {
@@ -45,11 +47,24 @@ export default function MaintenancePage() {
 
       <section className="card maint-filter">
         <div className="field">
-          <label className="field__label" htmlFor="status-filter">Estado</label>
+          <label className="field__label" htmlFor="status-filter">
+            Estado
+          </label>
           <div className="field__control">
-            <select id="status-filter" className="field__input" value={status}
-              onChange={(e) => { setStatus(e.target.value); setMessage(""); }}>
-              {FILTERS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+            <select
+              id="status-filter"
+              className="field__input"
+              value={status}
+              onChange={(e) => {
+                setStatus(e.target.value);
+                setMessage("");
+              }}
+            >
+              {FILTERS.map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
             </select>
           </div>
         </div>
@@ -64,7 +79,11 @@ export default function MaintenancePage() {
       <ul className="maint-list">
         {items.map((item) => (
           // La clave incluye el estado: al cambiarlo, el formulario se arma de nuevo con sus opciones.
-          <ReviewCard key={`${item.inventory_id}-${item.status}`} item={item} onSaved={saved} />
+          <ReviewCard
+            key={`${item.inventory_id}-${item.status}`}
+            item={item}
+            onSaved={saved}
+          />
         ))}
       </ul>
     </Layout>

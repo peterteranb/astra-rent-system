@@ -19,7 +19,11 @@ const formatDate = (iso) =>
   });
 
 export default function ClientRentalsPage() {
-  const [summary, setSummary] = useState({ rentals: [], debts: [], debt_total: "0.00" });
+  const [summary, setSummary] = useState({
+    rentals: [],
+    debts: [],
+    debt_total: "0.00",
+  });
   const [debtMessage, setDebtMessage] = useState("");
   const [loading, setLoading] = useState(true);
   const [errors, setErrors] = useState([]);
@@ -37,10 +41,17 @@ export default function ClientRentalsPage() {
     }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+  }, [load]);
 
   const cancel = async (rental) => {
-    if (!window.confirm(`¿Cancelar la reserva de ${rental.equipment.inventory_id}?`)) return;
+    if (
+      !window.confirm(
+        `¿Cancelar la reserva de ${rental.equipment.inventory_id}?`,
+      )
+    )
+      return;
     setErrors([]);
     try {
       await cancelRental(rental.id);
@@ -59,7 +70,9 @@ export default function ClientRentalsPage() {
           <span className="eyebrow">MIS RENTAS</span>
           <h2>Tus reservas y pagos</h2>
         </div>
-        {!loading && <span className="rentals-count">{summary.rentals.length} rentas</span>}
+        {!loading && (
+          <span className="rentals-count">{summary.rentals.length} rentas</span>
+        )}
       </div>
 
       <FormErrors errors={errors} />
@@ -77,7 +90,7 @@ export default function ClientRentalsPage() {
         </section>
       )}
 
-        {message && <Alert type="success">{message}</Alert>}
+      {message && <Alert type="success">{message}</Alert>}
 
       {loading && <p className="rentals-message">Cargando tus rentas…</p>}
       {!loading && summary.rentals.length === 0 && (
@@ -92,12 +105,16 @@ export default function ClientRentalsPage() {
                 src={`/img/equipment/${rental.equipment.inventory_id}.jpg`}
                 alt={rental.equipment.name}
                 loading="lazy"
-                onError={(e) => { e.currentTarget.style.display = "none"; }}
+                onError={(e) => {
+                  e.currentTarget.style.display = "none";
+                }}
               />
             </div>
 
             <div className="rental-card__body">
-              <p className="rental-card__code">{rental.equipment.inventory_id}</p>
+              <p className="rental-card__code">
+                {rental.equipment.inventory_id}
+              </p>
               <h3>{rental.equipment.name}</h3>
               <p className="rental-card__dates">
                 {formatDate(rental.start)} → {formatDate(rental.end)}
@@ -106,7 +123,9 @@ export default function ClientRentalsPage() {
                 <span className={`rental-badge rental-badge--${rental.status}`}>
                   {rental.status_label}
                 </span>
-                <span className={`rental-badge ${rental.is_paid ? "rental-badge--paid" : "rental-badge--pending"}`}>
+                <span
+                  className={`rental-badge ${rental.is_paid ? "rental-badge--paid" : "rental-badge--pending"}`}
+                >
                   {rental.payment_label}
                 </span>
               </div>
@@ -116,10 +135,17 @@ export default function ClientRentalsPage() {
               <strong>{rental.total_price} Bs</strong>
               {rental.client_can_change ? (
                 <div className="rental-card__actions">
-                  <Link className="btn btn--secondary" to={`/rentals/${rental.id}/modify`}>
+                  <Link
+                    className="btn btn--secondary"
+                    to={`/rentals/${rental.id}/modify`}
+                  >
                     Modificar
                   </Link>
-                  <button className="btn btn--secondary" type="button" onClick={() => cancel(rental)}>
+                  <button
+                    className="btn btn--secondary"
+                    type="button"
+                    onClick={() => cancel(rental)}
+                  >
                     Cancelar
                   </button>
                 </div>
