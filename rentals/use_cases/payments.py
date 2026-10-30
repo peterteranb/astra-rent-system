@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from decimal import Decimal
 
 from django.db import transaction
-from django.db.models import Sum
+from django.db.models import Max, Sum
 from django.utils import timezone
 
 from ..errors import DebtStateError, RentalStateError
@@ -82,11 +82,11 @@ def charge_debt(rental, reason, amount):
 
 
 def pending_debts():
-    """Devuelve todas las deudas sin pagar con su cliente y su equipo, agrupadas por cliente."""
+    """Devuelve todas las deudas sin pagar con su cliente y su equipo, la más nueva primero (ENT-100)."""
     return (
         Debt.objects.pending()
         .select_related("rental__client", "rental__equipment")
-        .order_by("rental__client__username", "created_at")
+        .order_by("-created_at")
     )
 
 
@@ -96,7 +96,7 @@ def debts_overview() -> DebtsOverview:
 
 
 def pending_debts_of(client):
-    """Devuelve las deudas sin pagar del cliente, la más antigua primero (CU-16)."""
+    """Devuelve las deudas sin pagar del cliente, la más nueva primero (CU-16)."""
     return pending_debts().filter(rental__client=client)
 
 
@@ -106,12 +106,12 @@ def debt_total_of(client) -> Decimal:
 
 
 def pending_totals_by_client():
-    """Devuelve el usuario, el nombre y la deuda total de cada cliente que debe, el que más debe primero."""
+    """Devuelve el usuario, el nombre y la deuda total de cada cliente que debe, el de la deuda más nueva primero (ENT-100)."""
     return (
         Debt.objects.pending()
         .values("rental__client__username", "rental__client__first_name", "rental__client__last_name")
-        .annotate(total=Sum("amount"))
-        .order_by("-total")
+        .annotate(total=Sum("amount"), latest=Max("created_at"))
+        .order_by("-latest")
     )
 
 

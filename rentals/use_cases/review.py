@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from decimal import Decimal
 
 from django.db import transaction
-from django.db.models import Case, IntegerField, Prefetch, Value, When
+from django.db.models import F, Max, Prefetch
 
 from .. import rules
 from ..errors import InvalidStatusChangeError
@@ -38,15 +38,22 @@ class ReviewOutcome:
     cancelled: list[Rental]
 
 
+def latest_change_first(equipment):
+    """Ordena los equipos por su último cambio de estado, el más reciente primero; los que nunca cambiaron, al final (ENT-100)."""
+    return equipment.annotate(last_change=Max("status_changes__changed_at")).order_by(
+        F("last_change").desc(nulls_last=True), "inventory_id"
+    )
+
+
 def equipment_to_review():
-    """Devuelve los equipos que esperan a mantenimiento: en revisión o en reparación."""
-    return Equipment.objects.filter(
-        status__in=[EquipmentStatus.IN_REVIEW, EquipmentStatus.IN_REPAIR]
+    """Devuelve los equipos que esperan a mantenimiento, en revisión o en reparación, el último que cambió primero."""
+    return latest_change_first(
+        Equipment.objects.filter(status__in=[EquipmentStatus.IN_REVIEW, EquipmentStatus.IN_REPAIR])
     )
 
 
 def review_queue(status=""):
-    """Devuelve los equipos que no están de baja, con el filtro de estado; los que esperan revisión van primero (CU-10)."""
+    """Devuelve los equipos que no están de baja, con el filtro de estado; el último que cambió va primero (CU-10)."""
     equipment = reviewable_equipment()
     if status:
         equipment = equipment.filter(status=status)
@@ -57,21 +64,14 @@ def review_queue(status=""):
 
 
 def reviewable_equipment():
-    """Equipos que no están de baja, primero los «En revisión», cada uno con sus rentas devueltas, la última primero."""
+    """Equipos que no están de baja, el último que cambió primero, cada uno con sus rentas devueltas, la última primero."""
     # Una sola consulta trae las rentas de todos los equipos, no una por equipo.
     returned = Prefetch(
         "rentals",
         queryset=Rental.objects.filter(returned_at__isnull=False).select_related("client").order_by("-returned_at"),
         to_attr="returned_rentals",
     )
-    waits_review = Case(
-        When(status=EquipmentStatus.IN_REVIEW, then=Value(0)), default=Value(1), output_field=IntegerField()
-    )
-    return (
-        Equipment.objects.exclude(status=EquipmentStatus.RETIRED)
-        .order_by(waits_review, "inventory_id")
-        .prefetch_related(returned)
-    )
+    return latest_change_first(Equipment.objects.exclude(status=EquipmentStatus.RETIRED)).prefetch_related(returned)
 
 
 def review_choices_for(equipment):

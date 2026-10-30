@@ -180,7 +180,7 @@ Respuesta: la renta cancelada; `message`: `"Reserva cancelada: MES-00005 de cl01
 
 ### CU-08 · Entregar
 
-`GET /api/staff/reservations/` · Operador → `data` = las rentas «Reservadas», la más próxima primero.
+`GET /api/staff/reservations/?order=recent` · Operador → `data` = las rentas «Reservadas», la más nueva primero (ENT-100); con `?order=date`, la de recojo más próximo primero. Un valor desconocido usa `recent`.
 
 `POST /api/staff/rentals/<id>/pickup/` · Operador · `{"paid_now": true}` solo si cobró en efectivo en ese momento
 
@@ -189,7 +189,7 @@ Respuesta: la renta cancelada; `message`: `"Reserva cancelada: MES-00005 de cl01
 
 ### CU-09 · Devolver
 
-`GET /api/staff/returns/` · Operador → `data` = las rentas «Rentadas», la que vence primero arriba: solo esas se devuelven (ENT-93).
+`GET /api/staff/returns/?order=recent` · Operador → `data` = las rentas «Rentadas», la más nueva primero (ENT-100); con `?order=date`, la que vence primero. Solo esas se devuelven (ENT-93).
 
 `POST /api/staff/rentals/<id>/return/` · Operador · `{"note": "Una pata floja"}`
 
@@ -204,11 +204,13 @@ Respuesta: la renta cancelada; `message`: `"Reserva cancelada: MES-00005 de cl01
 {"data": {"debts": [/* deudas sin pagar */], "totals": [{"username": "cl02", "first_name": "Diego", "last_name": "Rojas", "total": "40.00"}]}, "message": ""}
 ```
 
+`debts` viene con la deuda más nueva primero y `totals` con el cliente de la deuda más nueva primero (ENT-100).
+
 `POST /api/staff/debts/<id>/pay/` · Operador · sin cuerpo. Las deudas se pagan solo en la tienda (ENT-92): no hay endpoint para que el cliente pague una deuda → `message`: `"Pago registrado: deuda de 40,00 Bs de cl02."`. Error: `"Esta deuda ya se pagó el 28/10/2026 10:15."`.
 
 ### CU-10 · Mantenimiento
 
-`GET /api/maintenance/equipment/?status=in_review` · Mantenimiento → `data` = todos los equipos que no están de baja, primero los «En revisión»; `status` filtra por estado (ENT-90).
+`GET /api/maintenance/equipment/?status=in_review` · Mantenimiento → `data` = todos los equipos que no están de baja, el que cambió de estado más recientemente primero (ENT-100); `status` filtra por estado (ENT-90).
 
 ```json
 {"data": [{"inventory_id": "SIL-00003", "name": "Silla plegable blanca", "status": "in_review", "status_label": "En revisión", "daily_price": "4.00",
@@ -257,7 +259,7 @@ Respuesta: el equipo «Disponible», con el código en mayúsculas; `message`: `
 }, "message": ""}
 ```
 
-Cada lista trae su total y sus primeras 10 filas.
+Cada lista trae su total y sus primeras 10 filas, lo último primero: las rentas por fecha de creación, los equipos por su último cambio de estado y los clientes por su deuda más nueva (ENT-100).
 
 CU-13 (corregir el estado de un equipo) y CU-14 (historial) siguen en el admin de Django.
 

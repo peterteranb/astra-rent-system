@@ -12,18 +12,30 @@ from . import history
 from .payments import charge_debt
 
 
-def reservations_to_hand_over():
-    """Devuelve las rentas «Reservadas» que el operador todavía puede entregar, la más próxima primero."""
+# ENT-100: por defecto lo último primero; para atender en la tienda también sirve el orden por fecha.
+ORDER_RECENT = "recent"
+ORDER_BY_DATE = "date"
+
+
+def reservations_to_hand_over(order=ORDER_RECENT):
+    """Devuelve las rentas «Reservadas» que el operador todavía puede entregar, la más nueva o la de recojo más próximo primero."""
     return (
         Rental.objects.reserved_at(timezone.now())
         .select_related("equipment", "client")
-        .order_by("start_datetime")
+        .order_by(order_field(order, "start_datetime"))
     )
 
 
-def rentals_to_receive():
-    """Devuelve las rentas «Rentadas», la que vence primero arriba: solo esas se devuelven (ENT-93)."""
-    return Rental.objects.rented().select_related("equipment", "client").order_by("end_datetime")
+def rentals_to_receive(order=ORDER_RECENT):
+    """Devuelve las rentas «Rentadas», la más nueva o la que vence primero arriba: solo esas se devuelven (ENT-93)."""
+    return Rental.objects.rented().select_related("equipment", "client").order_by(order_field(order, "end_datetime"))
+
+
+def order_field(order, date_field):
+    """Devuelve por qué campo se ordena: date_field si se pidió por fecha; si no, la renta más nueva primero."""
+    if order == ORDER_BY_DATE:
+        return date_field
+    return "-created_at"
 
 
 @logs_rejection("PICKUP_REJECTED")

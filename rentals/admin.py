@@ -16,6 +16,7 @@ admin.site.site_title = "SergioCorp"
 admin.site.index_title = "Panel del administrador"
 
 # Con unos 1000 equipos (ENT-02), cada lista del admin se lee de 50 en 50.
+# ENT-100: cada lista empieza por lo último que pasó y se filtra por su fecha.
 ADMIN_PAGE_SIZE = 50
 
 
@@ -47,9 +48,11 @@ class EquipmentAdmin(admin.ModelAdmin):
 
     form = EquipmentAdminForm
     list_display = ["inventory_id", "name", "serial_number", "value", "status", "created_at"]
-    list_filter = ["status"]
+    list_filter = ["status", "created_at"]
     search_fields = ["inventory_id", "serial_number", "name"]
     list_per_page = ADMIN_PAGE_SIZE
+    ordering = ["-created_at"]
+    date_hierarchy = "created_at"
     # El estado solo cambia con las acciones, que pasan por history.correct_status
     # y dejan cada cambio en el historial (ENT-34).
     readonly_fields = ["status", "created_at"]
@@ -134,6 +137,7 @@ class RentalAdmin(admin.ModelAdmin):
         "payment",
         "rental_status",
         "registered_by",
+        "created_at",
     ]
     list_select_related = ["equipment", "client", "registered_by"]
     search_fields = [
@@ -142,9 +146,10 @@ class RentalAdmin(admin.ModelAdmin):
         "client__last_name",
         "client__username",
     ]
-    list_filter = [SituationFilter, "payment_method"]
+    list_filter = [SituationFilter, "payment_method", "created_at"]
     list_per_page = ADMIN_PAGE_SIZE
-    date_hierarchy = "start_datetime"
+    ordering = ["-created_at"]
+    date_hierarchy = "created_at"
     actions = ["cancel_reservations"]
 
     @admin.display(description="Estado")
@@ -221,7 +226,7 @@ class DebtAdmin(admin.ModelAdmin):
         "paid_received_by",
     ]
     list_select_related = ["rental__client", "rental__equipment", "paid_received_by"]
-    list_filter = [PaidFilter, "reason"]
+    list_filter = [PaidFilter, "reason", "created_at"]
     search_fields = [
         "rental__client__username",
         "rental__client__first_name",
@@ -230,6 +235,7 @@ class DebtAdmin(admin.ModelAdmin):
     ]
     list_per_page = ADMIN_PAGE_SIZE
     ordering = ["-created_at"]
+    date_hierarchy = "created_at"
     actions = ["register_payments"]
 
     @admin.display(description="Cliente")
@@ -273,11 +279,12 @@ class StatusChangeAdmin(admin.ModelAdmin):
     """Historial de cambios de estado, solo para leer (CU-14, ENT-34)."""
 
     list_display = ["equipment", "old_status", "new_status", "changed_by", "changed_at", "comment"]
-    list_filter = ["new_status", "changed_by"]
+    list_filter = ["new_status", "changed_by", "changed_at"]
     search_fields = ["equipment__inventory_id", "comment"]
     list_select_related = ["equipment", "changed_by"]
     list_per_page = ADMIN_PAGE_SIZE
     ordering = ["-changed_at"]
+    date_hierarchy = "changed_at"
     readonly_fields = ["equipment", "old_status", "new_status", "changed_by", "changed_at", "comment"]
 
     # El historial es evidencia: el admin no lo crea, ni lo edita, ni lo borra.
