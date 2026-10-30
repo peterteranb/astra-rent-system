@@ -29,7 +29,7 @@ def test_rentar_en_linea_escribe_rental_created(cl01, mes01, caplog):
         renta = create_rental(cl01, mes01, local_datetime(2026, 11, 5, 18), local_datetime(2026, 11, 7, 9))
     assert caplog.messages == [
         f'RENTAL_CREATED rental={renta.pk} equipment=MES-00001 "Mesa plegable 1,80 m" client=cl01 "Carla Mendoza" '
-        "period=05/11/2026 18:00-07/11/2026 09:00 amount=40.00 by=cl01 paid=no"
+        "period=05/11/2026 18:00-07/11/2026 09:00 amount=40.00 by=cl01 payment=pending"
     ]
 
 

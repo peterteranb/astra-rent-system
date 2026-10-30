@@ -29,6 +29,16 @@ def test_un_rechazo_por_fechas_ocupadas_lleva_cliente_equipo_y_fechas_pedidas(cl
     assert foto_de_la_base() == antes
 
 
+def test_la_renta_en_tienda_nace_pagada_y_el_log_dice_payment_paid(cl02, op01, mes01, caplog):
+    # op01 registra en la tienda una renta de cl02, cobrada en efectivo -> RENTAL_CREATED dice payment=paid y by=op01
+    with con_la_hora(HOY):
+        renta = create_rental(cl02, mes01, local_datetime(2026, 11, 5, 18), local_datetime(2026, 11, 7, 9), registered_by=op01)
+    assert caplog.messages[0] == (
+        f'RENTAL_CREATED rental={renta.pk} equipment=MES-00001 "Mesa plegable 1,80 m" client=cl02 "Diego Rojas" '
+        "period=05/11/2026 18:00-07/11/2026 09:00 amount=40.00 by=op01 payment=paid"
+    )
+
+
 def test_un_rechazo_al_modificar_lleva_las_fechas_que_se_pidieron(cl01, mes01, caplog):
     # cl01 quiere pasar su reserva de 2 días a 1 día -> MODIFY_REJECTED con las fechas nuevas pedidas
     with con_la_hora(HOY):

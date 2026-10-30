@@ -170,7 +170,7 @@ Si un caso de uso lanza `OperationRejectedError`, el decorador `logs_rejection(e
 
 | Evento | Cuándo se escribe | Datos |
 |---|---|---|
-| `RENTAL_CREATED` | Se guarda una renta, en línea o en la tienda (CU-04, CU-05). | Renta, `paid=yes/no` |
+| `RENTAL_CREATED` | Se guarda una renta, en línea o en la tienda (CU-04, CU-05). | Renta, `payment=pending` (en línea, hasta el QR) o `payment=paid` (en tienda, nace pagada) |
 | `RENTAL_REJECTED` | Se rechaza una renta. | Renta pedida (equipo, cliente, fechas pedidas), `reason` |
 | `PAYMENT_APPROVED` · `PAYMENT_FAILED` | El cliente presiona un botón del QR simulado (CU-04). | Renta |
 | `PAYMENT_REJECTED` | El QR de una renta ya pagada o que ya no está «Reservada». | Renta, `reason` |

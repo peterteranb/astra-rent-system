@@ -147,7 +147,8 @@ def new_rental(client, equipment, start, end, registered_by) -> Rental:
 def log_rental_created(rental):
     """Escribe RENTAL_CREATED y, en la tienda, el cobro en efectivo y el correo de confirmación."""
     context = rental_context(rental, acting_username(rental.client, rental.registered_by))
-    log_event("RENTAL_CREATED", **context, paid="yes" if rental.is_paid else "no")
+    # «payment» y no «paid»: en línea nace pendiente y el PAYMENT_APPROVED de después no la contradice.
+    log_event("RENTAL_CREATED", **context, payment="paid" if rental.is_paid else "pending")
     # En línea, el correo sale cuando el cliente presiona un botón del QR (payments.pay_with_qr).
     if rental.registered_by is None:
         return
