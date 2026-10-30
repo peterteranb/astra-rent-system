@@ -77,9 +77,6 @@ export default function LoginPage() {
           <button className="btn btn--primary" type="submit" disabled={sending}>
             {sending ? "Iniciando sesión…" : "Iniciar sesión"}
           </button>
-          <Link className="auth__forgot" to="/forgot-password">
-            ¿Olvidaste tu contraseña?
-          </Link>
 
           <hr className="divider" />
           <div className="auth__switch">

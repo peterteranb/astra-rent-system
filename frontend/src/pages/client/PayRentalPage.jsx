@@ -33,14 +33,14 @@ export default function PayRentalPage() {
       .finally(() => setLoading(false));
   }, [rentalId, navigate]);
 
-  // paidWithQr=true: queda pagada con QR. false: queda con el pago pendiente, se cobra en la tienda.
-  const choose = async (paidWithQr) => {
+  // approved es lo que respondería la pasarela simulada (ENT-48: una pasarela real se conecta sin cambiar la renta).
+  const simulate = async (approved) => {
     setErrors([]);
     setSending(true);
     try {
-      const { message } = await payRental(rental.id, paidWithQr);
+      const { message } = await payRental(rental.id, approved);
       navigate(`/rentals/${rental.id}`, {
-        state: { message, approved: paidWithQr },
+        state: { message, approved },
         replace: true,
       });
     } catch (err) {
@@ -93,8 +93,8 @@ export default function PayRentalPage() {
               />
             </div>
             <p className="flow-hint">
-              Escanea el QR para pagar {rental.total_price} Bs. Si prefieres,
-              paga en la tienda al recoger el equipo.
+              Pago simulado: elige si la pasarela aprueba o rechaza el pago. Si
+              falla, la reserva queda hecha y pagas en la tienda al recoger.
             </p>
 
             <div className="flow-actions">
@@ -102,17 +102,17 @@ export default function PayRentalPage() {
                 className="btn btn--primary"
                 type="button"
                 disabled={sending}
-                onClick={() => choose(true)}
+                onClick={() => simulate(true)}
               >
-                Ya pagué con QR
+                Simular pago exitoso
               </button>
               <button
                 className="btn btn--secondary"
                 type="button"
                 disabled={sending}
-                onClick={() => choose(false)}
+                onClick={() => simulate(false)}
               >
-                Pagar en la tienda al recoger
+                Simular pago fallido
               </button>
             </div>
           </>

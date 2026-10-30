@@ -27,7 +27,7 @@ export default function ClientRentalsPage() {
   const [debtMessage, setDebtMessage] = useState("");
   const [loading, setLoading] = useState(true);
   const [errors, setErrors] = useState([]);
-  const message = useLocation().state?.message;
+  const [message, setMessage] = useState(useLocation().state?.message);
 
   const load = useCallback(async () => {
     try {
@@ -53,8 +53,10 @@ export default function ClientRentalsPage() {
     )
       return;
     setErrors([]);
+    setMessage("");
     try {
-      await cancelRental(rental.id);
+      const { message } = await cancelRental(rental.id);
+      setMessage(message);
       await load();
     } catch (err) {
       setErrors(errorsFrom(err));
