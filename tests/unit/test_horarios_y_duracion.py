@@ -1,6 +1,8 @@
 """Prueba rentals/rules.py: restricciones de fechas, horarios, duración máxima y solapamientos."""
 from datetime import timedelta
+from decimal import Decimal
 
+from rentals.models import Rental
 from rentals.rules import (
     ends_after_start,
     is_pickup_date_allowed,
@@ -48,3 +50,15 @@ def test_duracion_dias_y_consistencia_temporal_de_la_renta():
     assert ends_after_start(INICIO, INICIO) is False
     # Comprueba que devolver después del inicio es aceptado
     assert ends_after_start(INICIO, INICIO + timedelta(minutes=1)) is True
+
+
+def test_recojo_a_las_18_00_y_devolucion_al_dia_siguiente_a_las_09_00_es_un_dia():
+    # Mesa de 20 Bs por día: recoge el 09/10 a las 18:00 y devuelve el 10/10 a las 09:00 -> 1 día, 20 Bs
+    renta = Rental(start_datetime=INICIO, end_datetime=local_datetime(2026, 10, 10, 9, 0), daily_price=Decimal("20.00"))
+    assert (renta.rental_days, renta.total_price) == (1, Decimal("20.00"))
+
+
+def test_renta_de_5_dias_cobra_5_veces_el_precio_por_dia():
+    # Mesa de 20 Bs por día: recoge el 09/10 a las 18:00 y devuelve el 14/10 a las 09:00 -> 5 días, 100 Bs
+    renta = Rental(start_datetime=INICIO, end_datetime=local_datetime(2026, 10, 14, 9, 0), daily_price=Decimal("20.00"))
+    assert (renta.rental_days, renta.total_price) == (5, Decimal("100.00"))

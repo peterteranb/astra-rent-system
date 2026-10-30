@@ -1159,6 +1159,42 @@ flowchart TD
 
 ---
 
+## Cómo se cuentan los días y el atraso
+
+Las reglas están en `rentals/rules.py` y no tocan la base. Todas las horas son de La Paz.
+
+- **Días de renta** (`rules.rental_days`): cuántas fechas hay del día de recojo al día de devolución. La hora no cuenta, solo la fecha: del 09/10 al 11/10 son 2 días (ENT-72).
+- **Total** (`Rental.total_price`): días × precio por día. El precio por día es el 5 % del valor del equipo (ENT-71); una mesa plegable de 400 Bs cuesta 20 Bs por día.
+- **Horarios:** se recoge desde las 18:00 y se devuelve hasta las 09:00 (ENT-19, ENT-52); como máximo 5 días (ENT-18).
+- **Resultado de la devolución** (`rules.classify_return`): se compara con el día de vencimiento, que es la fecha de devolución de la renta. Hasta las 09:00, a tiempo; de 09:01 a 12:00, en tolerancia y sin cobro; desde las 12:01, con atraso (ENT-73).
+- **Días de atraso** (`rules.late_days`): cuántos mediodías (12:00) pasaron desde el día de vencimiento hasta que el equipo volvió. Cada mediodía es un día.
+- **Deuda por atraso** (`Rental.late_charge`): días de atraso × precio por día de la renta. Se crea al registrar la devolución (CU-09).
+
+**Días y total.** Mesa plegable de 400 Bs, 20 Bs por día:
+
+| Recojo | Devolución | Días | Total | Prueba |
+|---|---|---|---|---|
+| 09/10 18:00 | 10/10 09:00 (el día siguiente) | 1 | 20 Bs | `test_recojo_a_las_18_00_y_devolucion_al_dia_siguiente_a_las_09_00_es_un_dia` |
+| 09/10 18:00 | 11/10 09:00 | 2 | 40 Bs | `test_duracion_dias_y_consistencia_temporal_de_la_renta` |
+| 09/10 18:00 | 14/10 09:00 | 5 (el máximo) | 100 Bs | `test_renta_de_5_dias_cobra_5_veces_el_precio_por_dia` |
+| 09/10 18:00 | 15/10 09:00 | 6 | No se guarda: «La renta no puede durar más de 5 días.» | `test_duracion_dias_y_consistencia_temporal_de_la_renta` |
+
+Las pruebas están en `tests/unit/test_horarios_y_duracion.py`.
+
+**Devolución y atraso.** La misma mesa, con la renta que vence el 10/10 a las 09:00:
+
+| Momento de la devolución | Resultado | Días de atraso | Deuda | Prueba |
+|---|---|---|---|---|
+| 10/10 09:00 | A tiempo | 0 | Ninguna | `test_devolucion_a_las_09_00_es_a_tiempo_sin_deuda` |
+| 10/10 09:01 | En tolerancia, sin cobro | 0 | Ninguna | `test_devolucion_a_las_09_01_entra_en_tolerancia_sin_deuda` |
+| 10/10 12:00 | En tolerancia, sin cobro | 0 | Ninguna | `test_clasificacion_de_la_devolucion_por_horarios`, `test_calculo_de_dias_de_atraso_por_multa` |
+| 10/10 12:01 | Con atraso | 1 (pasó el mediodía del 10/10) | 20 Bs | `test_clasificacion_de_la_devolucion_por_horarios`, `test_calculo_de_dias_de_atraso_por_multa` |
+| 11/10 10:00 (el día siguiente, antes del mediodía) | Con atraso | 1 (solo pasó el mediodía del 10/10) | 20 Bs | `test_devolucion_al_dia_siguiente_a_las_10_00_cobra_un_dia` |
+| 11/10 12:01 (el día siguiente, después del mediodía) | Con atraso | 2 (pasaron el del 10/10 y el del 11/10) | 40 Bs | `test_calculo_de_dias_de_atraso_por_multa` |
+| 15/10 10:00 (5 días después) | Con atraso | 5 (del 10/10 al 14/10) | 100 Bs | `test_devolucion_5_dias_despues_a_las_10_00_cobra_5_dias` |
+
+Las pruebas están en `tests/unit/test_clasificar_devolucion.py`.
+
 ## 6. Qué guarda cada botón
 
 Las funciones están en `rentals/use_cases/`, salvo `accounts.registration`, `accounts.account`, los formularios de contraseña y `UserAdmin` (en `accounts/`).

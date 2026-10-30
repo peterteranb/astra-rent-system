@@ -1,6 +1,8 @@
 """Prueba rentals/rules.py: clasificación del resultado de devolución y cálculo de días de atraso."""
 from datetime import date
+from decimal import Decimal
 
+from rentals.models import Rental
 from rentals.rules import classify_return, late_days
 from rentals.statuses import ReturnResult
 from tests.helpers import local_datetime
@@ -32,3 +34,37 @@ def test_calculo_de_dias_de_atraso_por_multa():
     assert late_days(local_datetime(2026, 10, 11, 12, 1), VENCE) == 2
     # Comprueba que devolver antes de la fecha de vencimiento no cobra días de atraso
     assert late_days(local_datetime(2026, 10, 9, 13, 0), VENCE) == 0
+
+
+def renta_que_vence_el_10_10(devuelta):
+    """Renta de una mesa de 20 Bs por día que vence el 10/10 a las 09:00 y volvió en el momento devuelta."""
+    return Rental(
+        start_datetime=local_datetime(2026, 10, 8, 18, 0),
+        end_datetime=local_datetime(2026, 10, 10, 9, 0),
+        returned_at=devuelta,
+        daily_price=Decimal("20.00"),
+    )
+
+
+def test_devolucion_a_las_09_00_es_a_tiempo_sin_deuda():
+    # Vence el 10/10 y vuelve a las 09:00 -> a tiempo, 0 días de atraso, sin deuda
+    renta = renta_que_vence_el_10_10(local_datetime(2026, 10, 10, 9, 0))
+    assert (renta.return_result, renta.late_days, renta.late_charge) == (ReturnResult.ON_TIME, 0, Decimal("0.00"))
+
+
+def test_devolucion_a_las_09_01_entra_en_tolerancia_sin_deuda():
+    # Vence el 10/10 y vuelve a las 09:01 -> en tolerancia, 0 días de atraso, sin deuda
+    renta = renta_que_vence_el_10_10(local_datetime(2026, 10, 10, 9, 1))
+    assert (renta.return_result, renta.late_days, renta.late_charge) == (ReturnResult.TOLERANCE, 0, Decimal("0.00"))
+
+
+def test_devolucion_al_dia_siguiente_a_las_10_00_cobra_un_dia():
+    # Vence el 10/10 y vuelve el 11/10 a las 10:00 -> con atraso, pasó un mediodía: 1 día, 20 Bs
+    renta = renta_que_vence_el_10_10(local_datetime(2026, 10, 11, 10, 0))
+    assert (renta.return_result, renta.late_days, renta.late_charge) == (ReturnResult.LATE, 1, Decimal("20.00"))
+
+
+def test_devolucion_5_dias_despues_a_las_10_00_cobra_5_dias():
+    # Vence el 10/10 y vuelve el 15/10 a las 10:00 -> con atraso, pasaron 5 mediodías: 5 días, 100 Bs
+    renta = renta_que_vence_el_10_10(local_datetime(2026, 10, 15, 10, 0))
+    assert (renta.return_result, renta.late_days, renta.late_charge) == (ReturnResult.LATE, 5, Decimal("100.00"))
