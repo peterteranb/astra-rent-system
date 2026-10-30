@@ -20,10 +20,10 @@ def test_operaciones_de_cancelacion_de_reservas_y_plazos_limite(cl01, cl02, op01
     assert create_rental(cl02, mes01, dentro_de(7, 18), dentro_de(9, 9)).client == cl02
 
     # Comprueba que el cliente puede cancelar su propia reserva con la debida anticipación
-    reserva_cliente = create_rental(cl01, mes01, dentro_de(7, 18), dentro_de(9, 9))
+    reserva_cliente = create_rental(cl01, mes01, dentro_de(20, 18), dentro_de(22, 9))
     cancel_rental(reserva_cliente, cl01)
     guardada_cliente = Rental.objects.get(pk=reserva_cliente.pk)
-    assert (guardada_cliente.status, guardada_cliente.cancelled_by) == (RentalStatus.RentalStatus if False else RentalStatus.CANCELLED, cl01)
+    assert (guardada_cliente.status, guardada_cliente.cancelled_by) == (RentalStatus.CANCELLED, cl01)
 
     # Cliente intenta cancelar una reserva para el mismo día (menos de 24h) -> rechazado por plazo vencido y base intacta
     # Comprueba que la cancelación a menos de 24 horas del recojo se rechaza y no altera la base de datos

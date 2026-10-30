@@ -1,7 +1,7 @@
 """Prueba rentals/use_cases/inventory.py con la base: register_equipment(), alta de equipos y restricciones de códigos duplicados."""
 import pytest
-from django.core.exceptions import ValidationError
 
+from rentals.errors import EquipmentRegistrationError
 from rentals.models import Equipment
 from rentals.statuses import EquipmentStatus
 from rentals.use_cases.inventory import register_equipment
@@ -18,12 +18,12 @@ def test_alta_de_equipos_en_inventario_y_validacion_de_duplicados(mt01):
     guardado = Equipment.objects.get(inventory_id="MES-00021")
     assert (guardado.status, guardado.value, guardado.serial_number) == (EquipmentStatus.AVAILABLE, 450.00, "SN-MES-021")
 
-    # Comprueba que intentar registrar un equipo con un código de inventario ya existente lanza error de validación y preserva la base
+    # Comprueba que intentar registrar un equipo con un código de inventario ya existente lanza error de registro y preserva la base
     antes = foto_de_la_base()
-    with pytest.raises(ValidationError) as error_duplicado:
+    with pytest.raises(EquipmentRegistrationError) as error_duplicado:
         register_equipment(
             inventory_id="MES-00021", serial_number="SN-OTRO-99",
             name="Otra mesa", value="200.00", registered_by=mt01,
         )
-    assert "inventory_id" in error_duplicado.value.message_dict
+    assert "Ya existe un equipo con este código." in str(error_duplicado.value)
     assert foto_de_la_base() == antes

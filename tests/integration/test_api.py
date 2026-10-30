@@ -64,14 +64,14 @@ def test_operaciones_de_rentas_pagos_y_mantenimiento_por_api(client, cl01, cl02,
     assert foto_de_la_base() == antes
 
     # Comprueba que intentar pagar la reserva de otro usuario devuelve 404 en JSON sin filtrar información
-    renta_cl01 = create_rental(cl01, mes01, dentro_de(7, 18), dentro_de(9, 9))
+    renta_cl01 = create_rental(cl01, mes01, dentro_de(20, 18), dentro_de(22, 9))
     client.force_login(cl02)
     respuesta_ajena = client.post(f"/api/rentals/{renta_cl01.pk}/pay/", {"approved": True}, content_type=JSON)
     assert (respuesta_ajena.status_code, respuesta_ajena.json()) == (404, {"errors": ["No encontramos lo que buscas."]})
 
     # Operador entrega exigiendo cobro pendiente (400 si falta, 200 con paid_now); cliente recibe 403 en rutas de operador
     # Comprueba que el operador no puede entregar sin cobrar el pendiente y que al marcar paid_now se procesa con éxito
-    renta_tienda = create_rental(cl01, mes01, dentro_de(0, 18), within_fin := dentro_de(2, 9)) if False else create_rental(cl01, mes01, dentro_de(0, 18), dentro_de(2, 9))
+    renta_tienda = create_rental(cl01, mes01, dentro_de(0, 18), dentro_de(2, 9))
     client.force_login(op01)
     rechazo_pago = client.post(f"/api/staff/rentals/{renta_tienda.pk}/pickup/", {}, content_type=JSON)
     assert (rechazo_pago.status_code, rechazo_pago.json()["errors"]) == (
