@@ -82,5 +82,130 @@
     border-radius: 999px;
 }
 
+/* ==== Layout del flujo de renta ==== */
+.rental-flow {
+  min-height: 100dvh;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 32px 16px;
+  background: var(--color-paper);
+}
+
+@media (min-width: 480px) {
+  .rental-flow { padding: 48px 24px; align-items: center; }
+}
+
+.rental-card {
+  max-width: 640px;
+  margin: 0 auto;
+}
+
+.rental-card__header {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 20px;
+}
+
+.rental-card__title {
+  font-size: 24px;
+  line-height: 1.2;
+  margin: 2px 0;
+}
+
+@media (min-width: 480px) {
+  .rental-card__title { font-size: 28px; }
+}
+
+/* ==== Bloque de fechas (dos columnas en pantallas medianas) ==== */
+.rental-dates {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 20px;
+}
+
+@media (min-width: 560px) {
+  .rental-dates {
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    align-items: start;
+  }
+}
+
+.rental-dates__group {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.rental-dates__legend {
+  font-family: var(--font-title);
+  font-size: 16px;
+  font-weight: 600;
+  padding: 0;
+  margin-bottom: 4px;
+}
+
+/* ==== Resumen de precio ==== */
+.rental-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  background: var(--color-paper);
+  border: var(--border);
+  border-radius: var(--radius);
+}
+
+.rental-summary__label {
+  font-size: 13px;
+  color: var(--color-muted);
+}
+
+.rental-summary__total {
+  font-family: var(--font-title);
+  font-size: 18px;
+  color: var(--color-ink);
+}
+
+/* ==== Acciones ==== */
+.rental-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+@media (min-width: 480px) {
+  .rental-actions {
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+}
+
+/* ==== Inputs de fecha/hora nativos (alineación) ==== */
+.field__input[type="date"],
+.field__input[type="time"] {
+  padding: 12px 0;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.field__input[type="date"]::-webkit-calendar-picker-indicator,
+.field__input[type="time"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 0.7;
+}
+
+.field__input[type="date"]:hover::-webkit-calendar-picker-indicator,
+.field__input[type="time"]:hover::-webkit-calendar-picker-indicator {
+  opacity: 1;
+}
+
 .rental-badge--paid { color: #1b7a3d; background: #e6f4ea; }
 .rental-badge--pending { color: #b42318; background: #fdecea; }
