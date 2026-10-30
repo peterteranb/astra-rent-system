@@ -95,11 +95,8 @@ def attempted_rental(client, equipment, start_datetime, end_datetime, registered
 def create_rental(client, equipment, start_datetime, end_datetime, registered_by=None) -> Rental:
     """Guarda una renta confirmada de un equipo y la devuelve (ENT-16: se confirma al instante).
 
-    registered_by es el operador que la registró en la tienda, donde se paga en
-    efectivo (ENT-70); es None si el cliente renta en línea y paga con el QR después.
-    Siempre nace «Reservada»; si el cliente se la lleva al momento, el operador
-    registra el recojo (ENT-91). Lanza un OperationRejectedError si se rompe una
-    regla; entonces no se guarda nada.
+    registered_by es el operador en la tienda, donde se paga en efectivo (ENT-70); None si el cliente renta en línea.
+    Siempre nace «Reservada»: si el cliente se la lleva al momento, el operador registra el recojo (ENT-91).
     """
     # Las reglas comparan horas de reloj (18:00, 09:00): se trabaja en hora local.
     start = timezone.localtime(start_datetime)
@@ -108,8 +105,7 @@ def create_rental(client, equipment, start_datetime, end_datetime, registered_by
     check_period(start, end)
     with transaction.atomic():
         check_client_has_no_debt(client, registered_by)
-        # Bloquea la fila del equipo hasta el final: si dos clientes confirman a la
-        # vez, el segundo espera aquí y ve la renta del primero (ENT-21: gana el primer clic).
+        # Bloquea el equipo hasta el final: si dos confirman a la vez, el segundo ve la renta del primero (ENT-21).
         locked_equipment = Equipment.objects.select_for_update().get(pk=equipment.pk)
         check_equipment_is_free(locked_equipment, start, end)
         rental = new_rental(client, locked_equipment, start, end, registered_by)
@@ -195,8 +191,7 @@ def check_equipment_is_free(equipment, start, end, ignored=None):
             f"El equipo {equipment.inventory_id} no está disponible "
             f"(estado: {equipment.get_status_display()})."
         )
-    # Las rentas vienen ordenadas por inicio (Rental.Meta): el primer choque es el
-    # más próximo, y el mensaje nombra ese periodo.
+    # Rental.Meta ordena por inicio: el primer choque es el más próximo y el mensaje nombra ese periodo.
     now = timezone.now()
     for rental in equipment.rentals.exclude(pk=getattr(ignored, "pk", None)):
         if not rental.occupies_equipment_at(now):
@@ -212,8 +207,7 @@ def busy_message(equipment, rental, start):
         f"El equipo {equipment.inventory_id} está ocupado "
         f"del {local_text(rental.start_datetime)} al {local_text(rental.end_datetime)}."
     )
-    # Solo una renta que empieza después del recojo pedido deja días libres antes,
-    # y el equipo debe volver hasta las 09:00 de su primer día.
+    # Solo una renta que empieza después deja días libres antes; el equipo vuelve hasta las 09:00 de ese día.
     if busy_start > start:
         message += (
             f" Está libre hasta el {busy_start:%d/%m/%Y} a las {rules.LATEST_RETURN_TIME:%H:%M}."

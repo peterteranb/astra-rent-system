@@ -62,7 +62,6 @@ ROOT_URLCONF = "config.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        # Las plantillas de todo el proyecto están en /templates, en un solo lugar.
         "DIRS": [BASE_DIR / "templates"],
         "APP_DIRS": True,
         "OPTIONS": {
@@ -114,8 +113,7 @@ STORAGES = {
 }
 
 AUTH_USER_MODEL = "accounts.User"
-# ModelBackend va primero: con él entran las cuentas activas y su sesión deja de valer si se desactivan.
-# El segundo solo reconoce una cuenta desactivada con su contraseña correcta, para decirle por qué no entra (ENT-79).
+# ModelBackend primero: corta la sesión de una cuenta desactivada; el segundo solo le explica por qué (ENT-79).
 AUTHENTICATION_BACKENDS = [
     "django.contrib.auth.backends.ModelBackend",
     "django.contrib.auth.backends.AllowAllUsersModelBackend",
@@ -160,8 +158,7 @@ LOGGING = {
     },
 }
 
-# Correo (ENT-85) con MAILERS de Django 6.1: consola por defecto y Gmail si .env trae
-# la cuenta y su contraseña de aplicación.
+# Correo (ENT-85) con MAILERS de Django 6.1: consola por defecto y Gmail si .env trae la cuenta y su clave.
 gmail_user = os.environ.get("EMAIL_HOST_USER", "")
 gmail_app_password = os.environ.get("EMAIL_HOST_PASSWORD", "")
 if gmail_user and gmail_app_password:
@@ -183,7 +180,7 @@ else:
     MAILERS = {"default": {"BACKEND": "django.core.mail.backends.console.EmailBackend"}}
     DEFAULT_FROM_EMAIL = "SergioCorp <no-responder@sergiocorp.local>"
 
-# Los correos de rentas y deudas salen en un hilo aparte: Gmail tarda más de 1,6 s y la pantalla no lo espera.
+# Los correos salen en un hilo aparte (D-40): Gmail tarda más de 1,6 s y la pantalla no lo espera.
 EMAIL_IN_BACKGROUND = True
 
 # La API responde el rechazo CSRF en JSON; las páginas siguen con templates/403_csrf.html.

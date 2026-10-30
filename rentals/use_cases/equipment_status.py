@@ -30,8 +30,7 @@ def change_status(equipment, new_status, user, comment="") -> StatusChange:
     Lanza InvalidStatusChangeError si el cambio no se permite; entonces nada cambia.
     """
     with transaction.atomic():
-        # Bloquea la fila y lee el estado actual: dos cambios a la vez
-        # no pueden partir del mismo estado anterior.
+        # Bloquea la fila: dos cambios a la vez no pueden partir del mismo estado anterior.
         locked_equipment = Equipment.objects.select_for_update().get(pk=equipment.pk)
         check_status_can_change(locked_equipment, new_status)
         change = StatusChange(

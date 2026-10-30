@@ -100,8 +100,7 @@ class OnlineRentalForm(RentalForm):
 class WalkInRentalForm(RentalForm):
     """Renta que el operador registra en la tienda para un cliente: agrega el cliente y el equipo."""
 
-    # La página muestra solo los resultados de la búsqueda, pero se acepta cualquier
-    # cliente: así el POST no depende de repetir la búsqueda.
+    # Acepta cualquier cliente activo aunque la página muestre solo la búsqueda: el POST no depende de repetirla.
     client = forms.ModelChoiceField(
         label="Cliente", queryset=client_accounts(), widget=forms.RadioSelect
     )
@@ -147,8 +146,7 @@ class ReturnsOrderForm(ListOrderForm):
 class ReturnForm(forms.Form):
     """Observación que escribe el operador sobre cómo llegó el equipo."""
 
-    # No es obligatoria aquí: register_return revisa que haya nota y da su mensaje (RC-04).
-    # max_length es el del modelo, así una nota larga da error de formulario y no de base.
+    # Opcional aquí: register_return da el mensaje (RC-04); el max_length del modelo evita un error de la base.
     note = forms.CharField(
         label="Observación",
         required=False,

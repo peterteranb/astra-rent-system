@@ -53,8 +53,7 @@ class EquipmentAdmin(admin.ModelAdmin):
     list_per_page = ADMIN_PAGE_SIZE
     ordering = ["-created_at"]
     date_hierarchy = "created_at"
-    # El estado solo cambia con las acciones, que pasan por equipment_status.correct_status
-    # y dejan cada cambio en el historial (ENT-34).
+    # El estado solo cambia con las acciones: pasan por correct_status y dejan su historial (ENT-34).
     readonly_fields = ["status", "created_at"]
     actions = ["mark_available", "send_to_repair", "retire"]
 
@@ -168,8 +167,7 @@ class RentalAdmin(admin.ModelAdmin):
         """Muestra «Pagado» o «Pago pendiente»; la forma de pago tiene su propia columna (ENT-104)."""
         return rental.payment_label
 
-    # Una renta creada o editada a mano se saltaría el cruce de fechas (RF-01) y una
-    # borrada perdería historia: el admin solo las lista y las cancela (RF-21).
+    # A mano se saltaría el cruce de fechas (RF-01) o se perdería historia: el admin solo lista y cancela (RF-21).
     def has_add_permission(self, request):
         """No deja crear rentas a mano."""
         return False
@@ -249,8 +247,7 @@ class DebtAdmin(admin.ModelAdmin):
         """Muestra el equipo de la renta que generó la deuda."""
         return debt.rental.equipment.inventory_id
 
-    # Una deuda creada, editada o borrada a mano cambiaría lo que debe un cliente
-    # sin una devolución o una revisión que lo explique.
+    # A mano, la deuda cambiaría sin una devolución o una revisión que lo explique.
     def has_add_permission(self, request):
         """No deja crear deudas a mano."""
         return False

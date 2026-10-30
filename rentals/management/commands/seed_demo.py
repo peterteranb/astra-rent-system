@@ -1,7 +1,6 @@
 """Comando seed_demo: borra todo y deja la base con la demo, con fechas relativas a hoy.
 
-Solo para la demo y el desarrollo (DEBUG=True): vacía logs/negocio.log, borra usuarios, equipos, rentas, deudas
-e historial y crea unos 30 equipos, 13 usuarios y rentas repartidas en el tiempo.
+Solo con DEBUG=True: borra usuarios, equipos, rentas, deudas e historial y vacía logs/negocio.log.
 Con --equipos N completa el catálogo hasta N equipos con mesas y sillas (RC-01: probar con 1000).
 """
 import itertools
@@ -85,8 +84,7 @@ DEMO_PURPOSE = {
     "CMB-00001": "Combo: un equipo más, 44 Bs por día (ENT-96)",
 }
 
-# Rentas ya recogidas en la tienda, armadas a mano (D-31): (cliente, equipo, día de recojo, día de devolución,
-# cuándo volvió como (día, hora, minuto) o None si todavía la tiene, observación). Los días son relativos a hoy.
+# Pasadas, a mano (D-31), días desde hoy: (cliente, equipo, recojo, devolución, vuelta (día, hora, min) o None, nota).
 PAST_RENTALS = [
     ("cl01", "MES-00006", -14, -12, (-12, 8, 0), "Llegó bien"),
     ("cl03", "MES-00007", -20, -18, (-18, 8, 15), "Llegó limpia y completa"),
@@ -104,8 +102,7 @@ PAST_RENTALS = [
 # Equipos cuya deuda por atraso ya se cobró; las demás deudas quedan pendientes.
 PAID_LATE_DEBTS = {"MES-00008", "SIL-00010"}
 
-# Rentas de hoy y reservas de los próximos días: (cliente, equipo, día de recojo, día de devolución, pago).
-# Pago: "qr" pagada en línea, "pendiente" en línea sin pagar, "tienda" registrada y cobrada en la tienda.
+# Hoy y los próximos días: (cliente, equipo, recojo, devolución, pago: "qr", "pendiente" en línea o "tienda").
 UPCOMING_RENTALS = [
     ("cl03", "MES-00009", 0, 1, "tienda"),
     ("cl04", "SIL-00011", 0, 2, "qr"),

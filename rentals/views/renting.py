@@ -168,8 +168,7 @@ def cancel_reservation(request, rental_id):
 @role_required(OPERATOR)
 def walk_in_rental(request):
     """Busca un cliente por GET y registra una renta en tienda para él por POST (CU-05)."""
-    # El formulario se envía a la misma dirección con ?q=, así los resultados
-    # de la búsqueda siguen en la página si la renta se rechaza.
+    # Se envía a la misma dirección con ?q=: si la renta se rechaza, los resultados de la búsqueda siguen ahí.
     query = request.GET.get("q", "")
     form = WalkInRentalForm(request.POST or None)
     if request.method == "POST" and form.is_valid():

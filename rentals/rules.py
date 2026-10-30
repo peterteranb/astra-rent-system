@@ -11,8 +11,7 @@ from django.utils import timezone
 
 from .statuses import DebtReason, EquipmentStatus, ReturnResult
 
-# ENT-19 y ENT-52: se recoge desde las 18:00 y se devuelve hasta las 09:00.
-# Son límites «desde» y «hasta»: el cliente elige cualquier hora dentro.
+# ENT-19 y ENT-52: se recoge desde las 18:00 y se devuelve hasta las 09:00; el cliente elige cualquier hora dentro.
 EARLIEST_PICKUP_TIME = time(18, 0)
 LATEST_RETURN_TIME = time(9, 0)
 

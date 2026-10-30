@@ -1,8 +1,7 @@
-"""Correos al cliente: bienvenida, crear la contraseña, renta confirmada, reserva modificada por la tienda, renta cancelada y deuda creada (ENT-85).
+"""Correos al cliente: bienvenida, crear la contraseña, renta confirmada, modificada, cancelada y deuda (ENT-85).
 
-Se mandan cuando la transacción se confirma, así nunca avisan algo que se deshizo, y en un hilo aparte para que la
-pantalla no espere al servidor de correo (D-40). El de crear la contraseña es la excepción: sale en el momento.
-Si el envío falla, la operación no se cae: el log escribe EMAIL_FAILED.
+Salen al confirmarse la transacción y en un hilo aparte (D-40); «Crea tu contraseña» sale en el momento (D-37).
+Si el envío falla, la operación sigue y el log escribe EMAIL_FAILED.
 """
 import logging
 import smtplib

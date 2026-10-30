@@ -125,8 +125,7 @@ class Rental(models.Model):
     Su estado no se guarda: status_at() lo calcula desde sus momentos (RF-08).
     """
 
-    # PROTECT: borrar un usuario o un equipo no puede borrar en silencio la
-    # historia de sus rentas.
+    # PROTECT: borrar un usuario o un equipo no puede borrar en silencio la historia de sus rentas.
     client = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,
@@ -198,8 +197,7 @@ class Rental(models.Model):
         verbose_name = "Renta"
         verbose_name_plural = "Rentas"
         constraints = [
-            # Última defensa: la base misma rechaza un periodo que termina antes
-            # de empezar, aunque alguien se salte el caso de uso.
+            # Última defensa: la base rechaza un periodo al revés aunque alguien se salte el caso de uso.
             models.CheckConstraint(
                 condition=models.Q(end_datetime__gt=models.F("start_datetime")),
                 name="rental_end_after_start",

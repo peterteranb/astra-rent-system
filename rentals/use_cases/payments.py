@@ -24,9 +24,8 @@ def attempted_payment(rental, approved):
 def pay_with_qr(rental, approved) -> Rental:
     """Guarda el resultado del QR simulado de una reserva y la devuelve (ENT-66, ENT-67).
 
-    approved es la respuesta de la pasarela: así una pasarela real se conecta sin
-    tocar la renta (ENT-48). Si no se aprueba, la reserva sigue hecha con el pago
-    pendiente. Lanza RentalStateError si la renta no es una reserva sin pagar.
+    approved es la respuesta de la pasarela: así una pasarela real se conecta sin tocar la renta (ENT-48).
+    Si no se aprueba, la reserva sigue hecha con el pago pendiente.
     """
     with transaction.atomic():
         # Bloquea la fila: dos clics en el QR no guardan dos pagos.

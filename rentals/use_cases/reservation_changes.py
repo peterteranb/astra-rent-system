@@ -26,16 +26,13 @@ def attempted_modification(rental, start_datetime, end_datetime, changed_by):
 def modify_rental(rental, start_datetime, end_datetime, changed_by) -> Rental:
     """Cambia las fechas de una reserva por otras con la misma cantidad de días y la devuelve (ENT-81).
 
-    El precio no cambia. Se revisan otra vez los horarios y la disponibilidad, sin
-    contar la misma reserva. Si la cambió el personal, el cliente recibe las fechas
-    nuevas por correo (ENT-95). Lanza un OperationRejectedError si se rompe una regla.
+    El precio no cambia. Si la cambió el personal, el cliente recibe las fechas nuevas por correo (ENT-95).
     """
     start = timezone.localtime(start_datetime)
     end = timezone.localtime(end_datetime)
     check_period(start, end)
     with transaction.atomic():
-        # Mismo orden que create_rental (primero el equipo, después la renta): dos
-        # operaciones sobre el mismo equipo no se quedan esperando una a la otra.
+        # Mismo orden que create_rental (equipo y después renta): dos operaciones no se esperan una a la otra.
         locked_equipment = Equipment.objects.select_for_update().get(pk=rental.equipment_id)
         locked_rental = Rental.objects.select_for_update().get(pk=rental.pk)
         check_can_modify(locked_rental, changed_by, timezone.now())
@@ -70,10 +67,8 @@ def attempted_cancellation(rental, cancelled_by, reason=""):
 def cancel_rental(rental, cancelled_by, reason="") -> Rental:
     """Cancela una reserva todavía no recogida, guarda quién la canceló y avisa al cliente (ENT-80).
 
-    Sus fechas quedan libres al instante, porque una renta cancelada ya no ocupa
-    el equipo. El dinero se devuelve fuera del sistema (ENT-82). reason va en el
-    correo y en el log; si falta, se dice quién canceló. Lanza un
-    OperationRejectedError si no está «Reservada» o si el cliente llega tarde.
+    Sus fechas quedan libres al instante y el dinero se devuelve fuera del sistema (ENT-82).
+    reason va en el correo y en el log; si falta, se dice quién canceló.
     """
     with transaction.atomic():
         # Bloquea la fila: un recojo y una cancelación a la vez no se guardan los dos.
