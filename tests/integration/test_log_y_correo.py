@@ -94,7 +94,14 @@ def test_registro_de_eventos_en_log_notificaciones_y_comandos_demo(
     settings.DEBUG = True
     call_command("seed_demo", stdout=StringIO())
     assert log_viejo.read_text(encoding="utf-8") == ""
-    assert (caplog.messages[0], Equipment.objects.count() >= 21) == ("DEMO_RESET", True)
+    assert (caplog.messages[0], Equipment.objects.count()) == ("DEMO_RESET", 21)
+
+    # Comprueba que con --equipos 50 quedan 50 equipos, solo mesas, sillas y el combo, sin códigos ni series repetidos (ENT-07, RC-01)
+    call_command("seed_demo", "--equipos", "50", stdout=StringIO())
+    codigos = set(Equipment.objects.values_list("inventory_id", flat=True))
+    series = set(Equipment.objects.values_list("serial_number", flat=True))
+    otros = Equipment.objects.exclude(inventory_id__regex=r"^(MES|SIL|CMB)-").count()
+    assert (Equipment.objects.count(), len(codigos), len(series), otros) == (50, 50, 50, 0)
 
     # Comprueba que ejecutar seed_demo con DEBUG=False rechaza la ejecución lanzando una excepción y mantiene la base intacta
     settings.DEBUG = False
