@@ -193,6 +193,10 @@ Si un caso de uso lanza `OperationRejectedError`, el decorador `logs_rejection(e
 | `EQUIPMENT_REJECTED` | Se rechaza un equipo nuevo. | `equipment`, `serial` y `value` escritos, `reason`, `by` |
 | `ACCOUNT_CREATED` | Se crea la cuenta de un cliente (CU-01, CU-02). | `user=<usuario> "<nombre>"`, `email`, `role`, `channel=web/store`, `by` |
 | `ACCOUNT_REJECTED` | Se rechaza un registro. | `username` y `email` escritos, `reason`, `by` |
+| `PROFILE_UPDATED` | Alguien guarda sus datos en «Mi cuenta» (CU-17). | `user`, `fields` (solo los nombres de los campos que cambiaron), `by` |
+| `PROFILE_REJECTED` | Se rechazan sus datos. | `user`, `reason`, `by` |
+| `PASSWORD_CHANGED` | Se guarda una contraseña nueva: en «Mi cuenta» o con el enlace del correo. | `user`, `channel=account/reset`, `by` |
+| `PASSWORD_RESET_REQUESTED` | Alguien pide «Olvidé mi contraseña». | `email` escrito, `users` (las cuentas encontradas o `-`), `by=web` |
 | `ACCOUNT_DEACTIVATED` · `ACCOUNT_REACTIVATED` | El admin quita o vuelve a poner «Activo» (ENT-79). | `user`, `by` |
 | `LOGIN_REJECTED` | Una cuenta desactivada escribe su contraseña correcta. | `reason=inactive`, `user` |
 | `EMAIL_FAILED` | El servidor de correo no responde. | `to`, `subject`, `error` |

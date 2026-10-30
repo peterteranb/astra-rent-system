@@ -28,11 +28,13 @@
           <a href="{% url 'register_equipment' %}">Registrar equipo</a>
           <a href="{% url 'admin:index' %}">Admin</a>
         {% endif %}
+        <a href="{% url 'my_account' %}">Mi cuenta</a>
       </nav>
     {% elif user.is_authenticated %}
       {# Quien tiene sesión y no tiene un rol del personal es un cliente. #}
       <nav class="site-header__nav">
         <a href="{% url 'client_rentals' %}">Mis rentas</a>
+        <a href="{% url 'my_account' %}">Mi cuenta</a>
       </nav>
     {% endif %}
     {% if user.is_authenticated %}

@@ -78,6 +78,19 @@ Los mensajes de error de cada endpoint son los de su caso de uso en [casos-de-us
 | `POST /api/auth/logout/` | Todos | — | `null`; `message`: `"Sesión cerrada."` |
 | `GET /api/auth/me/` | Con sesión | — | el usuario + `"debt_total": "0.00"` |
 
+### CU-17 · Mi cuenta
+
+| Método y ruta | Quién | Cuerpo | Respuesta |
+|---|---|---|---|
+| `POST /api/auth/profile/` | Con sesión | `{"first_name": "Carla", "last_name": "Mendoza", "email": "carla@correo.com", "phone": "71000001"}` | el usuario + `debt_total`; `message`: `"Tus datos se guardaron."` |
+| `POST /api/auth/password/` | Con sesión | `{"old_password": "Demo1234", "new_password1": "Nueva2026x", "new_password2": "Nueva2026x"}` | `null`; `message`: `"Tu contraseña se cambió."`; la sesión sigue abierta |
+| `POST /api/auth/password-reset/` | Todos | `{"email": "carla@correo.com"}` | `null`; `message`: `"Si el correo es de una cuenta activa, te mandamos un enlace para crear tu contraseña."` |
+
+- El usuario y el rol no se cambian: `username` en el cuerpo de `profile/` se ignora.
+- `profile/` usa las reglas del registro y trae todas las causas juntas, por ejemplo `["Falta el campo Nombre.", "El correo ya está registrado."]`. Tu propio correo no choca contigo.
+- `password/` usa `PasswordChangeForm` de Django y los mismos validadores del registro: `"Contraseña antigua: …"`, `"Contraseña nueva: Esta contraseña es demasiado común."`.
+- `password-reset/` responde lo mismo exista o no la cuenta. El enlace del correo abre la página de Django `/reset/<uid>/<token>/`, donde se escribe la contraseña nueva.
+
 Errores del login: `"Usuario o contraseña incorrectos."` · `"Tu cuenta está desactivada. Comunícate con la tienda."` (solo con la contraseña correcta, ENT-79).
 
 ### CU-01 · Registro del cliente
@@ -166,7 +179,7 @@ Respuesta: la renta cancelada; `message`: `"Reserva cancelada: MES-00005 de cl01
 
 `GET /api/staff/clients/?q=rojas` · Operador → `data` = hasta 10 usuarios cuyo usuario, nombre, apellido o correo contiene el texto (ENT-54). Sin `q`, lista vacía.
 
-`POST /api/staff/clients/` · Operador · 201 · mismo cuerpo que el registro → `message`: `"Cuenta creada para lucia. Ya puedes registrar su renta."`.
+`POST /api/staff/clients/` · Operador · 201 · el cuerpo del registro **sin** `password` ni `password_confirmation` (ENT-102: el operador no conoce la contraseña del cliente) → `data` = el usuario + `"email_sent": true`; `message`: `"Cuenta creada para lucia. Le enviamos un correo para crear su contraseña. Ya puedes registrar su renta."`. Si el correo falla, `"email_sent": false` y `message`: `"La cuenta se creó, pero no se pudo enviar el correo. Pide al cliente que use \"Olvidé mi contraseña\" con su correo."`.
 
 ### CU-05 · Renta en tienda
 

@@ -1,20 +1,33 @@
-"""API de la sesión y de las cuentas: token CSRF, login, logout, «quién soy», registro del cliente (CU-01) y clientes en la tienda (CU-02).
+"""API de la sesión y de las cuentas: token CSRF, login, logout, «quién soy», registro del cliente (CU-01), clientes en la tienda (CU-02) y «Mi cuenta» (CU-17).
 
 Usa la sesión normal de Django y las mismas funciones que las páginas.
 """
-from django.contrib.auth import login, logout
+from django.contrib.auth import login, logout, update_session_auth_hash
 from django.middleware.csrf import get_token
 from django.views.decorators.csrf import ensure_csrf_cookie
 
 from rentals.api.responses import api_view, read_json, success, valid_form
 from rentals.api.serializers import money, user_data
-from rentals.services.formatting import account_created_message
+from rentals.services.formatting import account_created_message, store_account_message
 from rentals.use_cases.payments import debt_total_of
 from rentals.use_cases.renting import find_clients
 
-from .forms import LoginForm, SignUpForm
-from .registration import SignUpData, register_client
+from .account import update_profile
+from .forms import (
+    RESET_EMAIL_TEMPLATE,
+    RESET_SUBJECT_TEMPLATE,
+    AccountPasswordChangeForm,
+    ClientPasswordResetForm,
+    LoginForm,
+    ProfileForm,
+    SignUpForm,
+    StoreSignUpForm,
+)
+from .registration import SignUpData, register_client, register_store_client
 from .roles import OPERATOR
+from .views import site_url
+
+RESET_REQUESTED_MESSAGE = "Si el correo es de una cuenta activa, te mandamos un enlace para crear tu contraseña."
 
 
 @api_view("GET", public=True)
@@ -54,20 +67,52 @@ def me_data(user):
 @api_view("POST", public=True)
 def sign_up(request):
     """Crea la cuenta de un cliente desde la web (CU-01)."""
-    user = register_from(request)
-    return success(user_data(user), account_created_message(user, at_store=False), status=201)
+    data = valid_form(SignUpForm(read_json(request)))
+    user = register_client(SignUpData(**data))
+    return success(user_data(user), account_created_message(user), status=201)
 
 
 @api_view("GET", "POST", roles=[OPERATOR])
 def store_clients(request):
-    """GET busca clientes por usuario, nombre, apellido o correo; POST crea la cuenta en la tienda (CU-02)."""
+    """GET busca clientes por usuario, nombre, apellido o correo; POST crea la cuenta en la tienda, sin contraseña (CU-02)."""
     if request.method == "GET":
         return success([user_data(user) for user in find_clients(request.GET.get("q", ""))])
-    user = register_from(request, registered_by=request.user)
-    return success(user_data(user), account_created_message(user, at_store=True), status=201)
+    data = valid_form(StoreSignUpForm(read_json(request)))
+    registration = register_store_client(SignUpData(**data), request.user, site_url(request))
+    return success(
+        {**user_data(registration.user), "email_sent": registration.email_sent},
+        store_account_message(registration),
+        status=201,
+    )
 
 
-def register_from(request, registered_by=None):
-    """Lee los datos del registro del cuerpo JSON y llama a register_client, como la página."""
-    data = valid_form(SignUpForm(read_json(request)))
-    return register_client(SignUpData(**data), registered_by)
+@api_view("POST")
+def update_my_profile(request):
+    """Guarda el nombre, apellido, correo y teléfono del usuario con sesión (CU-17)."""
+    data = valid_form(ProfileForm(read_json(request)))
+    user = update_profile(request.user, **data)
+    return success(me_data(user), "Tus datos se guardaron.")
+
+
+@api_view("POST")
+def change_password(request):
+    """Cambia la contraseña con el formulario de Django y deja la sesión abierta (CU-17)."""
+    form = AccountPasswordChangeForm(request.user, read_json(request))
+    valid_form(form)
+    form.save()
+    update_session_auth_hash(request, form.user)
+    return success(None, "Tu contraseña se cambió.")
+
+
+@api_view("POST", public=True)
+def request_password_reset(request):
+    """Manda el enlace de Django para crear una contraseña nueva; responde lo mismo exista o no la cuenta (CU-17)."""
+    form = ClientPasswordResetForm(read_json(request))
+    valid_form(form)
+    form.save(
+        request=request,
+        use_https=request.is_secure(),
+        email_template_name=RESET_EMAIL_TEMPLATE,
+        subject_template_name=RESET_SUBJECT_TEMPLATE,
+    )
+    return success(None, RESET_REQUESTED_MESSAGE)
