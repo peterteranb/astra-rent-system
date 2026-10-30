@@ -1,8 +1,0 @@
-line-length = 120
-
-# Las migraciones las escribe makemigrations: no se editan a mano.
-extend-exclude = ["*/migrations/*"]
-
-[lint]
-# RUF012 pide ClassVar en list_display, fields, Meta…: Django los lee como atributos de clase y nunca se modifican.
-ignore = ["RUF012"]

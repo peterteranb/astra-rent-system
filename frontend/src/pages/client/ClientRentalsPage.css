@@ -1,0 +1,174 @@
+.rentals-stripes {
+  height: 10px;
+  margin-bottom: 24px;
+  background-color: #fff;
+  border-radius: 4px;
+}
+
+.rentals-heading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.rentals-heading h2 {
+  margin: 4px 0;
+  font-size: 28px;
+}
+
+.rentals-count {
+  color: var(--color-muted);
+  font-size: 14px;
+}
+
+.rentals-debt {
+  margin-bottom: 20px;
+  padding: 16px 18px;
+  color: #8a5300;
+  background: #fff4e0;
+  border-radius: var(--radius-lg);
+}
+
+.rentals-debt ul {
+  margin: 8px 0 0;
+  padding-left: 20px;
+}
+
+.rentals-list {
+  display: grid;
+  gap: 16px;
+}
+
+/* RentalFlow.css centra .rental-card a 640 px; aquí cada tarjeta ocupa todo el ancho de la lista. */
+.rentals-list .rental-card {
+  max-width: none;
+  margin: 0;
+  display: grid;
+  grid-template-columns: 120px 1fr auto;
+  gap: 18px;
+  align-items: center;
+  padding: 14px;
+  background: var(--color-surface);
+  border: var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+.rentals-list .rental-card__image {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  background-color: var(--color-accent);
+  background-image: repeating-linear-gradient(
+    115deg,
+    var(--color-ink) 0 8px,
+    transparent 8px 24px
+  );
+  border-radius: 8px;
+}
+
+.rentals-list .rental-card__image img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  padding: 8px;
+  box-sizing: border-box;
+}
+
+.rentals-list .rental-card__code {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 12px;
+}
+
+.rentals-list .rental-card h3 {
+  margin: 4px 0;
+  font-size: 20px;
+}
+
+.rentals-list .rental-card__dates {
+  margin: 0 0 10px;
+  color: var(--color-muted);
+  font-size: 13px;
+}
+
+.rentals-list .rental-card__badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.rental-badge {
+  padding: 2px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  border-radius: 999px;
+  color: var(--color-muted);
+  background: #eef1f4;
+}
+
+.rental-badge--reserved {
+  color: #1f4fa8;
+  background: #e8f0fd;
+}
+.rental-badge--rented {
+  color: #8a5300;
+  background: #fff4e0;
+}
+.rental-badge--returned,
+.rental-badge--paid {
+  color: #1b7a3d;
+  background: #e6f4ea;
+}
+.rental-badge--cancelled,
+.rental-badge--not_picked_up,
+.rental-badge--pending {
+  color: #b42318;
+  background: #fdecea;
+}
+
+.rentals-list .rental-card__side {
+  display: grid;
+  gap: 10px;
+  justify-items: end;
+  text-align: right;
+}
+
+.rentals-list .rental-card__side strong {
+  font-size: 18px;
+}
+.rentals-list .rental-card__side small {
+  max-width: 180px;
+  color: var(--color-muted);
+}
+
+.rentals-list .rental-card__actions {
+  display: flex;
+  gap: 8px;
+}
+
+.rentals-list .rental-card__actions .btn {
+  width: auto;
+  padding: 8px 12px;
+}
+
+.rentals-message {
+  padding: 24px;
+  color: var(--color-muted);
+  text-align: center;
+}
+
+@media (max-width: 640px) {
+  .rentals-list .rental-card {
+    grid-template-columns: 1fr;
+  }
+  .rentals-list .rental-card__image {
+    aspect-ratio: 16 / 9;
+  }
+  .rentals-list .rental-card__side {
+    justify-items: start;
+    text-align: left;
+  }
+}

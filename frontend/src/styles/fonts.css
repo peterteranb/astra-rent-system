@@ -1,0 +1,42 @@
+@font-face {
+  font-family: "Coolvetica";
+  src: url("../assets/fonts/coolvetica/coolvetica-regular.otf")
+    format("opentype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Coolvetica";
+  src: url("../assets/fonts/coolvetica/coolvetica-italic.otf")
+    format("opentype");
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+
+/* Variantes con otro ancho: son familias aparte, no pesos */
+@font-face {
+  font-family: "Coolvetica Condensed";
+  src: url("../assets/fonts/coolvetica/coolvetica-condensed.otf")
+    format("opentype");
+  font-weight: 400;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Coolvetica Crammed";
+  src: url("../assets/fonts/coolvetica/coolvetica-crammed.otf")
+    format("opentype");
+  font-weight: 400;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Coolvetica Heavy Compressed";
+  src: url("../assets/fonts/coolvetica/coolvetica-heavy-compressed.otf")
+    format("opentype");
+  font-weight: 400;
+  font-display: swap;
+}

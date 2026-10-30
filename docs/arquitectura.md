@@ -12,6 +12,8 @@ El sistema es una aplicación web hecha con **Django** 6.1, un framework de Pyth
 
 Además, `config/` tiene la configuración del proyecto (`settings.py`) y las URLs raíz (`urls.py`): `/admin/` es el admin de Django, `/api/` la API JSON para el frontend en React, y el resto son las páginas de `accounts` y `rentals`.
 
+La forma principal de usar el sistema es el **frontend en React** (`frontend/`, en el puerto 5173 mientras se programa): es solo presentación, le pide todo a la API JSON y la API llama a los mismos casos de uso que las páginas clásicas de Django.
+
 Cuando alguien presiona un botón, la petición sigue siempre el mismo camino:
 
 ```mermaid
@@ -111,8 +113,10 @@ Una **capa** es un grupo de código con una sola responsabilidad. Las dependenci
 
 ```mermaid
 flowchart LR
-    N[Navegador] --> M["Middleware de Django<br/>seguridad · whitenoise · sesión · CSRF · usuario"]
-    M --> P["Presentación<br/>views/ · forms.py · templates/"]
+    N[Navegador] --> R["Presentación: React<br/>frontend/src/"]
+    R -->|"JSON en /api/"| M
+    N --> M["Middleware de Django<br/>seguridad · whitenoise · sesión · CSRF · usuario"]
+    M --> P["Presentación clásica<br/>views/ · forms.py · templates/"]
     M --> J["API JSON<br/>rentals/api/ · accounts/api.py"]
     J --> A
     P --> A["Aplicación<br/>use_cases/ · accounts/registration.py · accounts/account.py"]
@@ -124,7 +128,8 @@ flowchart LR
 
 | Capa | Carpetas y archivos | Qué hace | Qué no hace |
 |---|---|---|---|
-| **Presentación** | `rentals/views/`, `templates/`, `rentals/forms.py`; también `accounts/views.py`, `accounts/forms.py`, los `urls.py`, los `admin.py`, `context_processors.py` y la API JSON (`rentals/api/`, `accounts/api.py`) | Lee la petición, revisa que los datos tengan forma, llama a **una** función del caso de uso, muestra el mensaje y elige la página. | No decide reglas. |
+| **Presentación: React** | `frontend/src/` (páginas, componentes y `api/`) | Muestra las pantallas, junta lo que escribe la persona, llama a la API JSON y muestra el mensaje o todas las causas del rechazo que responde. | No decide reglas: no revisa fechas, montos ni estados; eso lo responde la API. |
+| **Presentación: Django** (páginas clásicas y API JSON) | `rentals/views/`, `templates/`, `rentals/forms.py`; también `accounts/views.py`, `accounts/forms.py`, los `urls.py`, los `admin.py`, `context_processors.py` y la API JSON (`rentals/api/`, `accounts/api.py`) | Lee la petición, revisa que los datos tengan forma, llama a **una** función del caso de uso, muestra el mensaje y elige la página. | No decide reglas. |
 | **Aplicación** | `rentals/use_cases/`; también `accounts/registration.py` y `accounts/account.py` | Hace una operación completa: valida, bloquea la fila, guarda, escribe el log y manda el correo. | No sabe nada de HTTP: las páginas y la API JSON llaman a las mismas funciones. |
 | **Dominio** | `rentals/rules.py`, `rentals/statuses.py`, `rentals/errors.py`; también `accounts/validators.py` | Las reglas puras (fechas, horas y montos), los estados fijos y los rechazos con su causa para el usuario. | No lee ni escribe la base. |
 | **Datos** | `rentals/models.py`, `accounts/models.py`, `migrations/` y PostgreSQL | Las tablas, sus restricciones y el estado calculado de la renta. | No decide qué operación se permite. |
@@ -245,7 +250,7 @@ flowchart LR
 | Servidor de la aplicación | waitress, que corre `config.wsgi:application` | Atiende las peticiones con Django, sirve los estilos ya juntados por `collectstatic` (whitenoise) y escribe el log de negocio en la consola y en `logs/negocio.log`. Lee su configuración de `.env`. Para programar, `runserver` ocupa su lugar. |
 | PostgreSQL | PostgreSQL 15 o superior | Guarda los datos. |
 
-Los pasos están en el README, en «Antes de producción». Las opciones que exigen HTTPS (cookies seguras, redirección y HSTS, que obliga al navegador a usar siempre HTTPS) se activan con `USE_HTTPS=True` en `.env`.
+Los pasos están en el README, en «Producción, paso a paso». Las opciones que exigen HTTPS (cookies seguras, redirección y HSTS, que obliga al navegador a usar siempre HTTPS) se activan con `USE_HTTPS=True` en `.env`.
 
 ### Revisión de seguridad: `python manage.py check --deploy`
 
