@@ -93,6 +93,8 @@ def register_store_client(data, registered_by, site_url) -> StoreRegistration:
     user = new_client(data)
     user.set_unusable_password()
     save_client(user, registered_by)
+    # Se manda con la transacción ya cerrada y sin on_commit: el enlace apunta a una cuenta
+    # que ya existe y el operador sabe en el momento si el correo salió.
     return StoreRegistration(user, send_create_password(user, site_url))
 
 
