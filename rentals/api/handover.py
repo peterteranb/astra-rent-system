@@ -3,7 +3,7 @@ from django.shortcuts import get_object_or_404
 
 from accounts.roles import OPERATOR
 
-from ..forms import ReturnForm
+from ..forms import ReservationsOrderForm, ReturnForm, ReturnsOrderForm
 from ..models import Rental
 from ..services.formatting import pickup_message, return_message
 from ..use_cases.handover import register_pickup, register_return, rentals_to_receive, reservations_to_hand_over
@@ -13,8 +13,9 @@ from .serializers import rental_data
 
 @api_view("GET", roles=[OPERATOR])
 def staff_reservations(request):
-    """Devuelve las reservas que el operador puede entregar, la más próxima primero."""
-    return success([rental_data(rental) for rental in reservations_to_hand_over()])
+    """Devuelve las reservas que el operador puede entregar, la más nueva primero o, con ?order=date, la más próxima."""
+    order = ReservationsOrderForm(request.GET).chosen_order()
+    return success([rental_data(rental) for rental in reservations_to_hand_over(order)])
 
 
 @api_view("POST", roles=[OPERATOR])
@@ -28,8 +29,9 @@ def pickup_reservation(request, rental_id):
 
 @api_view("GET", roles=[OPERATOR])
 def staff_returns(request):
-    """Devuelve las rentas que faltan devolver, la que vence primero arriba."""
-    return success([rental_data(rental) for rental in rentals_to_receive()])
+    """Devuelve las rentas que faltan devolver, la más nueva primero o, con ?order=date, la que vence primero."""
+    order = ReturnsOrderForm(request.GET).chosen_order()
+    return success([rental_data(rental) for rental in rentals_to_receive(order)])
 
 
 @api_view("POST", roles=[OPERATOR])

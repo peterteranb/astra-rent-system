@@ -9,7 +9,7 @@ from django.views.decorators.http import require_POST
 from accounts.roles import OPERATOR, role_required
 
 from ..errors import OperationRejectedError
-from ..forms import ReturnForm
+from ..forms import ReservationsOrderForm, ReturnForm, ReturnsOrderForm
 from ..models import Rental
 from ..services.formatting import pickup_message, return_message
 from ..use_cases.handover import (
@@ -22,9 +22,12 @@ from ..use_cases.handover import (
 
 @role_required(OPERATOR)
 def staff_reservations(request):
-    """Muestra las reservas que el operador puede entregar."""
+    """Muestra las reservas que el operador puede entregar, en el orden elegido."""
+    form = ReservationsOrderForm(request.GET or None)
     return render(
-        request, "rentals/staff_reservations.html", {"reservations": reservations_to_hand_over()}
+        request,
+        "rentals/staff_reservations.html",
+        {"reservations": reservations_to_hand_over(form.chosen_order()), "order_form": form},
     )
 
 
@@ -47,8 +50,13 @@ def pickup_reservation(request, rental_id):
 
 @role_required(OPERATOR)
 def staff_returns(request):
-    """Muestra las rentas que faltan devolver, con su estado."""
-    return render(request, "rentals/staff_returns.html", {"rentals": rentals_to_receive()})
+    """Muestra las rentas que faltan devolver, con su estado, en el orden elegido."""
+    form = ReturnsOrderForm(request.GET or None)
+    return render(
+        request,
+        "rentals/staff_returns.html",
+        {"rentals": rentals_to_receive(form.chosen_order()), "order_form": form},
+    )
 
 
 @role_required(OPERATOR)

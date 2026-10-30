@@ -1,10 +1,11 @@
-"""Formularios del catálogo (CU-03), la renta en línea (CU-04) y en tienda (CU-05), la devolución (CU-09) y el registro de equipos (CU-12)."""
+"""Formularios del catálogo (CU-03), la renta en línea (CU-04) y en tienda (CU-05), el orden de las listas del operador, la devolución (CU-09) y el registro de equipos (CU-12)."""
 from django import forms
 
 from . import rules
 from .models import Equipment, Rental
 from .statuses import EquipmentStatus
 from .use_cases.catalog import CatalogFilters, catalog_filters, list_catalog
+from .use_cases.handover import ORDER_BY_DATE, ORDER_RECENT
 from .use_cases.inventory import normalize_inventory_id
 from .use_cases.renting import client_accounts
 
@@ -111,6 +112,36 @@ class WalkInRentalForm(RentalForm):
         to_field_name="inventory_id",
         empty_label="Elige un equipo",
     )
+
+
+class ListOrderForm(forms.Form):
+    """Selector «Ordenar por» de «Reservas por entregar» y «Devoluciones»: más recientes o por fecha (ENT-100)."""
+
+    date_label = ""
+    order = forms.ChoiceField(label="Ordenar por", required=False)
+
+    def __init__(self, data=None):
+        """Arma las dos opciones; date_label dice qué fecha usa la lista."""
+        super().__init__(data)
+        self.fields["order"].choices = [(ORDER_RECENT, "Más recientes"), (ORDER_BY_DATE, self.date_label)]
+
+    def chosen_order(self):
+        """Devuelve el orden elegido; sin elegir o con un valor desconocido, los más recientes."""
+        if self.is_valid() and self.cleaned_data["order"]:
+            return self.cleaned_data["order"]
+        return ORDER_RECENT
+
+
+class ReservationsOrderForm(ListOrderForm):
+    """Orden de «Reservas por entregar»: más recientes o por fecha de recojo."""
+
+    date_label = "Fecha de recojo"
+
+
+class ReturnsOrderForm(ListOrderForm):
+    """Orden de «Devoluciones»: más recientes o por fecha de devolución."""
+
+    date_label = "Fecha de devolución"
 
 
 class ReturnForm(forms.Form):

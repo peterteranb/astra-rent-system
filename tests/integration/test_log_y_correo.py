@@ -24,10 +24,12 @@ DATOS = SignUpData("Lucía", "Quispe", "lucia@correo.com", "71234567", "cl03", "
 
 
 def test_rentar_en_linea_escribe_rental_created(cl01, mes01, caplog):
-    # cl01 reserva MES-00001 en línea -> el log tiene la línea con la renta, el equipo, el cliente y sin pago
-    renta = create_rental(cl01, mes01, dentro_de(7, 18), dentro_de(9, 9))
+    # cl01 reserva MES-00001 en línea -> el log tiene la renta, el equipo y el cliente con sus nombres, el periodo, el monto y sin pago
+    with con_la_hora(local_datetime(2026, 10, 29, 10)):
+        renta = create_rental(cl01, mes01, local_datetime(2026, 11, 5, 18), local_datetime(2026, 11, 7, 9))
     assert caplog.messages == [
-        f"RENTAL_CREATED id={renta.pk} equipment=MES-00001 client=cl01 paid=no registered_by=web"
+        f'RENTAL_CREATED rental={renta.pk} equipment=MES-00001 "Mesa plegable 1,80 m" client=cl01 "Carla Mendoza" '
+        "period=05/11/2026 18:00-07/11/2026 09:00 amount=40.00 by=cl01 payment=pending"
     ]
 
 
@@ -38,7 +40,7 @@ def test_un_rechazo_escribe_rental_rejected_con_la_causa(cl01, cl02, mes01, capl
     with pytest.raises(EquipmentNotAvailableError):
         create_rental(cl02, mes01, dentro_de(8, 18), dentro_de(9, 9))
     [registro] = caplog.records
-    assert (registro.levelname, registro.getMessage().startswith('RENTAL_REJECTED reason="El equipo MES-00001')) == (
+    assert (registro.levelname, registro.getMessage().startswith('RENTAL_REJECTED equipment=MES-00001')) == (
         "WARNING", True
     )
 

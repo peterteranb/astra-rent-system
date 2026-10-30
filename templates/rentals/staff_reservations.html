@@ -4,6 +4,8 @@
 {% block heading %}Reservas por entregar{% endblock %}
 
 {% block content %}
+  {% include "includes/order_form.html" %}
+
   {% if reservations %}
     <table class="table">
       <thead>

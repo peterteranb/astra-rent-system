@@ -5,6 +5,10 @@
 
 {% block content %}
   <section class="card login">
+    {% if at_store %}
+      {# ENT-102: el operador no escribe la contraseña; el cliente la crea con el enlace del correo. #}
+      <p class="hint">El cliente recibirá un correo para crear su contraseña.</p>
+    {% endif %}
     {% include "includes/rejection.html" %}
 
     <form class="form" method="post" action="{% if at_store %}{% url 'register_client_at_store' %}{% else %}{% url 'sign_up' %}{% endif %}">

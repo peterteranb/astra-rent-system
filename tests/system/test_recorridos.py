@@ -44,8 +44,8 @@ def test_ciclo_completo_de_una_renta(client, cl01, op01, mt01, mes01):
     assertContains(devolucion, "Devolución registrada: MES-00001 recibido de cl01.")
     # Comprueba que mantenimiento vio el estado nuevo
     assertContains(revision, "MES-00001 ahora está «Disponible».")
-    # Comprueba que el cliente ve MES-00001 libre en el catálogo
-    assertContains(catalogo, "Libre")
+    # Comprueba que el cliente ve MES-00001 para rentar en el catálogo
+    assertContains(catalogo, "/equipment/MES-00001/rent/")
     # Comprueba que la renta quedó devuelta y el historial tiene la ida a revisión y la vuelta a disponible
     assert (Rental.objects.get().status, StatusChange.objects.count()) == (RentalStatus.RETURNED, 2)
 

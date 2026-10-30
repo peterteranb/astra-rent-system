@@ -29,7 +29,7 @@ from ..use_cases.renting import (
 
 @login_required
 def catalog(request):
-    """Muestra el catálogo filtrado, de 20 en 20, con los próximos periodos ocupados de cada equipo (CU-03)."""
+    """Muestra el catálogo filtrado, de 20 en 20, sin etiquetas de libre u ocupado (CU-03, ENT-99)."""
     form = CatalogFilterForm(request.GET or None)
     page = browse_catalog(request.user, form.filters(), request.GET.get("page"), timezone.now())
     return render(request, "rentals/catalog.html", {"form": form, "page": page, **period_limits()})
@@ -49,7 +49,7 @@ def rent_equipment(request, inventory_id):
                 form.cleaned_data["end_datetime"],
             )
         except EquipmentNotAvailableError as error:
-            # Fechas ocupadas: vuelve al catálogo, donde ve cuándo está libre.
+            # Fechas ocupadas: vuelve al catálogo con el mensaje, que dice cuándo está libre.
             messages.error(request, str(error))
             return redirect("catalog")
         except OperationRejectedError as error:

@@ -16,6 +16,10 @@
       <dd>{{ rental.rental_days }} día{{ rental.rental_days|pluralize }} × {{ rental.daily_price|floatformat:"2g" }} Bs = {{ rental.total_price|floatformat:"2g" }} Bs</dd>
       <dt>Pago</dt>
       <dd>{% include "includes/payment_badge.html" %}</dd>
+      {% if rental.is_paid %}
+        <dt>Forma de pago</dt>
+        <dd>{{ rental.get_payment_method_display }}</dd>
+      {% endif %}
       {% if rental.registered_by %}
         <dt>Registrada por</dt>
         <dd>{{ rental.registered_by.username }}</dd>
