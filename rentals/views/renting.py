@@ -1,6 +1,6 @@
 """Páginas de CU-03 a CU-07 y CU-16: catálogo, renta en línea con QR y en tienda, confirmación, modificar, cancelar y «Mis rentas».
 
-Leen la petición, llaman a use_cases/ (catalog, renting y payments) y eligen la plantilla; las reglas están ahí y en rules.py.
+Leen la petición, llaman a use_cases/ (catalog, renting, payments y reservation_changes) y eligen la plantilla; las reglas están ahí y en rules.py.
 """
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
