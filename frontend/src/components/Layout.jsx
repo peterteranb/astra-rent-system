@@ -4,8 +4,7 @@ import logo from "../assets/images/brand/logo-header.png";
 import "./Layout.css";
 
 // El admin de Django vive en el puerto 8080 mientras programas y en el mismo sitio en producción.
-const DJANGO_ADMIN = import.meta.env.DEV ? "http://localhost:8000/admin/" : "/admin/";
-
+import { DJANGO_ADMIN } from "../utils/djangoAdmin";
 // Mismo menú que base.html: el administrador ve todo lo del personal.
 function linksFor(role) {
   const isAdmin = role === "administrador";
