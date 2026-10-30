@@ -155,7 +155,8 @@ LOGGING = {
         },
     },
     "loggers": {
-        "rentals": {"handlers": ["console", "business_file"], "level": "INFO"},
+        # propagate False: con waitress el logger raíz también imprime y cada línea salía dos veces.
+        "rentals": {"handlers": ["console", "business_file"], "level": "INFO", "propagate": False},
     },
 }
 

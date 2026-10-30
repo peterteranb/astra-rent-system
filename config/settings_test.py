@@ -14,8 +14,10 @@ PASSWORD_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]
 # Las pruebas leen mail.outbox apenas termina la operación: sin hilo, el correo ya está ahí.
 EMAIL_IN_BACKGROUND = False
 
-# Las pruebas no escriben en logs/negocio.log: ese archivo es el de la demo.
-LOGGING["loggers"]["rentals"]["handlers"] = ["console"]
+# Las pruebas no escriben en logs/negocio.log: ese archivo es el de la demo. Sin handlers propios, las
+# líneas suben al logger raíz, donde caplog las captura.
+LOGGING["loggers"]["rentals"]["handlers"] = []
+LOGGING["loggers"]["rentals"]["propagate"] = True
 
 # Las pruebas no corren collectstatic: los estáticos se sirven sin el manifiesto de whitenoise.
 STORAGES = {
