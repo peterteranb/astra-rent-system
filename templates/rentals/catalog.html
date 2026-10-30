@@ -36,23 +36,14 @@
   {% if page.object_list %}
     <p class="hint">{{ page.paginator.count }} equipo{{ page.paginator.count|pluralize }} · página {{ page.number }} de {{ page.paginator.num_pages }}</p>
     <ul class="list">
-      {% for entry in page.object_list %}
+      {% for equipment in page.object_list %}
         <li class="list__item">
-          <span class="list__id">{{ entry.equipment.inventory_id }}</span>
-          <span class="list__name">{{ entry.equipment.name }} · {{ entry.equipment.daily_price|floatformat:"2g" }} Bs por día</span>
+          <span class="list__id">{{ equipment.inventory_id }}</span>
+          <span class="list__name">{{ equipment.name }} · {{ equipment.daily_price|floatformat:"2g" }} Bs por día</span>
           {% if is_store_staff %}
-            <span class="badge badge--{{ entry.equipment.status }}">{{ entry.equipment.get_status_display }}</span>
+            <span class="badge badge--{{ equipment.status }}">{{ equipment.get_status_display }}</span>
           {% else %}
-            <a class="button" href="{% url 'rent_equipment' entry.equipment.inventory_id %}">Rentar</a>
-          {% endif %}
-          {% if entry.busy_rentals %}
-            <ul class="list__detail">
-              {% for rental in entry.busy_rentals %}
-                <li>Ocupado del {{ rental.start_datetime|date:"d/m/Y H:i" }} al {{ rental.end_datetime|date:"d/m/Y H:i" }}</li>
-              {% endfor %}
-            </ul>
-          {% else %}
-            <p class="list__detail"><span class="badge badge--available">Libre</span></p>
+            <a class="button" href="{% url 'rent_equipment' equipment.inventory_id %}">Rentar</a>
           {% endif %}
         </li>
       {% endfor %}

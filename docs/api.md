@@ -98,11 +98,12 @@ Respuesta: `data` = el usuario; `message`: `"Cuenta creada. Ya puedes iniciar se
 ```json
 {"data": {"count": 25, "page": 1, "pages": 2, "results": [
   {"inventory_id": "MES-00001", "name": "Mesa plegable 1,80 m", "status": "available", "status_label": "Disponible",
-   "daily_price": "20.00", "busy_periods": [{"start": "2026-11-05T18:00:00-04:00", "end": "2026-11-07T09:00:00-04:00"}]}
+   "daily_price": "20.00"}
 ]}, "message": ""}
 ```
 
-- De 20 en 20 (ENT-86); cada equipo trae hasta 3 periodos ocupados (ENT-64).
+- De 20 en 20 (ENT-86). Sin `busy_periods`: el catálogo no dice cuándo usan el equipo otras personas (ENT-99).
+- Sin `free_from` y `free_to` trae los equipos disponibles; con las dos fechas, solo los libres en ese periodo.
 - El cliente ve solo los disponibles; `status` solo filtra para el personal.
 - Errores: `"Elige las dos fechas para ver los equipos libres."` · `"La fecha final debe ser posterior a la inicial."`. Un combo (`CMB-00001`) aparece como cualquier equipo (ENT-96).
 

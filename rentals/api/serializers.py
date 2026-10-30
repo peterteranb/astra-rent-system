@@ -46,14 +46,6 @@ def period_data(rental):
     return {"start": moment(rental.start_datetime), "end": moment(rental.end_datetime)}
 
 
-def catalog_entry_data(entry):
-    """Un equipo del catálogo con sus próximos periodos ocupados (CU-03)."""
-    return {
-        **equipment_data(entry.equipment),
-        "busy_periods": [period_data(rental) for rental in entry.busy_rentals],
-    }
-
-
 def rental_data(rental):
     """Datos de una renta con su estado calculado, su pago y sus momentos."""
     status = rental.status
