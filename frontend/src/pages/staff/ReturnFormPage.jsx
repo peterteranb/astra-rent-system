@@ -9,6 +9,7 @@ import { errorsFrom } from "../../utils/friendlyErrors";
 import { useLoader } from "../../utils/useLoader";
 import { formatDateTime } from "../../utils/format";
 import "../account/AccountPage.css";
+import EquipmentImage from "../../components/EquipmentImage";
 
 export default function ReturnFormPage() {
   const { rentalId } = useParams();
@@ -51,6 +52,7 @@ export default function ReturnFormPage() {
 
       {rental && (
         <section className="card account">
+          <EquipmentImage inventoryId={rental.equipment.inventory_id} name={rental.equipment.name} />
           <p>{rental.equipment.name}</p>
           <p className="lead">
             Cliente {rental.client} · <Badge tone={rental.status}>{rental.status_label}</Badge> ·

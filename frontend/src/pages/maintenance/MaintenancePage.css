@@ -4,9 +4,12 @@
 .maint-list { display: grid; gap: 14px; margin: 18px 0 0; padding: 0; list-style: none; }
 
 .maint-item {
+  display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 18px; align-items: start;
   padding: 16px; background: var(--color-surface);
   border: var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm);
 }
+.maint-item__image { width: 150px; aspect-ratio: 4 / 3; border-radius: var(--radius); }
+.maint-item__details { min-width: 0; }
 .maint-item__head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
 .maint-item__id { font-family: var(--font-title); font-size: 18px; }
 .maint-item__name { flex: 1 1 10rem; }
@@ -22,4 +25,11 @@
 @media (min-width: 760px) {
   .maint-form__row { display: grid; grid-template-columns: 200px 1fr auto; align-items: end; }
   .maint-form .btn { width: auto; }
+}
+
+@media (max-width: 600px) {
+  .maint-item { grid-template-columns: 96px minmax(0, 1fr); gap: 12px; padding: 12px; }
+  .maint-item__image { width: 96px; }
+  .maint-item__head { align-items: flex-start; }
+  .maint-item__name { flex-basis: 100%; }
 }

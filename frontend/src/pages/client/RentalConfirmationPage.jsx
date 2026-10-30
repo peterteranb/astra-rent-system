@@ -7,6 +7,7 @@ import { getMyRentals } from "../../api/rentals";
 import { errorsFrom } from "../../utils/friendlyErrors";
 import { formatDate } from "../../utils/formatDate";
 import "./RentalFlow.css";
+import EquipmentImage from "../../components/EquipmentImage";
 
 export default function RentalConfirmationPage() {
   const { rentalId } = useParams();
@@ -40,6 +41,7 @@ export default function RentalConfirmationPage() {
 
         {rental && (
           <>
+            <EquipmentImage inventoryId={rental.equipment.inventory_id} name={rental.equipment.name} />
             <dl className="flow-details">
               <dt>Equipo</dt>
               <dd>{rental.equipment.inventory_id} · {rental.equipment.name}</dd>

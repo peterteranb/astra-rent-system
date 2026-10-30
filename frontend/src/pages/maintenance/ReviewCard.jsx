@@ -3,6 +3,7 @@ import Badge from "../../components/Badge";
 import FormErrors from "../../components/FormErrors";
 import { reviewEquipment } from "../../api/maintenance";
 import { errorsFrom } from "../../utils/friendlyErrors";
+import EquipmentImage from "../../components/EquipmentImage";
 
 // La casilla de cobro solo aparece si el estado nuevo es reparación o baja
 // y el equipo tiene una renta devuelta a quien cobrarle.
@@ -36,13 +37,15 @@ export default function ReviewCard({ item, onSaved }) {
 
   return (
     <li className="maint-item">
-      <div className="maint-item__head">
-        <span className="maint-item__id">{item.inventory_id}</span>
-        <span className="maint-item__name">{item.name}</span>
-        <Badge tone={item.status}>{item.status_label}</Badge>
-      </div>
+      <EquipmentImage inventoryId={item.inventory_id} name={item.name} className="maint-item__image" />
+      <div className="maint-item__details">
+        <div className="maint-item__head">
+          <span className="maint-item__id">{item.inventory_id}</span>
+          <span className="maint-item__name">{item.name}</span>
+          <Badge tone={item.status}>{item.status_label}</Badge>
+        </div>
 
-      <form className="maint-form" onSubmit={submit} noValidate>
+        <form className="maint-form" onSubmit={submit} noValidate>
         <FormErrors errors={errors} />
 
         <div className="maint-form__row">
@@ -77,7 +80,8 @@ export default function ReviewCard({ item, onSaved }) {
             {item.charge_label}
           </label>
         )}
-      </form>
+        </form>
+      </div>
     </li>
   );
 }

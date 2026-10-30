@@ -8,6 +8,7 @@ import { getCatalog } from "../../api/catalog";
 import { createRental } from "../../api/rentals";
 import { errorsFrom } from "../../utils/friendlyErrors";
 import { formatMoney, PICKUP_FROM, RETURN_UNTIL, MAX_DAYS } from "../../utils/format";
+import EquipmentImage from "../../components/EquipmentImage";
 import "./RentalFlow.css";
 
 // Los días son los que hay entre la fecha de recojo y la de devolución (igual que el servidor).
@@ -94,6 +95,7 @@ export default function RentFormPage() {
   return (
     <Layout title={`Rentar ${equipment.inventory_id}`}>
       <section className="card rental-card">
+        <EquipmentImage inventoryId={equipment.inventory_id} name={equipment.name} />
         <p className="lead">{equipment.name} · {formatMoney(price)} por día</p>
 
         <form className="form" onSubmit={submit} noValidate>

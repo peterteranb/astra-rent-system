@@ -61,8 +61,7 @@
     display: grid;
     place-items: center;
     height: 150px;
-    background: var(--color-accent);
-    background-image: repeating-linear-gradient(115deg, var(--color-ink) 0 8px, transparent 8px 24px);
+    background: #fff;
 }
 
 .catalog-card__image span {
@@ -84,7 +83,9 @@
     inset: 0;
     width: 100%;
     height: 100%;
-    object-fit: cover;
+    object-fit: contain;
+    padding: 10px;
+    box-sizing: border-box;
 }
 
 .catalog-card__body {
