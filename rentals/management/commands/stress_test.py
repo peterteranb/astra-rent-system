@@ -162,7 +162,7 @@ def rent(client, unit, start, end, barrier, outcomes):
     except EquipmentNotAvailableError:
         outcomes.append(BUSY)
     # Un error que escapa de un hilo se pierde: se anota para que el resumen lo cuente.
-    except Exception as error:
+    except Exception as error:  # noqa: BLE001
         outcomes.append(type(error).__name__)
     finally:
         # Cada hilo abre su propia conexión a PostgreSQL; si no se cierra, queda abierta.

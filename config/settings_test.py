@@ -4,8 +4,8 @@ import os
 # Las pruebas no necesitan la clave secreta real: así corren igual en GitHub Actions, sin .env.
 os.environ.setdefault("SECRET_KEY", "clave-solo-para-las-pruebas")
 
-from .settings import *  # noqa: E402,F401,F403
-from .settings import LOGGING, STORAGES  # noqa: E402
+from .settings import *
+from .settings import LOGGING, STORAGES
 
 # Solo afecta a las pruebas: el hash real tarda unos 0,3 s por usuario creado
 # y MD5 es instantáneo. Las contraseñas de la base real siguen con el hash seguro.

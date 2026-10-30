@@ -2,6 +2,7 @@
 causas juntas (ENT-84, RC-04). La tienda usa register_store_client (CU-02), probado en test_correo_crea_tu_contrasena.py."""
 import pytest
 from django.contrib.auth import get_user_model
+from django.core import mail
 
 from accounts.models import Role
 from accounts.registration import SignUpData, register_client
@@ -19,13 +20,16 @@ DATOS = SignUpData(
 )
 
 
-def test_registro_de_nuevos_clientes_por_formulario_y_caso_de_uso(cl01):
+def test_registro_de_nuevos_clientes_por_formulario_y_caso_de_uso(cl01, django_capture_on_commit_callbacks):
     # Lucía se registra bien, otro llena mal varios campos y otro repite los datos de cl01 -> se guarda solo cl03
-    # Comprueba que se crea cl03 como cliente, con el teléfono solo en dígitos y la contraseña cifrada
-    register_client(DATOS)
+    # Comprueba que se crea cl03 como cliente, con el teléfono solo en dígitos, la contraseña cifrada y el correo de bienvenida (RF-20)
+    with django_capture_on_commit_callbacks(execute=True):
+        register_client(DATOS)
     guardado = get_user_model().objects.get(username="cl03")
+    [bienvenida] = mail.outbox
     assert (guardado.role.code, guardado.phone) == (Role.CLIENT, "71234567")
     assert (guardado.password != "Montaña2026", guardado.check_password("Montaña2026")) == (True, True)
+    assert (bienvenida.to, bienvenida.subject) == (["lucia.quispe@correo.com"], "Bienvenido a SergioCorp")
 
     # Comprueba que un registro con varios errores muestra todas las causas en orden y no guarda nada
     con_errores = SignUpData("Lucía", "", "lucia.correo.com", "71234", "cl04", "Montañaaa", "Montañaab")

@@ -11,7 +11,7 @@ from tests.helpers import foto_de_la_base
 def test_alta_de_equipos_en_inventario_y_validacion_de_duplicados(mt01):
     # Registrar equipo con datos válidos lo crea en estado disponible; duplicar el código de inventario o serie rechaza con error
     # Comprueba que el personal autorizado registra un equipo nuevo y este se guarda con estado disponible en la base
-    nuevo = register_equipment(
+    register_equipment(
         inventory_id="MES-00021", serial_number="SN-MES-021",
         name="Mesa ejecutiva", value="450.00", registered_by=mt01,
     )

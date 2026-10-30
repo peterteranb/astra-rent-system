@@ -95,10 +95,10 @@ def test_el_cliente_con_deuda_la_ve_en_mis_rentas_y_no_puede_rentar(client, cl02
 def test_el_catalogo_filtra_por_texto_y_pagina_de_20_en_20(client, cl01):
     # Hay 25 sillas y una mesa; cl01 busca «silla» -> 25 equipos en 2 páginas, sin la mesa
     Equipment.objects.bulk_create(
-        Equipment(inventory_id=f"SIL-{numero:05d}", serial_number=f"SN-{numero}", name="Silla plegable", value=Decimal("80"))
+        Equipment(inventory_id=f"SIL-{numero:05d}", serial_number=f"SN-{numero}", name="Silla plegable", value=Decimal(80))
         for numero in range(1, 26)
     )
-    Equipment.objects.create(inventory_id="MES-00001", serial_number="SN-MES", name="Mesa plegable", value=Decimal("400"))
+    Equipment.objects.create(inventory_id="MES-00001", serial_number="SN-MES", name="Mesa plegable", value=Decimal(400))
     client.force_login(cl01)
     respuesta = client.get("/?q=silla&page=2")
     # Comprueba el total y la página

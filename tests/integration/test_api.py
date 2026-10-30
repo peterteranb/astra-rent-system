@@ -1,7 +1,6 @@
 """Prueba la API JSON de rentals/api/ y accounts/api.py: códigos HTTP, formato de respuestas y validación de permisos."""
 from django.test import Client
 
-from rentals.models import Equipment, Rental
 from rentals.statuses import EquipmentStatus, RentalStatus
 from rentals.use_cases.renting import create_rental
 from tests.conftest import DEMO_PASSWORD

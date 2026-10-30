@@ -1,7 +1,5 @@
 """Prueba accounts/ views de gestión de usuarios y listados del personal en la base de datos."""
-from pytest_django.asserts import assertContains, assertRedirects
-
-from accounts.models import User
+from pytest_django.asserts import assertContains
 
 
 def test_listados_edicion_y_visualizacion_de_perfiles_de_usuario(client, cl01, ad01):

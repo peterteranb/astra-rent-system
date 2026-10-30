@@ -217,4 +217,4 @@ Se usa `django.core.mail.send_mail` con el setting `MAILERS` de Django 6.1. Por 
 | Integración | `tests/integration/` | Cada caso de uso con la base de datos, el log (`caplog`) y el correo (`mail.outbox`). |
 | Sistema | `tests/system/` | Recorridos completos por la web. |
 
-GitHub Actions (`.github/workflows/ci-sesion12.yml`) corre en cada push: revisa la configuración, que no falte ninguna migración, y todas las pruebas con un PostgreSQL temporal.
+Cómo correrlas, la prueba de carga (`stress_test`), la cobertura y qué cubre cada archivo: [pruebas.md](pruebas.md). GitHub Actions (`.github/workflows/ci-sesion12.yml`) corre en cada push: revisa la configuración, que no falte ninguna migración, y todas las pruebas con un PostgreSQL temporal.

@@ -11,14 +11,12 @@ from django.core import mail
 from django.core.management import CommandError, call_command
 
 from accounts.registration import SignUpData, register_client
-from rentals.errors import EquipmentNotAvailableError, InvalidStatusChangeError, RegistrationRejectedError
+from rentals.errors import EquipmentNotAvailableError, RegistrationRejectedError
 from rentals.models import Equipment
-from rentals.statuses import EquipmentStatus
+from rentals.services.events import log_event
 from rentals.use_cases.handover import register_return
 from rentals.use_cases.payments import pay_with_qr
-from rentals.services.events import log_event
 from rentals.use_cases.renting import cancel_rental, create_rental
-from rentals.use_cases.review import review_equipment
 from tests.helpers import con_la_hora, dentro_de, foto_de_la_base, local_datetime, renta_entregada
 
 HOY = local_datetime(2026, 10, 29, 10)
@@ -55,8 +53,10 @@ def test_registro_de_eventos_en_log_notificaciones_y_comandos_demo(
     with con_la_hora(HOY):
         renta = create_rental(cl01, mes01, local_datetime(2026, 11, 5, 18), local_datetime(2026, 11, 7, 9))
     assert caplog.messages == [
-        f'RENTAL_CREATED rental={renta.pk} equipment=MES-00001 "Mesa plegable 1,80 m" client=cl01 "Carla Mendoza" '
-        "period=05/11/2026 18:00-07/11/2026 09:00 amount=40.00 by=cl01 payment=pending"
+        (
+            f'RENTAL_CREATED rental={renta.pk} equipment=MES-00001 "Mesa plegable 1,80 m" client=cl01 "Carla Mendoza" '
+            "period=05/11/2026 18:00-07/11/2026 09:00 amount=40.00 by=cl01 payment=pending"
+        )
     ]
 
     # Comprueba que un intento de reserva rechazado por fechas ocupadas inscribe un nivel WARNING con el motivo en el log
@@ -66,9 +66,11 @@ def test_registro_de_eventos_en_log_notificaciones_y_comandos_demo(
     [registro] = caplog.records
     assert (registro.levelname, registro.getMessage()) == (
         "WARNING",
-        'RENTAL_REJECTED equipment=MES-00001 "Mesa plegable 1,80 m" client=cl02 "Diego Rojas" '
-        "period=05/11/2026 18:00-07/11/2026 09:00 "
-        'reason="El equipo MES-00001 está ocupado del 05/11/2026 18:00 al 07/11/2026 09:00." by=cl02',
+        (
+            'RENTAL_REJECTED equipment=MES-00001 "Mesa plegable 1,80 m" client=cl02 "Diego Rojas" '
+            "period=05/11/2026 18:00-07/11/2026 09:00 "
+            'reason="El equipo MES-00001 está ocupado del 05/11/2026 18:00 al 07/11/2026 09:00." by=cl02'
+        ),
     )
 
     # Comprueba que los registros de cuentas y rechazos nunca exponen contraseñas en texto plano dentro del archivo de log
@@ -103,9 +105,11 @@ def test_registro_de_eventos_en_log_notificaciones_y_comandos_demo(
     # Comprueba que si el servidor SMTP falla al crear una cuenta, la operación se completa y el log registra la excepción como EMAIL_FAILED
     caplog.clear()
     sin_conexion = smtplib.SMTPException("sin conexión")
-    with mock.patch("rentals.services.notifications.send_mail", side_effect=sin_conexion):
-        with django_capture_on_commit_callbacks(execute=True):
-            register_client(SignUpData("Ana", "Paz", "ana@correo.com", "71234568", "cl04", "Montaña2026", "Montaña2026"))
+    with (
+        mock.patch("rentals.services.notifications.send_mail", side_effect=sin_conexion),
+        django_capture_on_commit_callbacks(execute=True),
+    ):
+        register_client(SignUpData("Ana", "Paz", "ana@correo.com", "71234568", "cl04", "Montaña2026", "Montaña2026"))
     assert get_user_model().objects.filter(username="cl04").exists()
     assert caplog.messages[-1] == 'EMAIL_FAILED to=cl04 subject="Bienvenido a SergioCorp" error=SMTPException'
 

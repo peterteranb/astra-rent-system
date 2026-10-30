@@ -18,8 +18,8 @@ Versión final del 29/10/2026. Cómo instalar y correr el sistema está en el [R
 | ¿Cómo está hecho el sistema: capas, carpetas, despliegue, log y correo? | [arquitectura.md](arquitectura.md); qué escribe cada evento del log, en [Eventos del log](arquitectura.md#eventos-del-log). |
 | ¿Qué endpoints JSON tiene el frontend, qué mandan y qué responden? | [api.md](api.md): cada endpoint con quién lo usa, ejemplos y errores, y cómo conectar React en desarrollo. |
 | ¿Qué respondió el cliente? | [respuestas-del-cliente.md](respuestas-del-cliente.md): ENT-01 a ENT-104; desde ENT-66 separa lo que dijo el cliente de lo que completó el equipo. |
-| ¿Qué decidió el equipo donde el cliente no respondió? | [decisiones.md](decisiones.md): D-01 a D-39, con su motivo y su ENT. |
-| ¿Qué pruebas hay y cómo se corren? | [arquitectura.md](arquitectura.md#pruebas-y-ci) (tipos y CI), la sección «Pruebas» del [README del proyecto](../README.md#pruebas) (comando, cantidad y tiempo) y la columna «Cómo se verifica» de cada RF. |
+| ¿Qué decidió el equipo donde el cliente no respondió? | [decisiones.md](decisiones.md): D-01 a D-40, con su motivo y su ENT. |
+| ¿Qué pruebas hay y cómo se corren? | [pruebas.md](pruebas.md): tipos, cómo correrlas, la prueba de carga, `check --deploy`, la cobertura y qué CU, RF y RC cubre cada archivo. También [arquitectura.md](arquitectura.md#pruebas-y-ci) (CI) y la columna «Cómo se verifica» de cada RF. |
 
 ## Cómo leer los IDs
 

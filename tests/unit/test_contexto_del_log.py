@@ -18,8 +18,10 @@ def test_una_renta_guardada_lleva_id_equipo_cliente_periodo_monto_y_quien(caplog
     renta = Rental(pk=60, equipment=SILLA, client=CARLA, start_datetime=INICIO, end_datetime=FIN, daily_price=Decimal("4.00"))
     log_event("PAYMENT_APPROVED", **rental_context(renta, "cl01"))
     assert caplog.messages == [
-        'PAYMENT_APPROVED rental=60 equipment=SIL-00003 "Silla blanca plegable" client=cl01 "Carla Mendoza" '
-        "period=30/10/2026 18:00-01/11/2026 09:00 amount=8.00 by=cl01"
+        (
+            'PAYMENT_APPROVED rental=60 equipment=SIL-00003 "Silla blanca plegable" client=cl01 "Carla Mendoza" '
+            "period=30/10/2026 18:00-01/11/2026 09:00 amount=8.00 by=cl01"
+        )
     ]
 
 
