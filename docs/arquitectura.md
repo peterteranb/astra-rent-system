@@ -62,7 +62,7 @@ rentals/
 | `rentals/rules.py` | Reglas puras: horarios, días, precio por día, plazo de 24 h, medianoche, atraso, cargos por daño y su tope. | CU-04 a CU-10 |
 | `rentals/statuses.py` | Opciones fijas: estados del equipo y de la renta, resultado de la devolución, forma de pago y motivo de la deuda. | Todos |
 | `rentals/errors.py` | Los rechazos con su causa para el usuario. | Todos (RC-04) |
-| `rentals/use_cases/catalog.py` | Catálogo con filtros, páginas de 20 y los próximos periodos ocupados de cada equipo. | CU-03 |
+| `rentals/use_cases/catalog.py` | Catálogo con filtros y páginas de 20, sin etiquetas de libre u ocupado (ENT-99). | CU-03 |
 | `rentals/use_cases/renting.py` | Búsqueda de clientes, rentar en línea y en tienda, modificar, cancelar y «Mis rentas». | CU-04 a CU-07, CU-16 |
 | `rentals/use_cases/payments.py` | QR simulado; crear, sumar, listar y cobrar deudas. | CU-04, CU-11 |
 | `rentals/use_cases/handover.py` | Entregar (cobra si falta el pago) y devolver (crea la deuda por atraso). | CU-08, CU-09 |
@@ -70,7 +70,7 @@ rentals/
 | `rentals/use_cases/inventory.py` | Registrar un equipo con las reglas del modelo. | CU-12 |
 | `rentals/use_cases/history.py` | `change_status`: el único lugar que cambia `Equipment.status`, siempre con su fila de historial; `correct_status` (admin) y `cancel_if_out_of_service` (cancela las reservas al pasar a reparación o baja). | CU-09, CU-10, CU-13 |
 | `rentals/use_cases/dashboard.py` | Las seis listas del panel del responsable. | CU-15 |
-| `rentals/services/events.py` | Log de negocio y el decorador que escribe cada rechazo una sola vez. | Todos (RC-05) |
+| `rentals/services/events.py` | Log de negocio: el contexto de una renta (`rental_context`) y el decorador que escribe cada rechazo una sola vez, con lo que se intentó. | Todos (RC-05, ENT-101) |
 | `rentals/services/notifications.py` | Correos al cliente, enviados cuando la transacción se confirma. | CU-01, CU-02, CU-04 a CU-07, CU-09, CU-10 |
 | `rentals/services/formatting.py` | Textos para mostrar: fechas, montos, días, el aviso de deuda y por qué una renta ya no está «Reservada». | Todos (RC-04) |
 | `rentals/forms.py` | Formularios de filtros, fechas, renta en tienda, devolución y registro de equipos. Solo revisan que los datos tengan forma. | CU-03 a CU-05, CU-09, CU-12 |
@@ -141,18 +141,62 @@ Con `DEBUG=False`, una `SECRET_KEY` propia, `USE_HTTPS=True` y Gmail configurado
 
 ```mermaid
 sequenceDiagram
-    participant U as Caso de uso (use_cases.renting.create_rental)
-    participant E as services.events.log_event
+    participant U as Caso de uso (use_cases.payments.pay_with_qr)
+    participant E as services.events
     participant L as logger «rentals»
     participant C as Consola (la terminal del servidor)
     participant F as logs/negocio.log
-    U->>E: log_event("RENTAL_CREATED", id=12, equipment="SIL-00001", client="cl01", paid="no")
-    E->>L: info("RENTAL_CREATED id=12 equipment=SIL-00001 client=cl01 paid=no")
-    L->>C: 2026-10-29 10:15:02 | INFO    | RENTAL_CREATED …
+    U->>E: rental_context(renta, "cl01")
+    E-->>U: rental, equipment, client, period, amount, by
+    U->>E: log_event("PAYMENT_APPROVED", **contexto)
+    E->>L: info("PAYMENT_APPROVED rental=60 equipment=SIL-00003 \"Silla blanca plegable\" …")
+    L->>C: 2026-10-29 19:02:11 | INFO    | PAYMENT_APPROVED …
     L->>F: la misma línea, en UTF-8
 ```
 
-Si un caso de uso lanza `OperationRejectedError`, el decorador `logs_rejection` escribe `RENTAL_REJECTED reason="…"` con nivel `WARNING` y deja pasar el error a la vista. Si un correo falla, `services/notifications.py` escribe `EMAIL_FAILED` y la operación sigue.
+Cada línea se entiende sin buscar en la base (ENT-101). `rental_context` es la única función que arma los datos de una renta:
+
+```text
+2026-10-29 19:02:11 | INFO    | PAYMENT_APPROVED rental=60 equipment=SIL-00003 "Silla blanca plegable" client=cl01 "Carla Mendoza" period=30/10/2026 18:00-01/11/2026 09:00 amount=8.00 by=cl01
+2026-10-29 19:03:40 | WARNING | ACCOUNT_REJECTED username=juan23 email=juan@correo.com reason="Esta contraseña es demasiado común." by=web
+```
+
+Si un caso de uso lanza `OperationRejectedError`, el decorador `logs_rejection(evento, intento)` escribe el evento con nivel `WARNING`, con **lo que se intentó** (aunque todavía no exista un id), el motivo y quién actuó, y deja pasar el error a la vista. Si un correo falla, `services/notifications.py` escribe `EMAIL_FAILED` y la operación sigue. Nunca se escribe una contraseña.
+
+### Eventos del log
+
+«Renta» son los campos de `rental_context`: `rental=<id> equipment=<código> "<nombre>" client=<usuario> "<nombre completo>" period=<recojo>-<devolución> amount=<total en Bs> by=<quién actuó>`. En un pedido rechazado faltan `rental` y `amount`. «Deuda» es `debt=<id> charge=<motivo>` más la renta, con `amount` = el monto de la deuda.
+
+| Evento | Cuándo se escribe | Datos |
+|---|---|---|
+| `RENTAL_CREATED` | Se guarda una renta, en línea o en la tienda (CU-04, CU-05). | Renta, `paid=yes/no` |
+| `RENTAL_REJECTED` | Se rechaza una renta. | Renta pedida (equipo, cliente, fechas pedidas), `reason` |
+| `PAYMENT_APPROVED` · `PAYMENT_FAILED` | El cliente presiona un botón del QR simulado (CU-04). | Renta |
+| `PAYMENT_REJECTED` | El QR de una renta ya pagada o que ya no está «Reservada». | Renta, `reason` |
+| `PAYMENT_CASH` | El operador cobra en efectivo: en la renta en tienda o al entregar. | Renta (`by` = el operador) |
+| `RENTAL_MODIFIED` | Cambian las fechas de una reserva (CU-06). | Renta con las fechas nuevas |
+| `MODIFY_REJECTED` | Se rechaza una modificación. | Renta con las fechas pedidas, `reason` |
+| `RENTAL_CANCELLED` | Se cancela una reserva, a mano o por reparación, baja o cuenta desactivada (CU-07). | Renta, `reason` (el del correo) |
+| `CANCEL_REJECTED` | Se rechaza una cancelación. | Renta, `reason` |
+| `PICKUP_REGISTERED` | El operador entrega el equipo (CU-08). | Renta |
+| `PICKUP_REJECTED` | Se rechaza una entrega. | Renta, `reason` |
+| `RETURN_REGISTERED` | El operador recibe el equipo (CU-09). | Renta, `result`, `late_days` |
+| `RETURN_REJECTED` | Se rechaza una devolución. | Renta, `reason` |
+| `DEBT_CREATED` | Nace una deuda por atraso (CU-09) o por daño (CU-10). | Deuda (`by` = quien devolvió o revisó) |
+| `DEBT_PAID` | El operador o el admin registra el pago de una deuda (CU-11). | Deuda |
+| `DEBT_PAYMENT_REJECTED` | Se quiere cobrar una deuda ya pagada. | Deuda, `reason` |
+| `DAMAGE_NOT_CHARGED` | Mantenimiento manda a reparación o baja sin marcar el cobro (ENT-90). | `status`, renta del último cliente |
+| `REVIEW_REJECTED` | Se rechaza una revisión (CU-10). | `equipment`, `status` pedido, `reason`, `by` |
+| `STATUS_CHANGED` | Cambia el estado de un equipo (CU-09, CU-10, CU-13). | `equipment`, `old`, `new`, `by` |
+| `STATUS_CHANGE_REJECTED` | Se rechaza un cambio de estado. | `equipment`, `new` pedido, `reason`, `by` |
+| `EQUIPMENT_REGISTERED` | Se registra un equipo, en la página o en el admin (CU-12). | `equipment`, `serial`, `value`, `by` |
+| `EQUIPMENT_REJECTED` | Se rechaza un equipo nuevo. | `equipment`, `serial` y `value` escritos, `reason`, `by` |
+| `ACCOUNT_CREATED` | Se crea la cuenta de un cliente (CU-01, CU-02). | `user=<usuario> "<nombre>"`, `email`, `role`, `channel=web/store`, `by` |
+| `ACCOUNT_REJECTED` | Se rechaza un registro. | `username` y `email` escritos, `reason`, `by` |
+| `ACCOUNT_DEACTIVATED` · `ACCOUNT_REACTIVATED` | El admin quita o vuelve a poner «Activo» (ENT-79). | `user`, `by` |
+| `LOGIN_REJECTED` | Una cuenta desactivada escribe su contraseña correcta. | `reason=inactive`, `user` |
+| `EMAIL_FAILED` | El servidor de correo no responde. | `to`, `subject`, `error` |
+| `DEMO_RESET` | `seed_demo` vacía el log y crea la demo. | — |
 
 ## Correo
 

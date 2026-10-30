@@ -138,7 +138,8 @@ def test_mandar_a_reparacion_sin_marcar_el_cobro_no_crea_deuda_y_lo_escribe_en_e
     assert (resultado.debt, Debt.objects.count()) == (None, 0)
     # Comprueba la línea del log con la renta y quién decidió
     assert (
-        f"DAMAGE_NOT_CHARGED equipment=MES-00001 rental={renta.pk} client=cl01 status=in_repair by=mt01" in caplog.messages
+        f'DAMAGE_NOT_CHARGED status=in_repair rental={renta.pk} equipment=MES-00001 "Mesa plegable 1,80 m" '
+        'client=cl01 "Carla Mendoza" period=01/10/2026 18:00-03/10/2026 09:00 amount=40.00 by=mt01' in caplog.messages
     )
 
 

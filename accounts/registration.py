@@ -12,7 +12,7 @@ from django.core.validators import validate_email
 from django.db import IntegrityError, transaction
 
 from rentals.errors import RegistrationRejectedError
-from rentals.services.events import log_event, logs_rejection
+from rentals.services.events import log_event, logs_rejection, user_text
 from rentals.services.notifications import send_welcome
 
 from .models import PHONE_FORMAT, PHONE_FORMAT_MESSAGE, Role, User
@@ -48,7 +48,17 @@ def normalize_phone(text):
     return "".join(character for character in text if character.isdigit())
 
 
-@logs_rejection("ACCOUNT_REJECTED")
+def attempted_account(data, registered_by=None):
+    """El usuario y el correo que se intentaron registrar, para el log del rechazo; nunca la contraseña."""
+    return {"username": data.username.strip(), "email": data.email.strip(), "by": channel_actor(registered_by)}
+
+
+def channel_actor(registered_by):
+    """Devuelve quién creó la cuenta: el operador en la tienda o «web»."""
+    return registered_by.username if registered_by else "web"
+
+
+@logs_rejection("ACCOUNT_REJECTED", attempted_account)
 def register_client(data, registered_by=None) -> User:
     """Crea la cuenta de un cliente con su contraseña cifrada y la devuelve (ENT-15, ENT-84).
 
@@ -79,10 +89,11 @@ def register_client(data, registered_by=None) -> User:
         ) from error
     log_event(
         "ACCOUNT_CREATED",
-        id=user.pk,
-        username=user.username,
+        user=user_text(user),
+        email=user.email,
         role=Role.CLIENT,
-        registered_by=registered_by.username if registered_by else "web",
+        channel="store" if registered_by else "web",
+        by=channel_actor(registered_by),
     )
     send_welcome(user)
     return user

@@ -8,7 +8,7 @@ from django.db.models import F, Max, Prefetch
 from .. import rules
 from ..errors import InvalidStatusChangeError
 from ..models import Debt, Equipment, Rental, StatusChange
-from ..services.events import log_event, logs_rejection
+from ..services.events import equipment_text, log_event, logs_rejection, rental_context
 from ..services.formatting import charge_label
 from ..statuses import DebtReason, EquipmentStatus
 from .history import cancel_if_out_of_service, change_status
@@ -79,7 +79,12 @@ def review_choices_for(equipment):
     return [(status.value, status.label) for status in rules.next_statuses(equipment.status)]
 
 
-@logs_rejection("REVIEW_REJECTED")
+def attempted_review(equipment, staff_user, new_status, comment="", charge_last_client=False):
+    """El equipo y el estado que se pidieron, para el log del rechazo."""
+    return {"equipment": equipment_text(equipment), "status": new_status, "by": staff_user.username}
+
+
+@logs_rejection("REVIEW_REJECTED", attempted_review)
 def review_equipment(equipment, staff_user, new_status, comment="", charge_last_client=False) -> ReviewOutcome:
     """Guarda el estado nuevo de un equipo revisado con su historial, su deuda y sus cancelaciones.
 
@@ -112,25 +117,18 @@ def settle_damage(equipment, new_status, staff_user, charge_last_client):
     if rental is None:
         return None
     if not charge_last_client:
-        log_event(
-            "DAMAGE_NOT_CHARGED",
-            equipment=equipment.inventory_id,
-            rental=rental.pk,
-            client=rental.client.username,
-            status=new_status,
-            by=staff_user.username,
-        )
+        log_event("DAMAGE_NOT_CHARGED", status=new_status, **rental_context(rental, staff_user.username))
         return None
-    return charge_damage(rental, equipment, new_status)
+    return charge_damage(rental, equipment, new_status, staff_user)
 
 
-def charge_damage(rental, equipment, new_status):
+def charge_damage(rental, equipment, new_status, staff_user):
     """Cobra la reparación o la baja al cliente de la renta; None si ya no queda nada que cobrar (D-06)."""
     charge = rules.damage_charge(equipment.value, new_status, damage_charged_on(rental))
     if charge is None:
         return None
     reason, amount = charge
-    return charge_debt(rental, reason, amount)
+    return charge_debt(rental, reason, amount, staff_user)
 
 
 def damage_charged_on(rental) -> Decimal:
