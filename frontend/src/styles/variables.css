@@ -1,0 +1,25 @@
+:root {
+  --color-ink: #020005;
+  --color-brown: #150400;
+  --color-primary: #E69301;
+  --color-accent: #DEB81F;
+  --color-paper: #EDEDEA;
+  --color-surface: #FFFFFF;
+  --color-muted: #615E57;
+  --color-line: #C6C3B9;
+  --color-info-bg: #DEE6E8;
+  --color-info-text: #435C66;
+  --color-error: #B42318;
+  --color-error-bg: #FDECEA;
+  --color-success: #1B7A3D;
+  --color-success-bg: #E6F4EA;
+
+  --font-title: "Coolvetica", Helvetica, Arial, sans-serif;
+  --font-body: "Inter", Helvetica, Arial, sans-serif;
+
+  --border: 2px solid var(--color-ink);
+  --radius: 5px;
+  --radius-lg: 8px;
+  --shadow-sm: 3px 3px 0 var(--color-ink);
+  --shadow-lg: 8px 8px 0 var(--color-ink);
+}
