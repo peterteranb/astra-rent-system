@@ -94,14 +94,14 @@ Todos usan la clave `Demo1234`.
 | Usuario | Quién es | Qué ve al entrar |
 |---|---|---|
 | `cl01` | Carla Mendoza, cliente | Catálogo, «Mis rentas» con sus reservas, pagos y botones para modificar o cancelar |
-| `cl02` | Diego Rojas, cliente con deuda | Lo mismo, con su deuda de 22,50 Bs: no puede rentar hasta pagarla |
+| `cl02` | Diego Rojas, cliente con deuda | Lo mismo, con su deuda de 12,00 Bs: no puede rentar hasta pagarla |
 | `op01` | Olga Pérez, operadora | Reservas por entregar, renta en tienda, nuevo cliente, devoluciones y deudas |
 | `mt01` | Mario Torres, mantenimiento | Todos los equipos que no están de baja, el último que cambió primero, con el filtro por estado y la casilla para cobrar el daño |
 | `ad01` | Ana Díaz, administradora | El panel del responsable, el registro de equipos y el admin de Django |
 
-`seed_demo` crea 8 mesas (`MES-00001` a `MES-00008`), 12 sillas (`SIL-00001` a `SIL-00012`) y el combo `CMB-00001` «Combo 6 sillas y 1 mesa» (3000 Bs, 150 Bs por día: un equipo más, que no descuenta las sillas y mesas sueltas) y deja listo un caso para cada demostración: una reserva pagada para hoy, una con el pago pendiente, una devolución atrasada, una renta vencida, un equipo en revisión, uno en reparación, uno de baja y la deuda de `cl02`. Al terminar imprime para qué sirve cada equipo.
+`seed_demo` crea 30 equipos (12 mesas, 16 sillas y 2 combos, un equipo más cada uno que no descuenta las sillas y mesas sueltas), 8 clientes más (`cl03` a `cl10`) y rentas repartidas en el tiempo: devueltas a tiempo, en tolerancia y con atraso, deudas pagadas y pendientes, rentas de hoy y reservas de los próximos días. Deja listo un caso para cada demostración: una reserva pagada para hoy, una con el pago pendiente, una devolución atrasada, una renta vencida, un equipo en revisión, uno en reparación, uno de baja y la deuda de `cl02`. Al terminar imprime para qué sirve cada equipo.
 
-**Volver a cero:** `python manage.py seed_demo`. Es solo para la demo y el desarrollo: con `DEBUG=False` se niega a correr («seed_demo borra los datos de la demo; solo se usa con DEBUG=True»). Vacía `logs/negocio.log`, borra deudas, rentas, historial y equipos y crea el mismo escenario con fechas relativas a hoy. No manda correos.
+**Volver a cero:** `python manage.py seed_demo`. Es solo para la demo y el desarrollo: con `DEBUG=False` se niega a correr («seed_demo borra los datos de la demo; solo se usa con DEBUG=True»). Vacía `logs/negocio.log`, borra todos los usuarios, deudas, rentas, historial y equipos y crea la misma demo con fechas relativas a hoy. No manda correos.
 
 ## Mi cuenta y la contraseña
 
