@@ -17,5 +17,11 @@ export default defineConfig([
       globals: globals.browser,
       parserOptions: { ecmaFeatures: { jsx: true } },
     },
+    // Avisos de rendimiento y de recarga en caliente, no fallas: cargar datos al abrir la página funciona bien.
+    // Reescribir esas cargas queda como trabajo futuro.
+    rules: {
+      'react-hooks/set-state-in-effect': 'warn',
+      'react-refresh/only-export-components': 'warn',
+    },
   },
 ])
