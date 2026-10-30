@@ -61,6 +61,8 @@ def rental_data(rental):
         "total_price": money(rental.total_price),
         "is_paid": rental.is_paid,
         "payment_label": rental.payment_label,
+        "payment_method": rental.payment_method,
+        "payment_method_label": rental.get_payment_method_display(),
         "client_can_change": rental.client_can_change,
         "registered_by": username_or_none(rental.registered_by),
         "picked_up_at": moment(rental.picked_up_at),

@@ -55,7 +55,7 @@ def create_password_link(user, site_url):
 def send_rental_confirmed(rental):
     """Confirma la renta al cliente, pagada o con el pago pendiente (ENT-67)."""
     if rental.is_paid:
-        payment = f"{rental.payment_label}: {money_text(rental.total_price)}."
+        payment = f"{rental.payment_label} ({rental.get_payment_method_display()}): {money_text(rental.total_price)}."
     else:
         payment = (
             f"Pago pendiente: paga {money_text(rental.total_price)} en la tienda al recoger el equipo."

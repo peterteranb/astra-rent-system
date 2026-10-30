@@ -135,6 +135,7 @@ class RentalAdmin(admin.ModelAdmin):
         "end_datetime",
         "rental_total",
         "payment",
+        "payment_method",
         "rental_status",
         "registered_by",
         "created_at",
@@ -164,7 +165,7 @@ class RentalAdmin(admin.ModelAdmin):
 
     @admin.display(description="Pago")
     def payment(self, rental):
-        """Muestra si está pagada y cómo."""
+        """Muestra «Pagado» o «Pago pendiente»; la forma de pago tiene su propia columna (ENT-104)."""
         return rental.payment_label
 
     # Una renta creada o editada a mano se saltaría el cruce de fechas (RF-01) y una

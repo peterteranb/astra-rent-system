@@ -51,6 +51,8 @@
   "total_price": "40.00",
   "is_paid": false,
   "payment_label": "Pago pendiente",
+  "payment_method": "",
+  "payment_method_label": "",
   "client_can_change": true,
   "registered_by": null,
   "picked_up_at": null,
@@ -58,6 +60,8 @@
   "cancelled_at": null
 }
 ```
+
+`payment_label` es solo `"Pagado"` o `"Pago pendiente"` (ENT-104); la forma de pago va aparte en `payment_method` (`"qr"`, `"cash"` o `""` sin pagar) y `payment_method_label` (`"QR"`, `"Efectivo"` o `""`).
 
 **Equipo** (`equipment`): `{"inventory_id": "MES-00001", "name": "Mesa plegable 1,80 m", "status": "available", "status_label": "Disponible", "daily_price": "20.00"}`.
 
