@@ -126,7 +126,7 @@ def damage_reason_and_rate(new_status):
     return None
 
 
-def damage_charge(value, new_status, already_charged=Decimal("0")):
+def damage_charge(value, new_status, already_charged=Decimal(0)):
     """Devuelve (motivo, monto) de la deuda que deja una revisión, o None si no hay nada que cobrar (ENT-74).
 
     already_charged es lo que la renta ya debe por daño: la baja después de una reparación
@@ -144,7 +144,7 @@ def damage_charge(value, new_status, already_charged=Decimal("0")):
 
 def cap_damage(amount, value, already_charged) -> Decimal:
     """Recorta amount para que las deudas por daño de una renta no sumen más que el valor del equipo (D-06)."""
-    return min(amount, max(value - already_charged, Decimal("0")))
+    return min(amount, max(value - already_charged, Decimal(0)))
 
 
 def classify_return(returned_at, due_date) -> ReturnResult:

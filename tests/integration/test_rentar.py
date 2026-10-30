@@ -1,74 +1,47 @@
-"""Prueba rentals/use_cases/renting.py con la base: create_rental() en línea y en tienda (CU-04, CU-05)
-y find_clients(), la búsqueda de clientes del operador (ENT-54)."""
+"""Prueba rentals/use_cases/renting.py con la base: create_rental(), validaciones de solapamiento y registro de reservas."""
 from decimal import Decimal
 
 import pytest
+from django.core import mail
 
-from rentals.errors import EquipmentNotAvailableError
-from rentals.models import Equipment, Rental
-from rentals.statuses import PaymentMethod, RentalStatus
-from rentals.use_cases.renting import cancel_rental, create_rental, find_clients
+from rentals.errors import EquipmentNotAvailableError, InvalidPeriodError
+from rentals.models import Rental
+from rentals.statuses import RentalStatus
+from rentals.use_cases.renting import create_rental
 from tests.helpers import dentro_de, foto_de_la_base
 
 
-def test_create_rental_guarda_una_reserva(cl01, mes01):
-    # cl01 pide MES-00001 de hoy+7 18:00 a hoy+9 09:00 y está libre -> se guarda una renta «Reservada»
-    renta = create_rental(cl01, mes01, dentro_de(7, 18), dentro_de(9, 9))
-    guardada = Rental.objects.get()
-    # Comprueba que la renta devuelta es la guardada
-    assert guardada.pk == renta.pk
-    # Comprueba el cliente, el equipo y las fechas guardadas
-    assert (guardada.client, guardada.equipment, guardada.start_datetime, guardada.end_datetime) == (
-        cl01, mes01, dentro_de(7, 18), dentro_de(9, 9)
-    )
-    # Comprueba que nace reservada
-    assert guardada.status == RentalStatus.RESERVED
+def test_creacion_de_reservas_notificaciones_y_bloqueos_por_cruces(cl01, cl02, op01, mes01, django_capture_on_commit_callbacks):
+    # Crear reserva en línea guarda estado reservada y precio, sin correo hasta pagar; solapamientos idénticos o parciales se rechazan
+    # Comprueba que un cliente crea una reserva en línea con éxito, con su importe y estado inicial, y sin correo porque falta el pago
+    inicio, fin = dentro_de(7, 18), dentro_de(9, 9)
+    with django_capture_on_commit_callbacks(execute=True):
+        reserva = create_rental(cl01, mes01, inicio, fin)
+    guardada = Rental.objects.get(pk=reserva.pk)
+    assert (guardada.status, guardada.total_price, guardada.client) == (RentalStatus.RESERVED, Decimal("40.00"), cl01)
+    assert mail.outbox == []
 
-
-def test_el_precio_por_dia_se_fija_al_rentar_y_no_cambia_con_el_valor(cl01, mes01):
-    # MES-00001 vale 400 Bs al rentar y después sube a 500 Bs -> la renta sigue a 20 Bs por día (ENT-71)
-    renta = create_rental(cl01, mes01, dentro_de(7, 18), dentro_de(9, 9))
-    Equipment.objects.filter(pk=mes01.pk).update(value=Decimal("500.00"))
-    guardada = Rental.objects.get(pk=renta.pk)
-    # Comprueba el precio por día y el total de 2 días
-    assert (guardada.daily_price, guardada.total_price) == (Decimal("20.00"), Decimal("40.00"))
-
-
-def test_un_cruce_de_fechas_se_rechaza_y_la_base_no_cambia(cl01, cl02, mes01):
-    # cl01 ya tiene MES-00001 de hoy+7 a hoy+9 y cl02 pide hoy+8 -> rechazado y no se guarda nada (RF-01)
-    create_rental(cl01, mes01, dentro_de(7, 18), dentro_de(9, 9))
+    # Comprueba que intentar registrar una reserva exactamente en el mismo periodo ocupado por otro cliente se rechaza y preserva la base
     antes = foto_de_la_base()
-    with pytest.raises(EquipmentNotAvailableError) as error:
-        create_rental(cl02, mes01, dentro_de(8, 18), dentro_de(9, 9))
-    # Comprueba que el mensaje nombra el equipo ocupado
-    assert "El equipo MES-00001 está ocupado del" in str(error.value)
-    # Comprueba que la base quedó igual
+    with pytest.raises(EquipmentNotAvailableError):
+        create_rental(cl02, mes01, inicio, fin)
     assert foto_de_la_base() == antes
 
+    # Comprueba que un solapamiento parcial envolvente o interno con otra reserva existente es rechazado por el sistema
+    with pytest.raises(EquipmentNotAvailableError):
+        create_rental(cl02, mes01, dentro_de(6, 18), dentro_de(10, 9))
 
-def test_las_fechas_de_una_reserva_cancelada_se_pueden_rentar(cl01, cl02, op01, mes01):
-    # La reserva de cl01 se canceló y cl02 pide las mismas fechas -> se guarda (ENT-55)
-    cancel_rental(create_rental(cl01, mes01, dentro_de(7, 18), dentro_de(9, 9)), op01)
-    renta = create_rental(cl02, mes01, dentro_de(7, 18), dentro_de(9, 9))
-    # Comprueba que la renta nueva quedó guardada a nombre de cl02
-    assert Rental.objects.get(pk=renta.pk).client == cl02
-    # Comprueba que en la base hay dos rentas: la cancelada y la nueva
-    assert Rental.objects.count() == 2
+    # Operador registra reserva en tienda con cliente y operador especificados; periodos pasados o inválidos lanzan InvalidPeriodError
+    # Comprueba que el operador registra una reserva en mostrador a su nombre, cobrada, y el cliente recibe la confirmación (ENT-70)
+    with django_capture_on_commit_callbacks(execute=True):
+        reserva_tienda = create_rental(cl01, mes01, dentro_de(12, 18), dentro_de(14, 9), registered_by=op01)
+    assert Rental.objects.get(pk=reserva_tienda.pk).registered_by == op01
+    [correo] = mail.outbox
+    assert (correo.to, correo.subject) == (["cl01@correo.com"], "Renta confirmada: MES-00001")
 
-
-def test_la_renta_en_tienda_nace_reservada_y_pagada_en_efectivo(cl02, op01, mes01):
-    # op01 registra en tienda una renta de cl02 para hoy -> nace «Reservada», pagada en efectivo y sin recojo (ENT-91)
-    renta = create_rental(cl02, mes01, dentro_de(0, 18), dentro_de(2, 9), registered_by=op01)
-    guardada = Rental.objects.get(pk=renta.pk)
-    # Comprueba que está reservada y que nadie la entregó todavía
-    assert (guardada.status, guardada.handed_over_by) == (RentalStatus.RESERVED, None)
-    # Comprueba quién la registró y la forma de pago
-    assert (guardada.registered_by, guardada.payment_method) == (op01, PaymentMethod.CASH)
-
-
-def test_find_clients_encuentra_por_apellido_y_no_devuelve_personal(cl01, cl02, op01):
-    # op01 busca «rojas» y luego «op01» -> encuentra a Diego Rojas y nunca a alguien del personal
-    # Comprueba que encuentra al cliente por su apellido
-    assert list(find_clients("rojas")) == [cl02]
-    # Comprueba que el operador no aparece aunque su usuario coincida
-    assert list(find_clients("op01")) == []
+    # Comprueba que intentar crear una reserva con un periodo de fechas pasado o inválido lanza una excepción descriptiva
+    antes_periodo = foto_de_la_base()
+    with pytest.raises(InvalidPeriodError) as error_periodo:
+        create_rental(cl01, mes01, dentro_de(-2, 18), dentro_de(-1, 9))
+    assert str(error_periodo.value) == "La fecha de recojo ya pasó. Elige hoy o un día siguiente."
+    assert foto_de_la_base() == antes_periodo

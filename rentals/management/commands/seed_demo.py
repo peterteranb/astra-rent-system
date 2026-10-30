@@ -2,7 +2,9 @@
 
 SOLO PARA LA DEMO Y EL DESARROLLO (DEBUG=True): vacía logs/negocio.log, borra todas las deudas, rentas,
 historial y equipos y los vuelve a crear, así cada vez que se corre el escenario queda igual.
+Con --equipos N completa el catálogo hasta N equipos con mesas y sillas generadas (RC-01: probar con 1000).
 """
+import itertools
 from datetime import datetime, time, timedelta
 from decimal import Decimal
 
@@ -69,6 +71,21 @@ DEMO_MODELS = {
     ],
 }
 
+# ENT-07: solo mesas y sillas. Estos pocos modelos se repiten para llenar un catálogo grande.
+EXTRA_MODELS = {
+    "MES": [
+        ("Mesa plegable 1,80 m", "400.00"),
+        ("Mesa redonda 1,20 m", "350.00"),
+        ("Mesa rectangular de madera 2,40 m", "650.00"),
+        ("Mesa cóctel alta", "300.00"),
+    ],
+    "SIL": [
+        ("Silla plegable blanca", "80.00"),
+        ("Silla Tiffany dorada", "150.00"),
+        ("Silla acolchada negra", "120.00"),
+    ],
+}
+
 DEMO_PURPOSE = {
     "MES-00001": "CU-08: reserva pagada de cl01 para hoy, lista para entregar",
     "MES-00002": "CU-04: pedir hoy+8 se rechaza; la reserva cancelada no ocupa",
@@ -94,13 +111,21 @@ class Command(BaseCommand):
         "y crea el escenario de la demo."
     )
 
+    def add_arguments(self, parser):
+        """Agrega --equipos N: cuántos equipos tiene la base en total al terminar."""
+        parser.add_argument(
+            "--equipos", type=int, default=None, help="Total de equipos; los que pasan del escenario son mesas y sillas libres."
+        )
+
     def handle(self, *args, **options):
         """Empieza el log de cero y crea todo el escenario en una sola transacción: o queda completo o no cambia nada."""
         # ENT-97: nunca se borra nada; este comando sí borra, así que no corre en producción.
         if not settings.DEBUG:
             raise CommandError("seed_demo borra los datos de la demo; solo se usa con DEBUG=True")
+        extra = extra_count(options["equipos"])
         start_business_log()
-        with override_settings(MAILERS=NO_EMAIL), transaction.atomic():
+        # Sin hilo: un correo en segundo plano podría salir cuando override_settings ya devolvió Gmail.
+        with override_settings(MAILERS=NO_EMAIL, EMAIL_IN_BACKGROUND=False), transaction.atomic():
             # PROTECT: se borra de las hojas hacia la raíz.
             Debt.objects.all().delete()
             Rental.objects.all().delete()
@@ -109,13 +134,15 @@ class Command(BaseCommand):
             users = create_users()
             equipment = create_equipment()
             create_scenario(users, equipment)
-        self.print_summary()
+            Equipment.objects.bulk_create(extra_units(extra))
+        self.print_summary(extra)
 
-    def print_summary(self):
-        """Imprime una tabla corta: equipo, estado, rentas y para qué sirve en la demo."""
+    def print_summary(self, extra):
+        """Imprime una tabla corta: equipo, estado, rentas y para qué sirve en la demo; los generados, solo cuántos son."""
         self.stdout.write(f"Usuarios: cl01, cl02, op01, mt01, ad01 (clave: {DEMO_PASSWORD})")
         self.stdout.write(f"{'Equipo':<10} {'Estado':<14} {'Rentas':<44} Para qué sirve")
-        for unit in Equipment.objects.prefetch_related("rentals__client"):
+        scenario_codes = [code for code, _, _ in scenario_models()]
+        for unit in Equipment.objects.filter(inventory_id__in=scenario_codes).prefetch_related("rentals__client"):
             rentals = ", ".join(
                 f"{rental.status.label} de {rental.client.username}" for rental in unit.rentals.all()
             )
@@ -123,6 +150,8 @@ class Command(BaseCommand):
                 f"{unit.inventory_id:<10} {unit.get_status_display():<14} "
                 f"{rentals or '-':<44} {DEMO_PURPOSE.get(unit.inventory_id, 'Libre')}"
             )
+        if extra:
+            self.stdout.write(f"Además: {extra} mesas y sillas libres generadas.")
         self.stdout.write(self.style.SUCCESS("Escenario de la demo listo."))
 
 
@@ -157,14 +186,37 @@ def reset_user(username, first_name, last_name, email, phone, role_code):
 
 def create_equipment():
     """Crea las 8 mesas, las 12 sillas y el combo de la demo, disponibles, y los devuelve por código."""
-    equipment = {}
+    return {
+        code: Equipment.objects.create(inventory_id=code, serial_number=f"SN-{code}", name=name, value=Decimal(value))
+        for code, name, value in scenario_models()
+    }
+
+
+def scenario_models():
+    """Genera el código, el nombre y el valor de cada equipo del escenario: MES-00001… SIL-00001… CMB-00001."""
     for prefix, models in DEMO_MODELS.items():
         for number, (name, value) in enumerate(models, start=1):
-            code = f"{prefix}-{number:05d}"
-            equipment[code] = Equipment.objects.create(
-                inventory_id=code, serial_number=f"SN-{code}", name=name, value=Decimal(value)
-            )
-    return equipment
+            yield f"{prefix}-{number:05d}", name, value
+
+
+def extra_count(total):
+    """Devuelve cuántos equipos generar para llegar a total; 0 sin --equipos. Lanza CommandError si no alcanza para la demo."""
+    scenario_size = len(list(scenario_models()))
+    if total is None:
+        return 0
+    if total < scenario_size:
+        raise CommandError(f"--equipos debe ser al menos {scenario_size}: el escenario de la demo usa {scenario_size} equipos.")
+    return total - scenario_size
+
+
+def extra_units(count):
+    """Genera count equipos sin guardar, alternando mesa y silla, con códigos que siguen a los de la demo."""
+    numbers = {prefix: itertools.count(len(DEMO_MODELS[prefix]) + 1) for prefix in EXTRA_MODELS}
+    for prefix in itertools.islice(itertools.cycle(EXTRA_MODELS), count):
+        number = next(numbers[prefix])
+        name, value = EXTRA_MODELS[prefix][number % len(EXTRA_MODELS[prefix])]
+        code = f"{prefix}-{number:05d}"
+        yield Equipment(inventory_id=code, serial_number=f"SN-{code}", name=name, value=Decimal(value))
 
 
 def create_scenario(users, equipment):

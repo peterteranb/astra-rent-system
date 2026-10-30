@@ -6,22 +6,18 @@ from rentals.use_cases.renting import create_rental
 from tests.helpers import dentro_de
 
 
-def test_sin_fechas_el_catalogo_muestra_el_equipo_reservado_sin_etiquetas(client, cl01, cl02, mes01):
-    # MES-00001 está reservada por cl01 y cl02 abre el catálogo sin fechas -> la ve para rentar, sin «Ocupado» ni «Libre»
+def test_el_catalogo_muestra_el_equipo_reservado_sin_decir_cuando_lo_usan_otros(client, cl01, cl02, mes01):
+    # MES-00001 está reservada por cl01 y cl02 abre el catálogo sin fechas, en la página y por la API -> la ve para rentar, sin etiquetas
     create_rental(cl01, mes01, dentro_de(7, 18), dentro_de(9, 9))
     client.force_login(cl02)
+
+    # Comprueba que la página muestra el botón para rentar, sin «Ocupado» ni «Libre»
     respuesta = client.get("/")
-    # Comprueba que el equipo aparece con su botón para rentar
     assertContains(respuesta, "/equipment/MES-00001/rent/")
-    # Comprueba que no dice cuándo lo usan otros
     assertNotContains(respuesta, "Ocupado")
     assertNotContains(respuesta, "Libre</span>")
 
-
-def test_la_api_del_catalogo_no_trae_los_periodos_ocupados(client, cl01, cl02, mes01):
-    # MES-00001 está reservada por cl01 y cl02 pide el catálogo por la API -> el equipo viene sin busy_periods
-    create_rental(cl01, mes01, dentro_de(7, 18), dentro_de(9, 9))
-    client.force_login(cl02)
+    # Comprueba que la API trae el equipo sin busy_periods
     [equipo] = client.get("/api/catalog/").json()["data"]["results"]
     assert equipo == {
         "inventory_id": "MES-00001",

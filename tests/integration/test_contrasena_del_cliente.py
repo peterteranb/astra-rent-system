@@ -4,6 +4,7 @@ import re
 import smtplib
 from unittest import mock
 
+import pytest
 from django.contrib.auth import get_user_model
 from django.core import mail
 from pytest_django.asserts import assertContains, assertRedirects
@@ -40,8 +41,8 @@ def test_el_operador_crea_la_cuenta_sin_contrasena_y_el_cliente_recibe_el_enlace
     )
 
 
-def test_si_el_correo_falla_el_operador_ve_que_use_olvide_mi_contrasena(client, op01):
-    # El servidor de correo no responde al registrar a Lucía -> la cuenta queda y el operador ve qué hacer
+def test_si_el_correo_falla_el_operador_ve_que_use_olvide_mi_contrasena(client, op01, caplog):
+    # El servidor de correo no responde al registrar a Lucía -> la cuenta queda, el log dice EMAIL_FAILED y el operador ve qué hacer
     client.force_login(op01)
     sin_conexion = smtplib.SMTPException("sin conexión")
     with mock.patch("rentals.services.notifications.send_mail", side_effect=sin_conexion):
@@ -52,8 +53,9 @@ def test_si_el_correo_falla_el_operador_ve_que_use_olvide_mi_contrasena(client, 
         "La cuenta se creó, pero no se pudo enviar el correo. "
         "Pide al cliente que use &quot;Olvidé mi contraseña&quot; con su correo.",
     )
-    # Comprueba que la cuenta quedó creada
+    # Comprueba que la cuenta quedó creada y el log del fallo
     assert get_user_model().objects.filter(username="cl03").exists() is True
+    assert caplog.messages[-1] == 'EMAIL_FAILED to=cl03 subject="Crea tu contraseña de SergioCorp" error=SMTPException'
 
 
 def test_el_cliente_de_la_tienda_crea_su_contrasena_con_el_enlace_y_entra(client, op01, caplog):
@@ -83,10 +85,14 @@ def test_olvide_mi_contrasena_manda_el_enlace_y_escribe_el_log(client, cl01, cap
     assert caplog.messages == ["PASSWORD_RESET_REQUESTED email=cl01@correo.com users=cl01 by=web"]
 
 
-def test_olvide_mi_contrasena_con_un_correo_desconocido_no_manda_nada(client, cl01):
-    # Alguien pide el enlace para nadie@correo.com -> ve la misma página, pero no sale ningún correo
-    respuesta = client.post("/password-reset/", {"email": "nadie@correo.com"})
+@pytest.mark.parametrize(("correo", "activa"), [("nadie@correo.com", True), ("cl01@correo.com", False)])
+def test_olvide_mi_contrasena_sin_una_cuenta_activa_no_manda_nada(client, cl01, caplog, correo, activa):
+    # Se pide el enlace para un correo de nadie o de cl01 desactivada (ENT-79) -> la misma página y ningún correo
+    cl01.is_active = activa
+    cl01.save()
+    respuesta = client.post("/password-reset/", {"email": correo})
     # Comprueba que la página no dice si la cuenta existe
     assertRedirects(respuesta, "/password-reset/sent/")
-    # Comprueba que no salió ningún correo
+    # Comprueba que no salió ningún correo y que el log no encontró cuentas
     assert mail.outbox == []
+    assert caplog.messages == [f"PASSWORD_RESET_REQUESTED email={correo} users=- by=web"]

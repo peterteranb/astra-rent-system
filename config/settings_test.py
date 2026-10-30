@@ -4,15 +4,20 @@ import os
 # Las pruebas no necesitan la clave secreta real: así corren igual en GitHub Actions, sin .env.
 os.environ.setdefault("SECRET_KEY", "clave-solo-para-las-pruebas")
 
-from .settings import *  # noqa: E402,F401,F403
-from .settings import LOGGING, STORAGES  # noqa: E402
+from .settings import *
+from .settings import LOGGING, STORAGES
 
 # Solo afecta a las pruebas: el hash real tarda unos 0,3 s por usuario creado
 # y MD5 es instantáneo. Las contraseñas de la base real siguen con el hash seguro.
 PASSWORD_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]
 
-# Las pruebas no escriben en logs/negocio.log: ese archivo es el de la demo.
-LOGGING["loggers"]["rentals"]["handlers"] = ["console"]
+# Las pruebas leen mail.outbox apenas termina la operación: sin hilo, el correo ya está ahí.
+EMAIL_IN_BACKGROUND = False
+
+# Las pruebas no escriben en logs/negocio.log: ese archivo es el de la demo. Sin handlers propios, las
+# líneas suben al logger raíz, donde caplog las captura.
+LOGGING["loggers"]["rentals"]["handlers"] = []
+LOGGING["loggers"]["rentals"]["propagate"] = True
 
 # Las pruebas no corren collectstatic: los estáticos se sirven sin el manifiesto de whitenoise.
 STORAGES = {

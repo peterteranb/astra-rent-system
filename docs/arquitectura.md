@@ -72,7 +72,7 @@ rentals/
 | `rentals/use_cases/history.py` | `change_status`: el único lugar que cambia `Equipment.status`, siempre con su fila de historial; `correct_status` (admin) y `cancel_if_out_of_service` (cancela las reservas al pasar a reparación o baja). | CU-09, CU-10, CU-13 |
 | `rentals/use_cases/dashboard.py` | Las seis listas del panel del responsable, lo último primero. | CU-15 |
 | `rentals/services/events.py` | Log de negocio: el contexto de una renta (`rental_context`) y el decorador que escribe cada rechazo una sola vez, con lo que se intentó. | Todos (RC-05, ENT-101) |
-| `rentals/services/notifications.py` | Correos al cliente, enviados cuando la transacción se confirma; «Crea tu contraseña» sale en el momento y dice si salió. | CU-01, CU-02, CU-04 a CU-07, CU-09, CU-10 |
+| `rentals/services/notifications.py` | Correos al cliente, enviados cuando la transacción se confirma (los de rentas y deudas, en un hilo aparte); «Crea tu contraseña» sale en el momento y dice si salió. | CU-01, CU-02, CU-04 a CU-07, CU-09, CU-10 |
 | `rentals/services/formatting.py` | Textos para mostrar: fechas, montos, días, el aviso de deuda y por qué una renta ya no está «Reservada». | Todos (RC-04) |
 | `rentals/forms.py` | Formularios de filtros, fechas, renta en tienda, «Ordenar por», devolución y registro de equipos. Solo revisan que los datos tengan forma. | CU-03 a CU-05, CU-08, CU-09, CU-12 |
 | `rentals/admin.py` | Admin de equipos, rentas, deudas e historial, lo último primero; sus acciones llaman a los casos de uso. | CU-07, CU-11 a CU-15 |
@@ -205,6 +205,8 @@ Si un caso de uso lanza `OperationRejectedError`, el decorador `logs_rejection(e
 
 ## Correo
 
+Los correos de confirmación, pago, cancelación, deuda y modificación salen en un hilo aparte (`threading.Thread(daemon=True)`) que lanza el mismo `on_commit`, porque Gmail tarda más de 1,6 s y la pantalla no debe esperarlo; `EMAIL_IN_BACKGROUND=False` (en `settings_test.py`) los manda en el mismo hilo (D-40).
+
 Se usa `django.core.mail.send_mail` con el setting `MAILERS` de Django 6.1. Por defecto, el backend de consola (el correo se imprime en la terminal). Si `.env` tiene `EMAIL_HOST_USER` y `EMAIL_HOST_PASSWORD`, se usa el SMTP de Gmail (`smtp.gmail.com:587`, TLS, con una contraseña de aplicación).
 
 ## Pruebas y CI
@@ -215,4 +217,4 @@ Se usa `django.core.mail.send_mail` con el setting `MAILERS` de Django 6.1. Por 
 | Integración | `tests/integration/` | Cada caso de uso con la base de datos, el log (`caplog`) y el correo (`mail.outbox`). |
 | Sistema | `tests/system/` | Recorridos completos por la web. |
 
-GitHub Actions (`.github/workflows/ci-sesion12.yml`) corre en cada push: revisa la configuración, que no falte ninguna migración, y todas las pruebas con un PostgreSQL temporal.
+Cómo correrlas, la prueba de carga (`stress_test`), la cobertura y qué cubre cada archivo: [pruebas.md](pruebas.md). GitHub Actions (`.github/workflows/ci-sesion12.yml`) corre en cada push: revisa la configuración, que no falte ninguna migración, y todas las pruebas con un PostgreSQL temporal.

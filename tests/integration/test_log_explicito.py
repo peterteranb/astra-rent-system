@@ -3,30 +3,12 @@ los rechazos llevan lo que se intentó (ENT-101)."""
 import pytest
 
 from accounts.registration import SignUpData, register_client
-from rentals.errors import EquipmentNotAvailableError, InvalidModificationError, RegistrationRejectedError
+from rentals.errors import InvalidModificationError, RegistrationRejectedError
 from rentals.use_cases.handover import register_return
 from rentals.use_cases.renting import create_rental, modify_rental
 from tests.helpers import con_la_hora, foto_de_la_base, local_datetime, renta_entregada
 
 HOY = local_datetime(2026, 10, 29, 10)
-
-
-def test_un_rechazo_por_fechas_ocupadas_lleva_cliente_equipo_y_fechas_pedidas(cl01, cl02, mes01, caplog):
-    # cl02 pide del 06/11 al 07/11 un equipo que cl01 ya tiene -> RENTAL_REJECTED con lo pedido, el motivo y quién
-    with con_la_hora(HOY):
-        create_rental(cl01, mes01, local_datetime(2026, 11, 5, 18), local_datetime(2026, 11, 7, 9))
-        caplog.clear()
-        antes = foto_de_la_base()
-        with pytest.raises(EquipmentNotAvailableError):
-            create_rental(cl02, mes01, local_datetime(2026, 11, 6, 18), local_datetime(2026, 11, 7, 9))
-    # Comprueba la línea con los datos intentados
-    assert caplog.messages == [
-        'RENTAL_REJECTED equipment=MES-00001 "Mesa plegable 1,80 m" client=cl02 "Diego Rojas" '
-        "period=06/11/2026 18:00-07/11/2026 09:00 "
-        'reason="El equipo MES-00001 está ocupado del 05/11/2026 18:00 al 07/11/2026 09:00." by=cl02'
-    ]
-    # Comprueba que la base quedó igual
-    assert foto_de_la_base() == antes
 
 
 def test_la_renta_en_tienda_nace_pagada_y_el_log_dice_payment_paid(cl02, op01, mes01, caplog):

@@ -11,7 +11,6 @@ from ..statuses import DebtReason, EquipmentStatus, PaymentMethod, RentalStatus
 from . import history
 from .payments import charge_debt
 
-
 # ENT-100: por defecto lo último primero; para atender en la tienda también sirve el orden por fecha.
 ORDER_RECENT = "recent"
 ORDER_BY_DATE = "date"

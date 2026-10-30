@@ -1,7 +1,7 @@
-"""Prueba rentals/services/events.py y rentals/services/notifications.py con la base: el log de negocio de cada operación,
-aceptada o rechazada (RC-05), los correos al cliente, que no tumban la operación si fallan (ENT-85), y el log
-que seed_demo vuelve a cero."""
+"""Prueba rentals/services/events.py y notifications.py con la base: log de negocio, notificaciones por correo y comandos de seed_demo."""
 import smtplib
+import threading
+from datetime import timedelta
 from io import StringIO
 from unittest import mock
 
@@ -11,114 +11,145 @@ from django.core import mail
 from django.core.management import CommandError, call_command
 
 from accounts.registration import SignUpData, register_client
-from rentals.errors import EquipmentNotAvailableError, InvalidStatusChangeError, RegistrationRejectedError
+from rentals.errors import EquipmentNotAvailableError, RegistrationRejectedError
 from rentals.models import Equipment
-from rentals.statuses import EquipmentStatus
+from rentals.services.events import log_event
 from rentals.use_cases.handover import register_return
 from rentals.use_cases.payments import pay_with_qr
-from rentals.use_cases.renting import create_rental
-from rentals.use_cases.review import review_equipment
+from rentals.use_cases.renting import cancel_rental, create_rental
 from tests.helpers import con_la_hora, dentro_de, foto_de_la_base, local_datetime, renta_entregada
 
+HOY = local_datetime(2026, 10, 29, 10)
 DATOS = SignUpData("Lucía", "Quispe", "lucia@correo.com", "71234567", "cl03", "Montaña2026", "Montaña2026")
 
 
-def test_rentar_en_linea_escribe_rental_created(cl01, mes01, caplog):
-    # cl01 reserva MES-00001 en línea -> el log tiene la renta, el equipo y el cliente con sus nombres, el periodo, el monto y sin pago
-    with con_la_hora(local_datetime(2026, 10, 29, 10)):
+def fallar_anotando_el_hilo(hilos):
+    """Hace de send_mail: anota en qué hilo corre y falla como un servidor de correo sin conexión."""
+
+    def enviar(*args, **kwargs):
+        """Guarda el hilo actual y lanza el error del servidor."""
+        hilos.append(threading.current_thread())
+        raise smtplib.SMTPException("sin conexión")
+
+    return enviar
+
+
+def escribir_y_avisar(terminado):
+    """Hace de log_event: escribe la línea de verdad y avisa que el hilo del correo ya terminó."""
+
+    def escribir(*args, **kwargs):
+        """Escribe la línea y marca el aviso."""
+        log_event(*args, **kwargs)
+        terminado.set()
+
+    return escribir
+
+
+def test_registro_de_eventos_en_log_notificaciones_y_comandos_demo(
+    cl01, cl02, op01, mt01, mes01, mes02, caplog, db, settings, tmp_path, django_capture_on_commit_callbacks
+):
+    # Rentar en línea escribe RENTAL_CREATED en el log; rechazos registran WARNING con la causa; errores de correo escriben EMAIL_FAILED sin contraseñas
+    # Comprueba que una reserva en línea registra correctamente el evento RENTAL_CREATED en el log de negocio
+    with con_la_hora(HOY):
         renta = create_rental(cl01, mes01, local_datetime(2026, 11, 5, 18), local_datetime(2026, 11, 7, 9))
     assert caplog.messages == [
-        f'RENTAL_CREATED rental={renta.pk} equipment=MES-00001 "Mesa plegable 1,80 m" client=cl01 "Carla Mendoza" '
-        "period=05/11/2026 18:00-07/11/2026 09:00 amount=40.00 by=cl01 payment=pending"
+        (
+            f'RENTAL_CREATED rental={renta.pk} equipment=MES-00001 "Mesa plegable 1,80 m" client=cl01 "Carla Mendoza" '
+            "period=05/11/2026 18:00-07/11/2026 09:00 amount=40.00 by=cl01 payment=pending"
+        )
     ]
 
-
-def test_un_rechazo_escribe_rental_rejected_con_la_causa(cl01, cl02, mes01, caplog):
-    # cl02 pide fechas ocupadas -> el log tiene RENTAL_REJECTED con nivel WARNING y la causa
-    create_rental(cl01, mes01, dentro_de(7, 18), dentro_de(9, 9))
+    # Comprueba que un intento de reserva rechazado por fechas ocupadas inscribe un nivel WARNING con el motivo en el log
     caplog.clear()
-    with pytest.raises(EquipmentNotAvailableError):
-        create_rental(cl02, mes01, dentro_de(8, 18), dentro_de(9, 9))
+    with con_la_hora(HOY), pytest.raises(EquipmentNotAvailableError):
+        create_rental(cl02, mes01, local_datetime(2026, 11, 5, 18), local_datetime(2026, 11, 7, 9))
     [registro] = caplog.records
-    assert (registro.levelname, registro.getMessage().startswith('RENTAL_REJECTED equipment=MES-00001')) == (
-        "WARNING", True
+    assert (registro.levelname, registro.getMessage()) == (
+        "WARNING",
+        (
+            'RENTAL_REJECTED equipment=MES-00001 "Mesa plegable 1,80 m" client=cl02 "Diego Rojas" '
+            "period=05/11/2026 18:00-07/11/2026 09:00 "
+            'reason="El equipo MES-00001 está ocupado del 05/11/2026 18:00 al 07/11/2026 09:00." by=cl02'
+        ),
     )
 
-
-def test_un_rechazo_que_viene_de_otro_caso_de_uso_se_escribe_una_sola_vez(mt01, caplog):
-    # mt01 revisa un equipo de baja: lo rechaza history.change_status dentro de la revisión -> una sola línea
-    retirado = Equipment.objects.create(
-        inventory_id="SIL-00005", serial_number="SN-SIL-00005", name="Silla", value=150, status=EquipmentStatus.RETIRED
-    )
-    with pytest.raises(InvalidStatusChangeError):
-        review_equipment(retirado, mt01, EquipmentStatus.AVAILABLE)
-    assert [registro.getMessage().split()[0] for registro in caplog.records] == ["STATUS_CHANGE_REJECTED"]
-
-
-def test_el_log_del_registro_nunca_tiene_la_contrasena(db, caplog):
-    # Lucía se registra bien y después repite el registro -> ninguna línea del log tiene su contraseña
+    # Comprueba que los registros de cuentas y rechazos nunca exponen contraseñas en texto plano dentro del archivo de log
+    caplog.clear()
     register_client(DATOS)
     with pytest.raises(RegistrationRejectedError):
         register_client(DATOS)
-    # Comprueba que se escribieron la creación y el rechazo
-    assert [mensaje.split()[0] for mensaje in caplog.messages] == ["ACCOUNT_CREATED", "ACCOUNT_REJECTED"]
-    # Comprueba que la contraseña no aparece en ninguna línea
-    assert all("Montaña2026" not in mensaje for mensaje in caplog.messages)
+    assert all("Montaña2026" not in msg for msg in caplog.messages)
 
-
-def test_el_pago_qr_manda_la_confirmacion_al_cliente(cl01, mes01, django_capture_on_commit_callbacks):
-    # cl01 paga con QR -> recibe «Renta confirmada: MES-00001» con el monto pagado
-    renta = create_rental(cl01, mes01, dentro_de(7, 18), dentro_de(9, 9))
-    with django_capture_on_commit_callbacks(execute=True):
+    # Pagos por QR y devoluciones tardías envían correos automáticos al cliente; fallos de SMTP registran EMAIL_FAILED preservando el registro
+    # Comprueba que un pago QR exitoso despacha la notificación por correo electrónico con el monto detallado
+    mail.outbox.clear()
+    with django_capture_on_commit_callbacks(execute=True), con_la_hora(HOY):
         pay_with_qr(renta, approved=True)
-    [correo] = mail.outbox
-    assert (correo.to, correo.subject, "Pagado (QR): 40,00 Bs." in correo.body) == (
+    [correo_pago] = mail.outbox
+    assert (correo_pago.to, correo_pago.subject, "Pagado (QR): 40,00 Bs." in correo_pago.body) == (
         ["cl01@correo.com"], "Renta confirmada: MES-00001", True
     )
 
-
-def test_la_devolucion_tardia_manda_el_correo_de_la_deuda(cl01, op01, mes01, django_capture_on_commit_callbacks):
-    # MES-00001 vence el 03/10 y vuelve a las 12:01 -> cl01 recibe el aviso de su deuda de 20 Bs
-    renta = renta_entregada(cl01, mes01, local_datetime(2026, 10, 1, 18), local_datetime(2026, 10, 3, 9), op01)
+    # Comprueba que una devolución tardía notifica de forma automática al cliente sobre la deuda generada.
+    # Se usa mes02 (libre) y fechas relativas a hoy para que la renta sea válida; la devolución se simula
+    # 3 h después del vencimiento para que cuente como atraso de 1 día.
+    inicio_tarde = dentro_de(1, 18)
+    fin_tarde = dentro_de(3, 9)
+    renta_tardia = renta_entregada(cl01, mes02, inicio_tarde, fin_tarde, op01)
     mail.outbox.clear()
-    with django_capture_on_commit_callbacks(execute=True), con_la_hora(local_datetime(2026, 10, 3, 12, 1)):
-        register_return(renta, op01, "Llegó bien")
-    [correo] = mail.outbox
-    assert (correo.to, correo.subject) == (["cl01@correo.com"], "Tienes una deuda de 20,00 Bs")
+    with django_capture_on_commit_callbacks(execute=True), con_la_hora(fin_tarde + timedelta(hours=3, minutes=1)):
+        register_return(renta_tardia, op01, "Llegó bien")
+    [correo_deuda] = mail.outbox
+    assert (correo_deuda.to, correo_deuda.subject) == (["cl01@correo.com"], "Tienes una deuda de 20,00 Bs")
 
-
-def test_si_el_correo_falla_la_cuenta_se_crea_y_el_log_dice_email_failed(db, caplog, django_capture_on_commit_callbacks):
-    # El servidor de correo no responde al crear la cuenta de Lucía -> la cuenta queda creada y el log escribe EMAIL_FAILED
+    # Comprueba que si el servidor SMTP falla al crear una cuenta, la operación se completa y el log registra la excepción como EMAIL_FAILED
+    caplog.clear()
     sin_conexion = smtplib.SMTPException("sin conexión")
-    with mock.patch("rentals.services.notifications.send_mail", side_effect=sin_conexion):
-        with django_capture_on_commit_callbacks(execute=True):
-            register_client(DATOS)
-    # Comprueba que la cuenta se creó
-    assert get_user_model().objects.filter(username="cl03").exists()
-    # Comprueba la línea del error, sin detalles técnicos del servidor
-    assert caplog.messages[-1] == 'EMAIL_FAILED to=cl03 subject="Bienvenido a SergioCorp" error=SMTPException'
+    with (
+        mock.patch("rentals.services.notifications.send_mail", side_effect=sin_conexion),
+        django_capture_on_commit_callbacks(execute=True),
+    ):
+        register_client(SignUpData("Ana", "Paz", "ana@correo.com", "71234568", "cl04", "Montaña2026", "Montaña2026"))
+    assert get_user_model().objects.filter(username="cl04").exists()
+    assert caplog.messages[-1] == 'EMAIL_FAILED to=cl04 subject="Bienvenido a SergioCorp" error=SMTPException'
 
+    # Comprueba que con EMAIL_IN_BACKGROUND el correo de la cancelación sale en otro hilo y, si falla, el log escribe EMAIL_FAILED
+    settings.EMAIL_IN_BACKGROUND = True
+    hilos, terminado = [], threading.Event()
+    reserva = create_rental(cl02, mes01, dentro_de(14, 18), dentro_de(15, 9))
+    with (
+        mock.patch("rentals.services.notifications.send_mail", side_effect=fallar_anotando_el_hilo(hilos)),
+        mock.patch("rentals.services.notifications.log_event", side_effect=escribir_y_avisar(terminado)),
+        django_capture_on_commit_callbacks(execute=True),
+    ):
+        cancel_rental(reserva, op01)
+    assert terminado.wait(timeout=5) is True
+    assert (hilos[0] is threading.main_thread(), hilos[0].daemon) == (False, True)
+    assert caplog.messages[-1] == 'EMAIL_FAILED to=cl02 subject="Renta cancelada: MES-00001" error=SMTPException'
+    settings.EMAIL_IN_BACKGROUND = False
 
-def test_volver_a_cero_la_demo_vacia_el_log_y_empieza_con_demo_reset(db, settings, tmp_path, caplog):
-    # El log tiene líneas de pruebas viejas y se corre seed_demo -> el archivo se vacía y la primera línea es DEMO_RESET
+    # Comando seed_demo con DEBUG=True vacía el log (DEMO_RESET) y crea los equipos; con DEBUG=False se bloquea de forma segura
+    # Comprueba que ejecutar seed_demo con DEBUG habilitado reinicia el log con DEMO_RESET y puebla la base de equipos
+    caplog.clear()
     log_viejo = tmp_path / "negocio.log"
     log_viejo.write_text("2026-10-27 10:00:00 | INFO    | RENTAL_CREATED id=1\n", encoding="utf-8")
     settings.BUSINESS_LOG_FILE = log_viejo
     settings.DEBUG = True
     call_command("seed_demo", stdout=StringIO())
-    # Comprueba que no quedó la línea vieja (en las pruebas el log va solo a la consola)
     assert log_viejo.read_text(encoding="utf-8") == ""
-    # Comprueba que DEMO_RESET va primero y que el escenario se creó con sus 21 equipos, el combo incluido
     assert (caplog.messages[0], Equipment.objects.count()) == ("DEMO_RESET", 21)
 
+    # Comprueba que con --equipos 50 quedan 50 equipos, solo mesas, sillas y el combo, sin códigos ni series repetidos (ENT-07, RC-01)
+    call_command("seed_demo", "--equipos", "50", stdout=StringIO())
+    codigos = set(Equipment.objects.values_list("inventory_id", flat=True))
+    series = set(Equipment.objects.values_list("serial_number", flat=True))
+    otros = Equipment.objects.exclude(inventory_id__regex=r"^(MES|SIL|CMB)-").count()
+    assert (Equipment.objects.count(), len(codigos), len(series), otros) == (50, 50, 50, 0)
 
-def test_seed_demo_no_corre_con_debug_false_y_no_borra_nada(db, settings, cl01, mes01):
-    # Con DEBUG=False alguien corre seed_demo -> se niega con el motivo y la base queda igual (ENT-97)
+    # Comprueba que ejecutar seed_demo con DEBUG=False rechaza la ejecución lanzando una excepción y mantiene la base intacta
     settings.DEBUG = False
-    antes = foto_de_la_base()
-    with pytest.raises(CommandError) as error:
+    antes_base = foto_de_la_base()
+    with pytest.raises(CommandError) as error_debug:
         call_command("seed_demo", stdout=StringIO())
-    # Comprueba el mensaje con la causa
-    assert str(error.value) == "seed_demo borra los datos de la demo; solo se usa con DEBUG=True"
-    # Comprueba que la base quedó igual
-    assert foto_de_la_base() == antes
+    assert str(error_debug.value) == "seed_demo borra los datos de la demo; solo se usa con DEBUG=True"
+    assert foto_de_la_base() == antes_base

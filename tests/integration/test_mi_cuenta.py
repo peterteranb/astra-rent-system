@@ -10,19 +10,17 @@ from tests.conftest import DEMO_PASSWORD
 from tests.helpers import foto_de_la_base
 
 
-def test_editar_mis_datos_guarda_el_telefono_nuevo_y_el_log_dice_solo_el_campo(cl01, caplog):
-    # cl01 cambia su teléfono a 7999-0001 -> se guarda con dígitos y el log nombra el campo, no el número
-    update_profile(cl01, "Carla", "Mendoza", "cl01@correo.com", "7999-0001")
+@pytest.mark.parametrize(
+    ("correo", "telefono", "campo", "guardado"),
+    [("cl01@correo.com", "7999-0001", "phone", "79990001"), ("CL01@correo.com", "71000001", "email", "CL01@correo.com")],
+)
+def test_editar_mis_datos_guarda_el_cambio_y_el_log_dice_solo_el_campo(cl01, caplog, correo, telefono, campo, guardado):
+    # cl01 cambia su teléfono, o escribe su mismo correo en mayúsculas (no choca con su cuenta) -> se guarda y el log nombra solo el campo
+    update_profile(cl01, "Carla", "Mendoza", correo, telefono)
     # Comprueba lo guardado
-    assert get_user_model().objects.get(username="cl01").phone == "79990001"
-    # Comprueba la línea del log, sin el teléfono nuevo
-    assert caplog.messages == ['PROFILE_UPDATED user=cl01 "Carla Mendoza" fields=phone by=cl01']
-
-
-def test_mi_propio_correo_en_mayusculas_no_choca_con_mi_cuenta(cl01):
-    # cl01 guarda su mismo correo escrito en mayúsculas -> se acepta: no es de otra cuenta
-    update_profile(cl01, "Carla", "Mendoza", "CL01@correo.com", "71000001")
-    assert get_user_model().objects.get(username="cl01").email == "CL01@correo.com"
+    assert getattr(get_user_model().objects.get(username="cl01"), campo) == guardado
+    # Comprueba la línea del log, sin el valor nuevo
+    assert caplog.messages == [f'PROFILE_UPDATED user=cl01 "Carla Mendoza" fields={campo} by=cl01']
 
 
 def test_el_correo_de_otra_cuenta_y_un_nombre_vacio_se_rechazan_sin_guardar(cl01, cl02):
@@ -47,26 +45,21 @@ def test_la_pagina_mi_cuenta_guarda_el_apellido_y_no_deja_cambiar_el_usuario(cli
     assert get_user_model().objects.filter(username="cl01", last_name="Rojas").exists() is True
 
 
-def test_cambiar_la_contrasena_con_la_actual_la_guarda_y_sigue_con_sesion(client, cl01, caplog):
-    # cl01 escribe su contraseña actual y una nueva válida -> vuelve a «Mi cuenta» con el aviso y la nueva sirve
+def test_cambiar_la_contrasena_pide_la_actual_y_la_guarda_sin_cerrar_la_sesion(client, cl01, caplog):
+    # cl01 se equivoca en la contraseña actual y después la escribe bien -> la primera vez nada cambia; la segunda se guarda
     client.force_login(cl01)
-    datos = {"old_password": DEMO_PASSWORD, "new_password1": "Nueva2026x", "new_password2": "Nueva2026x"}
-    respuesta = client.post("/account/password/", datos, follow=True)
-    # Comprueba que sigue con sesión en «Mi cuenta» y ve el aviso
+    nueva = {"new_password1": "Nueva2026x", "new_password2": "Nueva2026x"}
+
+    # Comprueba que con la actual equivocada se queda en el formulario con el error y la base no cambia
+    antes = foto_de_la_base()
+    equivocada = client.post("/account/password/", {"old_password": "Equivocada1", **nueva})
+    assert (equivocada.status_code, equivocada.context["form"].has_error("old_password")) == (200, True)
+    assert foto_de_la_base() == antes
+
+    # Comprueba que con la actual correcta sigue con sesión en «Mi cuenta», ve el aviso, la nueva sirve y el log lo dice
+    caplog.clear()
+    respuesta = client.post("/account/password/", {"old_password": DEMO_PASSWORD, **nueva}, follow=True)
     assertRedirects(respuesta, "/account/")
     assertContains(respuesta, "Tu contraseña se cambió.")
-    # Comprueba lo guardado y el log
     assert get_user_model().objects.get(username="cl01").check_password("Nueva2026x") is True
     assert caplog.messages == ['PASSWORD_CHANGED user=cl01 "Carla Mendoza" channel=account by=cl01']
-
-
-def test_cambiar_la_contrasena_con_la_actual_equivocada_no_cambia_nada(client, cl01):
-    # cl01 se equivoca en la contraseña actual -> se queda en la página con el error y la contraseña sigue igual
-    client.force_login(cl01)
-    antes = foto_de_la_base()
-    datos = {"old_password": "Equivocada1", "new_password1": "Nueva2026x", "new_password2": "Nueva2026x"}
-    respuesta = client.post("/account/password/", datos)
-    # Comprueba que se quedó en el formulario con el error
-    assert (respuesta.status_code, respuesta.context["form"].has_error("old_password")) == (200, True)
-    # Comprueba que la base quedó igual
-    assert foto_de_la_base() == antes
