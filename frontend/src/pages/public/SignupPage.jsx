@@ -6,6 +6,7 @@ import Rejection from "../../components/Rejection";
 import AuthLayout from "../../components/AuthLayout";
 import Alert from "../../components/Alert";
 import Field from "../../components/Field";
+import { errorsFrom } from "../../utils/friendlyErrors";
 
 // "María Fernanda Rojas" -> nombre "María Fernanda", apellido "Rojas"
 function splitName(fullName) {
@@ -19,7 +20,7 @@ export default function SignupPage() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   const [form, setForm] = useState({
-    fullName: "", email: "", phone: "", password: "", confirmation: "",
+    fullName: "", username: "", email: "", phone: "", password: "", confirmation: "",
   });
   const [accepted, setAccepted] = useState(false);
   const [errors, setErrors] = useState([]);
@@ -46,12 +47,18 @@ export default function SignupPage() {
 
     setSending(true);
     try {
+      const username = form.username.trim();
       const email = form.email.trim().toLowerCase();
+      if (!username) {
+        setErrors(["Escribe un nombre de usuario."]);
+        setSending(false);
+        return;
+      }
       const { message } = await signUp({
         ...name,
         email,
         phone: form.phone,
-        username: email, // el correo sirve como usuario
+        username,
         password: form.password,
         password_confirmation: form.confirmation,
       });
@@ -80,6 +87,9 @@ export default function SignupPage() {
 
           <Field id="fullName" label="Nombre completo" autoComplete="name"
             placeholder="María Fernanda Rojas" value={form.fullName} onChange={update("fullName")} />
+          <Field id="username" label="Nombre de usuario" autoComplete="username"
+            placeholder="maria.rojas" hint="Lo usarás para iniciar sesión."
+            value={form.username} onChange={update("username")} />
           <Field id="email" label="Correo electrónico" type="email" autoComplete="email"
             placeholder="maria.rojas@gmail.com" value={form.email} onChange={update("email")} />
           <Field id="phone" label="Teléfono / WhatsApp" type="tel" autoComplete="tel"
