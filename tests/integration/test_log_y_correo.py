@@ -16,7 +16,8 @@ from rentals.models import Equipment
 from rentals.services.events import log_event
 from rentals.use_cases.handover import register_return
 from rentals.use_cases.payments import pay_with_qr
-from rentals.use_cases.renting import cancel_rental, create_rental
+from rentals.use_cases.renting import create_rental
+from rentals.use_cases.reservation_changes import cancel_rental
 from tests.helpers import con_la_hora, dentro_de, foto_de_la_base, local_datetime, renta_entregada
 
 HOY = local_datetime(2026, 10, 29, 10)
@@ -137,7 +138,7 @@ def test_registro_de_eventos_en_log_notificaciones_y_comandos_demo(
     settings.DEBUG = True
     call_command("seed_demo", stdout=StringIO())
     assert log_viejo.read_text(encoding="utf-8") == ""
-    assert (caplog.messages[0], Equipment.objects.count()) == ("DEMO_RESET", 21)
+    assert (caplog.messages[0], Equipment.objects.count()) == ("DEMO_RESET", 30)
 
     # Comprueba que con --equipos 50 quedan 50 equipos, solo mesas, sillas y el combo, sin códigos ni series repetidos (ENT-07, RC-01)
     call_command("seed_demo", "--equipos", "50", stdout=StringIO())

@@ -40,22 +40,22 @@ def test_filtrado_paginacion_y_rendimiento_del_catalogo_de_equipos(cl01, mes01, 
     filtros_fechas = CatalogFilters(free_start=dentro_de(8, 18), free_end=dentro_de(10, 9))
     assert list(search_catalog(filtros_fechas, timezone.now())) == [mes02]
 
-    # Comprueba que desde hoy+9 18:00, cuando MES-00001 ya volvió, aparece como libre
+    # Comprueba que desde hoy+9 18:00, cuando MES-00001 ya volvió, aparece como libre, después de MES-00002, que es más nueva
     filtros_limite = CatalogFilters(free_start=dentro_de(9, 18), free_end=dentro_de(11, 9))
-    assert list(search_catalog(filtros_limite, timezone.now())) == [mes01, mes02]
+    assert list(search_catalog(filtros_limite, timezone.now())) == [mes02, mes01]
 
     # Comprueba que buscar «mesa» no muestra al cliente MES-00003, que está en revisión
-    assert list(search_catalog(CatalogFilters(text="mesa"), timezone.now())) == [mes01, mes02]
+    assert list(search_catalog(CatalogFilters(text="mesa"), timezone.now())) == [mes02, mes01]
 
     # Comprueba que el personal puede filtrar por «En revisión»
     filtros_personal = CatalogFilters(status=EquipmentStatus.IN_REVIEW)
     assert list(search_catalog(filtros_personal, timezone.now(), staff=True)) == [mes03_en_revision]
 
-    # Comprueba que con 47 equipos la página 3 tiene los 7 últimos
+    # Comprueba que con 47 equipos la página 3 tiene los 7 más antiguos y termina en MES-00001, el primero registrado
     crear_sillas(45)
     pagina_3 = catalog_page(search_catalog(CatalogFilters(), timezone.now()), 3)
     codigos = [equipo.inventory_id for equipo in pagina_3.object_list]
-    assert (pagina_3.paginator.num_pages, len(codigos), codigos[-1]) == (3, 7, "SIL-00045")
+    assert (pagina_3.paginator.num_pages, len(codigos), codigos[-1]) == (3, 7, "MES-00001")
 
     # Comprueba que con 1000 sillas la página hace las mismas consultas que con 45 (RC-01, ENT-02)
     con_pocos = consultas_de_una_pagina()

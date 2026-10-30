@@ -33,8 +33,7 @@ def role_required(*roles):
     def decorator(view):
         """Envuelve la vista con la revisión del rol."""
 
-        # No se usa user_passes_test: manda al login a un usuario con sesión sin el
-        # rol, y el login lo devuelve aquí (un bucle).
+        # Sin user_passes_test: manda al login a quien ya tiene sesión y el login lo devuelve aquí, en un bucle.
         @wraps(view)
         def wrapper(request, *args, **kwargs):
             """Manda al visitante al login, rechaza al usuario sin el rol y si no, abre la vista."""

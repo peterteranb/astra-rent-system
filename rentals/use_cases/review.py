@@ -11,8 +11,8 @@ from ..models import Debt, Equipment, Rental, StatusChange
 from ..services.events import equipment_text, log_event, logs_rejection, rental_context
 from ..services.formatting import charge_label
 from ..statuses import DebtReason, EquipmentStatus
-from .history import cancel_if_out_of_service, change_status
-from .payments import charge_debt
+from .debts import charge_debt
+from .equipment_status import cancel_if_out_of_service, change_status
 
 
 @dataclass(frozen=True)
@@ -86,11 +86,10 @@ def attempted_review(equipment, staff_user, new_status, comment="", charge_last_
 
 @logs_rejection("REVIEW_REJECTED", attempted_review)
 def review_equipment(equipment, staff_user, new_status, comment="", charge_last_client=False) -> ReviewOutcome:
-    """Guarda el estado nuevo de un equipo revisado con su historial, su deuda y sus cancelaciones.
+    """Guarda el estado nuevo de un equipo revisado con su historial, su deuda y sus cancelaciones (CU-10).
 
     Reparación o baja cancelan las reservas no recogidas (ENT-88) y, solo con charge_last_client,
-    cobran al cliente de la última renta devuelta (ENT-74, ENT-90). Lanza InvalidStatusChangeError
-    si new_status no es un estado del equipo o el equipo no puede cambiar.
+    cobran al cliente de la última renta devuelta (ENT-74, ENT-90).
     """
     check_review_result(equipment, new_status)
     # Una sola transacción: el estado, la deuda y las cancelaciones se guardan juntos o nada.

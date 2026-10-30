@@ -26,11 +26,10 @@ def attempted_equipment(inventory_id, serial_number, name, value, registered_by)
 
 @logs_rejection("EQUIPMENT_REJECTED", attempted_equipment)
 def register_equipment(inventory_id, serial_number, name, value, registered_by) -> Equipment:
-    """Guarda un equipo nuevo «Disponible» y lo devuelve.
+    """Guarda un equipo nuevo «Disponible» y lo devuelve (ENT-83).
 
-    Usa las mismas reglas del modelo que el admin de Django: formato del código,
-    código y serie únicos, nombre y valor mayor que 0. Si algo falla, lanza
-    EquipmentRegistrationError con todas las causas y no guarda nada.
+    Usa las mismas reglas del modelo que el admin de Django; si algo falla, lanza
+    EquipmentRegistrationError con todas las causas juntas y no guarda nada.
     """
     equipment = Equipment(
         inventory_id=normalize_inventory_id(inventory_id),
@@ -39,8 +38,7 @@ def register_equipment(inventory_id, serial_number, name, value, registered_by) 
         value=value,
     )
     check_new_equipment(equipment)
-    # No hay fila que bloquear: si dos admins guardan el mismo código a la vez,
-    # los índices únicos de la base rechazan al segundo.
+    # Sin fila que bloquear: si dos admins guardan el mismo código, el índice único rechaza al segundo.
     try:
         with transaction.atomic():
             equipment.save()

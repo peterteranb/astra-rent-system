@@ -6,8 +6,8 @@ import pytest
 from rentals.errors import DebtPendingError, DebtStateError
 from rentals.models import Debt
 from rentals.statuses import DebtReason, EquipmentStatus, RentalStatus
+from rentals.use_cases.debts import pay_debt
 from rentals.use_cases.handover import register_return
-from rentals.use_cases.payments import pay_debt
 from rentals.use_cases.renting import create_rental
 from rentals.use_cases.review import review_equipment
 from tests.helpers import con_la_hora, dentro_de, foto_de_la_base, local_datetime, mesa_nueva, renta_entregada

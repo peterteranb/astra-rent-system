@@ -5,7 +5,7 @@ from accounts.roles import OPERATOR
 
 from ..models import Debt
 from ..services.formatting import debt_paid_message
-from ..use_cases.payments import debts_overview, pay_debt
+from ..use_cases.debts import debts_overview, pay_debt
 from .responses import api_view, success
 from .serializers import client_total_data, debt_data
 

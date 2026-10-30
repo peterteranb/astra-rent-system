@@ -1,8 +1,7 @@
-"""Correos al cliente: bienvenida, crear la contraseña, renta confirmada, reserva modificada por la tienda, renta cancelada y deuda creada (ENT-85).
+"""Correos al cliente: bienvenida, crear la contraseña, renta confirmada, modificada, cancelada y deuda (ENT-85).
 
-Se mandan cuando la transacción se confirma, así nunca avisan algo que se deshizo; los de las rentas y deudas,
-en un hilo aparte para que la pantalla no espere al servidor de correo. Si el envío falla, la operación no se cae:
-el log escribe EMAIL_FAILED.
+Salen al confirmarse la transacción y en un hilo aparte (D-40); «Crea tu contraseña» sale en el momento (D-37).
+Si el envío falla, la operación sigue y el log escribe EMAIL_FAILED.
 """
 import logging
 import smtplib
@@ -23,7 +22,7 @@ from .formatting import local_text, money_text
 
 def send_welcome(user):
     """Avisa al cliente que su cuenta ya está lista."""
-    send_after_commit(
+    send_in_background_after_commit(
         user,
         "Bienvenido a SergioCorp",
         f"Hola {user.first_name}:\n\n"
@@ -112,13 +111,8 @@ def send_debt_created(debt):
     )
 
 
-def send_after_commit(user, subject, body):
-    """Manda el correo cuando la transacción se confirme; si se deshace, no se manda."""
-    transaction.on_commit(lambda: send_safely(user, subject, body))
-
-
 def send_in_background_after_commit(user, subject, body):
-    """Como send_after_commit, pero con EMAIL_IN_BACKGROUND el envío corre en otro hilo y la petición no lo espera."""
+    """Manda el correo cuando la transacción se confirme, en otro hilo si EMAIL_IN_BACKGROUND está activo; si se deshace, no se manda."""
     transaction.on_commit(lambda: start_sending(user, subject, body))
 
 

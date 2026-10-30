@@ -1,20 +1,26 @@
 # API JSON para el frontend
 
-> Versión del 29/10/2026. La API vive bajo `/api/` y llama a las **mismas** funciones de `rentals/use_cases/` (y de `accounts/registration.py` y `accounts/account.py`) que las páginas HTML: no repite ninguna regla. Las páginas de Django siguen funcionando como respaldo. El código está en `rentals/api/` y `accounts/api.py`; las pruebas, en `tests/integration/test_api.py` y `tests/integration/test_api_mi_cuenta.py`.
+Qué contiene: cada endpoint de la API JSON con quién lo usa, qué manda, qué responde y sus errores, y cómo conectar React en desarrollo.
+Cuándo leerlo: solo si vas a trabajar en el frontend en React o a llamar a la API. Los IDs (CU, ENT, D) se explican en el [glosario de IDs](README.md#glosario-de-ids).
 
-**Cambios del 29/10 para el frontend:**
+La **API** (interfaz de programación) es la forma en que otro programa, aquí el frontend en React, usa el sistema: en lugar de páginas HTML recibe y manda datos en **JSON** (texto con la forma `{"campo": "valor"}`). Vive bajo `/api/` y llama a las **mismas** funciones de `rentals/use_cases/` (y de `accounts/registration.py` y `accounts/account.py`) que las páginas HTML: no repite ninguna regla. Las páginas de Django siguen funcionando como respaldo. El código está en `rentals/api/` y `accounts/api.py`; las pruebas, en `tests/integration/test_api.py` y `tests/integration/test_api_mi_cuenta.py`.
 
-- `GET /api/catalog/`: los equipos ya no traen `busy_periods` (ENT-99).
-- `GET /api/staff/reservations/` y `GET /api/staff/returns/`: la más nueva primero; aceptan `?order=date` (ENT-100). Las demás listas también vienen con lo último primero.
-- Renta: `payment_label` es solo `"Pagado"` o `"Pago pendiente"`; nuevos `payment_method` y `payment_method_label` (ENT-104).
-- `POST /api/staff/clients/`: ya no lleva `password` ni `password_confirmation`; la respuesta trae `email_sent` y otro `message` (ENT-102).
-- Nuevos: `POST /api/auth/profile/`, `POST /api/auth/password/` y `POST /api/auth/password-reset/` (CU-17).
+**Cómo llega React a Django:** en desarrollo, React corre en el servidor de **Vite** (por defecto `http://localhost:5173`) y Django en el puerto **8080**. El navegador solo habla con Vite; Vite reenvía cada petición que empieza con `/api` a `http://127.0.0.1:8080` (su **proxy**). Así el navegador cree que todo viene del mismo origen: la cookie de sesión funciona y no hace falta CORS ([D-26](decisiones.md#d-26)). La configuración está en la [sección 3](#3-conectar-react-en-desarrollo).
+
+```mermaid
+flowchart LR
+    B[Navegador] -->|páginas de React| V["Vite<br/>localhost:5173"]
+    B -->|/api/...| V
+    V -->|proxy: /api/... | D["Django<br/>127.0.0.1:8080"]
+    D --> P[(PostgreSQL)]
+```
 
 ## 1. Reglas comunes
 
 ### Sesión y CSRF
 
-- La API usa la **sesión normal de Django** (cookie `sessionid`). No hay tokens propios.
+- La API usa la **sesión normal de Django**: al iniciar sesión, Django guarda una **cookie** (un dato que el navegador manda en cada petición) llamada `sessionid`. No hay tokens propios.
+- El **token CSRF** es una clave que Django exige en cada `POST` para comprobar que la petición viene de nuestra propia página y no de otro sitio.
 - `GET /api/csrf/` deja la cookie `csrftoken`. Cada `POST` manda ese valor en el encabezado `X-CSRFToken`.
 - Al iniciar o cerrar sesión Django cambia el token: lee la cookie `csrftoken` antes de cada `POST` (el ejemplo de la sección 3 lo hace).
 
@@ -39,7 +45,7 @@
 - **Fechas de entrada:** los mismos campos que el formulario de la página, `start_date` (`"2026-10-30"`), `start_time` (`"18:00"`), `end_date` y `end_time`. La hora se entiende en La Paz.
 - **Montos:** texto con dos decimales y punto, por ejemplo `"40.00"`. Los mensajes usan el formato de la página: `"40,00 Bs"`.
 - **Estados:** el valor (`"reserved"`) y su etiqueta (`"Reservada"`). Renta: `reserved`, `rented`, `not_picked_up`, `returned`, `cancelled`. Equipo: `available`, `in_review`, `in_repair`, `retired`.
-- **Roles:** `cliente`, `operador`, `mantenimiento`, `administrador`. El administrador puede usar todos los endpoints del personal (ENT-13: el administrador puede todo).
+- **Roles:** `cliente`, `operador`, `mantenimiento`, `administrador`. El administrador puede usar todos los endpoints del personal ([ENT-13](respuestas-del-cliente.md#ent-13): el administrador puede todo).
 
 ### Objetos que se repiten
 
@@ -69,7 +75,7 @@
 }
 ```
 
-`payment_label` es solo `"Pagado"` o `"Pago pendiente"` (ENT-104); la forma de pago va aparte en `payment_method` (`"qr"`, `"cash"` o `""` sin pagar) y `payment_method_label` (`"QR"`, `"Efectivo"` o `""`).
+`payment_label` es solo `"Pagado"` o `"Pago pendiente"` ([ENT-104](respuestas-del-cliente.md#ent-104)); la forma de pago va aparte en `payment_method` (`"qr"`, `"cash"` o `""` sin pagar) y `payment_method_label` (`"QR"`, `"Efectivo"` o `""`).
 
 **Equipo** (`equipment`): `{"inventory_id": "MES-00001", "name": "Mesa plegable 1,80 m", "status": "available", "status_label": "Disponible", "daily_price": "20.00"}`.
 
@@ -90,7 +96,7 @@ Los mensajes de error de cada endpoint son los de su caso de uso en [casos-de-us
 | `POST /api/auth/logout/` | Todos | — | `null`; `message`: `"Sesión cerrada."` |
 | `GET /api/auth/me/` | Con sesión | — | el usuario + `"debt_total": "0.00"` |
 
-### CU-17 · Mi cuenta
+### [CU-17](casos-de-uso.md#cu-17) · Mi cuenta
 
 | Método y ruta | Quién | Cuerpo | Respuesta |
 |---|---|---|---|
@@ -103,9 +109,9 @@ Los mensajes de error de cada endpoint son los de su caso de uso en [casos-de-us
 - `password/` usa `PasswordChangeForm` de Django y los mismos validadores del registro: `"Contraseña antigua: …"`, `"Contraseña nueva: Esta contraseña es demasiado común."`.
 - `password-reset/` responde lo mismo exista o no la cuenta. El enlace del correo abre la página de Django `/reset/<uid>/<token>/`, donde se escribe la contraseña nueva.
 
-Errores del login: `"Usuario o contraseña incorrectos."` · `"Tu cuenta está desactivada. Comunícate con la tienda."` (solo con la contraseña correcta, ENT-79).
+Errores del login: `"Usuario o contraseña incorrectos."` · `"Tu cuenta está desactivada. Comunícate con la tienda."` (solo con la contraseña correcta, [ENT-79](respuestas-del-cliente.md#ent-79)).
 
-### CU-01 · Registro del cliente
+### [CU-01](casos-de-uso.md#cu-01) · Registro del cliente
 
 `POST /api/auth/signup/` · Visitante · 201
 
@@ -116,7 +122,7 @@ Errores del login: `"Usuario o contraseña incorrectos."` · `"Tu cuenta está d
 
 Respuesta: `data` = el usuario; `message`: `"Cuenta creada. Ya puedes iniciar sesión con lucia."`. Un rechazo trae **todas** las causas juntas, por ejemplo `["Falta el campo Teléfono.", "Las contraseñas no coinciden.", "El usuario lucia ya existe."]`.
 
-### CU-03 · Catálogo
+### [CU-03](casos-de-uso.md#cu-03) · Catálogo
 
 `GET /api/catalog/?q=mesa&free_from=2026-11-02&free_to=2026-11-04&status=&page=1` · Con sesión
 
@@ -127,12 +133,13 @@ Respuesta: `data` = el usuario; `message`: `"Cuenta creada. Ya puedes iniciar se
 ]}, "message": ""}
 ```
 
-- De 20 en 20 (ENT-86). Sin `busy_periods`: el catálogo no dice cuándo usan el equipo otras personas (ENT-99).
+- Del equipo registrado más recientemente al más antiguo; si empatan, por código ([ENT-100](respuestas-del-cliente.md#ent-100), [D-33](decisiones.md#d-33)). Vale para el cliente y el personal.
+- De 20 en 20 ([ENT-86](respuestas-del-cliente.md#ent-86)). Sin `busy_periods`: el catálogo no dice cuándo usan el equipo otras personas ([ENT-99](respuestas-del-cliente.md#ent-99)).
 - Sin `free_from` y `free_to` trae los equipos disponibles; con las dos fechas, solo los libres en ese periodo.
 - El cliente ve solo los disponibles; `status` solo filtra para el personal.
-- Errores: `"Elige las dos fechas para ver los equipos libres."` · `"La fecha final debe ser posterior a la inicial."`. Un combo (`CMB-00001`) aparece como cualquier equipo (ENT-96).
+- Errores: `"Elige las dos fechas para ver los equipos libres."` · `"La fecha final debe ser posterior a la inicial."`. Un combo (`CMB-00001`) aparece como cualquier equipo ([ENT-96](respuestas-del-cliente.md#ent-96)).
 
-### CU-04 · Rentar en línea y pagar con QR
+### [CU-04](casos-de-uso.md#cu-04) · Rentar en línea y pagar con QR
 
 `POST /api/rentals/` · Con sesión · 201
 
@@ -142,7 +149,7 @@ Respuesta: `data` = el usuario; `message`: `"Cuenta creada. Ya puedes iniciar se
 
 Respuesta: `data` = la renta «Reservada» con el pago pendiente; `message`: `"Reserva hecha. Paga con el QR para confirmarla."`. Errores:
 
-- `"La fecha de recojo ya pasó. Elige hoy o un día siguiente."` (el recojo de hoy a las 18:00 vale hasta la medianoche, ENT-94)
+- `"La fecha de recojo ya pasó. Elige hoy o un día siguiente."` (el recojo de hoy a las 18:00 vale hasta la medianoche, [ENT-94](respuestas-del-cliente.md#ent-94))
 - `"La fecha y hora de devolución debe ser posterior a la de recojo."`
 - `"La renta no puede durar más de 5 días."`
 - `"El recojo debe ser desde las 18:00."` · `"La devolución debe ser hasta las 09:00."`
@@ -157,20 +164,20 @@ Respuesta: `data` = la renta «Reservada» con el pago pendiente; `message`: `"R
 - `false`: la reserva sigue con el pago pendiente; `message` = `"Tu reserva está hecha, pero el pago no se completó. Paga en la tienda al recoger el equipo."`.
 - Errores: `"La renta de MES-00001 ya está pagada."` · `"La renta de MES-00001 ya fue cancelada el 28/10/2026 10:15."`. La renta de otro cliente o de la tienda da 404.
 
-### CU-16 · Mis rentas
+### [CU-16](casos-de-uso.md#cu-16) · Mis rentas
 
 `GET /api/my-rentals/` · Con sesión
 
 ```json
-{"data": {"rentals": [/* rentas, la más reciente primero */], "debts": [/* deudas sin pagar */], "debt_total": "40.00"},
+{"data": {"rentals": [/* rentas, la creada más recientemente primero */], "debts": [/* deudas sin pagar, la más nueva primero */], "debt_total": "40.00"},
  "message": "Tienes una deuda pendiente de 40,00 Bs. Págala en la tienda para volver a rentar."}
 ```
 
-Sin deuda, `message` viene vacío.
+Sin deuda, `message` viene vacío. `rentals` va de la renta creada más recientemente a la más antigua ([ENT-100](respuestas-del-cliente.md#ent-100)).
 
-### CU-06 y CU-07 · Modificar y cancelar
+### [CU-06](casos-de-uso.md#cu-06) y [CU-07](casos-de-uso.md#cu-07) · Modificar y cancelar
 
-`POST /api/rentals/<id>/modify/` · El cliente de la renta (hasta 24 h antes), quien la registró o el operador (hasta antes del inicio, ENT-95)
+`POST /api/rentals/<id>/modify/` · El cliente de la renta (hasta 24 h antes), quien la registró o el operador (hasta antes del inicio, [ENT-95](respuestas-del-cliente.md#ent-95))
 
 ```json
 {"start_date": "2026-11-06", "start_time": "18:00", "end_date": "2026-11-08", "end_time": "09:00"}
@@ -179,21 +186,21 @@ Sin deuda, `message` viene vacío.
 Respuesta: la renta con sus fechas nuevas; `message`: `"Reserva modificada: MES-00005 ahora va del 06/11/2026 18:00 al 08/11/2026 09:00."`. Si la modifica el personal, el cliente recibe un correo con las fechas nuevas. Errores:
 
 - `"La reserva es de 2 días. Elige fechas con la misma cantidad de días; para cambiarla, cancela y renta de nuevo."`
-- `"Ya no puedes modificar en línea; comunícate con la tienda."` (cliente a menos de 24 h, ENT-80)
-- `"La reserva de MES-00005 ya empezó el 06/11/2026 18:00; ya no se puede modificar."` (personal, ENT-95)
-- `"La renta de MES-00005 ya fue entregada el …"` y los de horarios y fechas ocupadas de CU-04.
+- `"Ya no puedes modificar en línea; comunícate con la tienda."` (cliente a menos de 24 h, [ENT-80](respuestas-del-cliente.md#ent-80))
+- `"La reserva de MES-00005 ya empezó el 06/11/2026 18:00; ya no se puede modificar."` (personal, [ENT-95](respuestas-del-cliente.md#ent-95))
+- `"La renta de MES-00005 ya fue entregada el …"` y los de horarios y fechas ocupadas de [CU-04](casos-de-uso.md#cu-04).
 
 `POST /api/rentals/<id>/cancel/` · Los mismos; el personal hasta el recojo · sin cuerpo
 
-Respuesta: la renta cancelada; `message`: `"Reserva cancelada: MES-00005 de cl01."`. El sistema solo cancela: si estaba pagada, el dinero se devuelve a mano en la tienda (ENT-89). Errores: `"Ya no puedes cancelar en línea; comunícate con la tienda."` · `"La renta de MES-00005 ya fue cancelada el …"`. Una renta que el usuario no puede abrir da 404.
+Respuesta: la renta cancelada; `message`: `"Reserva cancelada: MES-00005 de cl01."`. El sistema solo cancela: si estaba pagada, el dinero se devuelve a mano en la tienda ([ENT-89](respuestas-del-cliente.md#ent-89)). Errores: `"Ya no puedes cancelar en línea; comunícate con la tienda."` · `"La renta de MES-00005 ya fue cancelada el …"`. Una renta que el usuario no puede abrir da 404.
 
-### CU-02 · Clientes en la tienda
+### [CU-02](casos-de-uso.md#cu-02) · Clientes en la tienda
 
-`GET /api/staff/clients/?q=rojas` · Operador → `data` = hasta 10 usuarios cuyo usuario, nombre, apellido o correo contiene el texto (ENT-54). Sin `q`, lista vacía.
+`GET /api/staff/clients/?q=rojas` · Operador → `data` = hasta 10 usuarios cuyo usuario, nombre, apellido o correo contiene el texto, la cuenta más nueva primero ([ENT-54](respuestas-del-cliente.md#ent-54), [ENT-100](respuestas-del-cliente.md#ent-100)). Sin `q`, lista vacía.
 
-`POST /api/staff/clients/` · Operador · 201 · el cuerpo del registro **sin** `password` ni `password_confirmation` (ENT-102: el operador no conoce la contraseña del cliente) → `data` = el usuario + `"email_sent": true`; `message`: `"Cuenta creada para lucia. Le enviamos un correo para crear su contraseña. Ya puedes registrar su renta."`. Si el correo falla, `"email_sent": false` y `message`: `"La cuenta se creó, pero no se pudo enviar el correo. Pide al cliente que use \"Olvidé mi contraseña\" con su correo."`.
+`POST /api/staff/clients/` · Operador · 201 · el cuerpo del registro **sin** `password` ni `password_confirmation` ([ENT-102](respuestas-del-cliente.md#ent-102): el operador no conoce la contraseña del cliente) → `data` = el usuario + `"email_sent": true`; `message`: `"Cuenta creada para lucia. Le enviamos un correo para crear su contraseña. Ya puedes registrar su renta."`. Si el correo falla, `"email_sent": false` y `message`: `"La cuenta se creó, pero no se pudo enviar el correo. Pide al cliente que use \"Olvidé mi contraseña\" con su correo."`.
 
-### CU-05 · Renta en tienda
+### [CU-05](casos-de-uso.md#cu-05) · Renta en tienda
 
 `POST /api/staff/rentals/` · Operador · 201
 
@@ -201,27 +208,27 @@ Respuesta: la renta cancelada; `message`: `"Reserva cancelada: MES-00005 de cl01
 {"client": 2, "equipment": "MES-00004", "start_date": "2026-10-28", "start_time": "18:00", "end_date": "2026-10-30", "end_time": "09:00"}
 ```
 
-`client` es el `id` del usuario que devolvió la búsqueda. La renta nace «Reservada» y pagada en efectivo; si el cliente se la lleva al momento, se registra el recojo (CU-08, ENT-91); `message`: `"Renta registrada: MES-00004 para cl02."`. Errores: los de CU-04, `"El cliente cl02 tiene una deuda pendiente de 40,00 Bs. Cóbrala antes de registrar otra renta."` y `"Cliente: Escoja una opción válida. …"` si el cliente no existe o está desactivado.
+`client` es el `id` del usuario que devolvió la búsqueda. La renta nace «Reservada» y pagada en efectivo; si el cliente se la lleva al momento, se registra el recojo ([CU-08](casos-de-uso.md#cu-08), [ENT-91](respuestas-del-cliente.md#ent-91)); `message`: `"Renta registrada: MES-00004 para cl02."`. Errores: los de [CU-04](casos-de-uso.md#cu-04), `"El cliente cl02 tiene una deuda pendiente de 40,00 Bs. Cóbrala antes de registrar otra renta."` y `"Cliente: Escoja una opción válida. …"` si el cliente no existe o está desactivado.
 
-### CU-08 · Entregar
+### [CU-08](casos-de-uso.md#cu-08) · Entregar
 
-`GET /api/staff/reservations/?order=recent` · Operador → `data` = las rentas «Reservadas», la más nueva primero (ENT-100); con `?order=date`, la de recojo más próximo primero. Un valor desconocido usa `recent`.
+`GET /api/staff/reservations/?order=recent` · Operador → `data` = las rentas «Reservadas», la más nueva primero ([ENT-100](respuestas-del-cliente.md#ent-100)); con `?order=date`, la de recojo más próximo primero. Un valor desconocido usa `recent`.
 
 `POST /api/staff/rentals/<id>/pickup/` · Operador · `{"paid_now": true}` solo si cobró en efectivo en ese momento
 
 - `message`: `"Recojo registrado: MES-00001 entregado a cl01."` o, si cobró, `"Cobro de 40,00 Bs en efectivo y recojo registrados: MES-00001 entregado a cl01."`.
 - Errores: `"Falta el pago de 40,00 Bs de esta renta. Cóbralo en efectivo o cancela la reserva si el cliente no paga."` · `"El equipo MES-00001 está en revisión. Espera a que mantenimiento lo revise o cancela la reserva."` · `"La reserva de MES-00001 venció a la medianoche."` · `"La renta de MES-00001 ya fue entregada el …"`.
 
-### CU-09 · Devolver
+### [CU-09](casos-de-uso.md#cu-09) · Devolver
 
-`GET /api/staff/returns/?order=recent` · Operador → `data` = las rentas «Rentadas», la más nueva primero (ENT-100); con `?order=date`, la que vence primero. Solo esas se devuelven (ENT-93).
+`GET /api/staff/returns/?order=recent` · Operador → `data` = las rentas «Rentadas», la más nueva primero ([ENT-100](respuestas-del-cliente.md#ent-100)); con `?order=date`, la que vence primero. Solo esas se devuelven ([ENT-93](respuestas-del-cliente.md#ent-93)).
 
 `POST /api/staff/rentals/<id>/return/` · Operador · `{"note": "Una pata floja"}`
 
 - `message`: `"Devolución registrada: MES-00001 recibido de cl01. A tiempo."` o `"… Con 2 días de atraso: deuda de 40,00 Bs."`.
 - Errores: `"Escribe cómo llegó el equipo."` · `"La renta de MES-00001 nunca se entregó: solo se devuelve una renta «Rentada»."` · `"La renta de MES-00001 ya fue devuelta el …"`.
 
-### CU-11 · Deudas
+### [CU-11](casos-de-uso.md#cu-11) · Deudas
 
 `GET /api/staff/debts/` · Operador
 
@@ -229,13 +236,13 @@ Respuesta: la renta cancelada; `message`: `"Reserva cancelada: MES-00005 de cl01
 {"data": {"debts": [/* deudas sin pagar */], "totals": [{"username": "cl02", "first_name": "Diego", "last_name": "Rojas", "total": "40.00"}]}, "message": ""}
 ```
 
-`debts` viene con la deuda más nueva primero y `totals` con el cliente de la deuda más nueva primero (ENT-100).
+`debts` viene con la deuda más nueva primero y `totals` con el cliente de la deuda más nueva primero ([ENT-100](respuestas-del-cliente.md#ent-100)).
 
-`POST /api/staff/debts/<id>/pay/` · Operador · sin cuerpo. Las deudas se pagan solo en la tienda (ENT-92): no hay endpoint para que el cliente pague una deuda → `message`: `"Pago registrado: deuda de 40,00 Bs de cl02."`. Error: `"Esta deuda ya se pagó el 28/10/2026 10:15."`.
+`POST /api/staff/debts/<id>/pay/` · Operador · sin cuerpo. Las deudas se pagan solo en la tienda ([ENT-92](respuestas-del-cliente.md#ent-92)): no hay endpoint para que el cliente pague una deuda → `message`: `"Pago registrado: deuda de 40,00 Bs de cl02."`. Error: `"Esta deuda ya se pagó el 28/10/2026 10:15."`.
 
-### CU-10 · Mantenimiento
+### [CU-10](casos-de-uso.md#cu-10) · Mantenimiento
 
-`GET /api/maintenance/equipment/?status=in_review` · Mantenimiento → `data` = todos los equipos que no están de baja, el que cambió de estado más recientemente primero (ENT-100); `status` filtra por estado (ENT-90).
+`GET /api/maintenance/equipment/?status=in_review` · Mantenimiento → `data` = todos los equipos que no están de baja, el que cambió de estado más recientemente primero ([ENT-100](respuestas-del-cliente.md#ent-100)); `status` filtra por estado ([ENT-90](respuestas-del-cliente.md#ent-90)).
 
 ```json
 {"data": [{"inventory_id": "SIL-00003", "name": "Silla plegable blanca", "status": "in_review", "status_label": "En revisión", "daily_price": "4.00",
@@ -247,7 +254,7 @@ Respuesta: la renta cancelada; `message`: `"Reserva cancelada: MES-00005 de cl01
 
 `POST /api/maintenance/equipment/<code>/review/` · Mantenimiento · `{"status": "in_repair", "comment": "Tapiz roto", "charge_last_client": true}`
 
-- `charge_last_client` true: deuda del 20 % (reparación) o del 100 % (baja), con el tope de D-06. Sin `true`: no hay deuda y el log escribe `DAMAGE_NOT_CHARGED`.
+- `charge_last_client` true: deuda del 20 % (reparación) o del 100 % (baja), con el tope de [D-06](decisiones.md#d-06). Sin `true`: no hay deuda y el log escribe `DAMAGE_NOT_CHARGED`.
 - Reparación o baja cancelan las reservas no recogidas del equipo; sus `id` vienen en `cancelled_rentals`.
 
 ```json
@@ -258,17 +265,17 @@ Respuesta: la renta cancelada; `message`: `"Reserva cancelada: MES-00005 de cl01
 
 Errores: `"El equipo SIL-00003 solo puede pasar a disponible, en revisión, en reparación o baja."` · `"El equipo SIL-00005 está dado de baja; su estado ya no puede cambiar."` · `"El equipo SIL-00004 ya está «En reparación»."`.
 
-### CU-12 · Registrar un equipo
+### [CU-12](casos-de-uso.md#cu-12) · Registrar un equipo
 
 `POST /api/admin/equipment/` · Administrador · 201
 
 ```json
-{"inventory_id": "mes-00021", "serial_number": "SN-MES-00021", "name": "Mesa plegable 1,80 m", "value": "400.00"}
+{"inventory_id": "mes-00021", "serial_number": "DURAPLAST-2024-00031", "name": "Mesa plegable 1,80 m", "value": "400.00"}
 ```
 
 Respuesta: el equipo «Disponible», con el código en mayúsculas; `message`: `"Equipo registrado: MES-00021 · Mesa plegable 1,80 m."`. Un rechazo trae todas las causas, por ejemplo `["El código debe tener 3 letras, un guion y 5 números, por ejemplo MES-00001.", "Ya existe un equipo con este número de serie."]`.
 
-### CU-15 · Panel del responsable
+### [CU-15](casos-de-uso.md#cu-15) · Panel del responsable
 
 `GET /api/manager/dashboard/` · Administrador
 
@@ -284,19 +291,19 @@ Respuesta: el equipo «Disponible», con el código en mayúsculas; `message`: `
 }, "message": ""}
 ```
 
-Cada lista trae su total y sus primeras 10 filas, lo último primero: las rentas por fecha de creación, los equipos por su último cambio de estado y los clientes por su deuda más nueva (ENT-100).
+Cada lista trae su total y sus primeras 10 filas, lo último primero: las rentas por fecha de creación, los equipos por su último cambio de estado y los clientes por su deuda más nueva ([ENT-100](respuestas-del-cliente.md#ent-100)).
 
-CU-13 (corregir el estado de un equipo) y CU-14 (historial) siguen en el admin de Django.
+[CU-13](casos-de-uso.md#cu-13) (corregir el estado de un equipo) y [CU-14](casos-de-uso.md#cu-14) (historial) siguen en el admin de Django.
 
 ## 3. Conectar React en desarrollo
 
-1. Corre Django en el puerto 8080:
+1. Corre Django en el puerto 8080 (el que espera el proxy):
 
    ```powershell
    python manage.py runserver 8080
    ```
 
-2. En `vite.config.js`, manda `/api` a Django con `server.proxy`. Así el navegador cree que todo viene del mismo origen: la cookie de sesión funciona y no hace falta CORS.
+2. En `vite.config.js`, manda `/api` a Django con `server.proxy`: cada petición a `/api/...` que recibe Vite se reenvía a `http://127.0.0.1:8080/api/...`. Así el navegador cree que todo viene del mismo origen: la cookie de sesión funciona y no hace falta CORS (un permiso extra que exigiría si React y Django estuvieran en orígenes distintos).
 
    ```js
    import { defineConfig } from "vite";

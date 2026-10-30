@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from decimal import Decimal
 
 from ..models import Debt, Rental
-from .payments import pending_totals_by_client
+from .debts import pending_totals_by_client
 from .review import equipment_to_review
 
 # Cada lista del panel muestra las primeras; el enlace al admin muestra todas.

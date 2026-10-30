@@ -1,4 +1,4 @@
-"""Prueba rentals/use_cases/review.py y history.correct_status() con la base: la decisión de mantenimiento
+"""Prueba rentals/use_cases/review.py y equipment_status.correct_status() con la base: la decisión de mantenimiento
 sobre un equipo, su fila de historial (CU-10) y las reservas que cancela al salir de servicio (CU-13, ENT-88)."""
 import pytest
 from django.core import mail
@@ -6,7 +6,7 @@ from django.core import mail
 from rentals.errors import InvalidStatusChangeError
 from rentals.models import Debt, StatusChange
 from rentals.statuses import EquipmentStatus, RentalStatus
-from rentals.use_cases.history import change_status, correct_status
+from rentals.use_cases.equipment_status import change_status, correct_status
 from rentals.use_cases.renting import create_rental
 from rentals.use_cases.review import review_equipment
 from tests.helpers import dentro_de, foto_de_la_base

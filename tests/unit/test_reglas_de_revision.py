@@ -5,7 +5,7 @@ from rentals import rules
 from rentals.errors import InvalidStatusChangeError
 from rentals.models import Equipment
 from rentals.statuses import EquipmentStatus
-from rentals.use_cases.history import check_status_can_change
+from rentals.use_cases.equipment_status import check_status_can_change
 from rentals.use_cases.review import check_review_result
 
 

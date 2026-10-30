@@ -24,13 +24,18 @@ class CatalogFilters:
     status: str = ""
 
 
+def newest_first(equipment):
+    """Ordena los equipos del registrado más reciente al más antiguo; si empatan, por código (ENT-100)."""
+    return equipment.order_by("-created_at", "inventory_id")
+
+
 def list_catalog():
-    """Devuelve los equipos que muestra el catálogo: solo los «Disponibles».
+    """Devuelve los equipos que muestra el catálogo: solo los «Disponibles», el más reciente primero.
 
     ENT-61: un equipo con rentas futuras sigue disponible; para ver solo los
     libres se filtra por fechas. create_rental vuelve a revisar el equipo.
     """
-    return Equipment.objects.filter(status=EquipmentStatus.AVAILABLE)
+    return newest_first(Equipment.objects.filter(status=EquipmentStatus.AVAILABLE))
 
 
 def catalog_filters(text, free_from, free_to, status):
@@ -54,8 +59,8 @@ def browse_catalog(user, filters, page_number, now):
 
 
 def search_catalog(filters, now, staff=False):
-    """Devuelve los equipos que cumplen los filtros (ENT-86); el cliente solo ve los «Disponibles»."""
-    equipment = Equipment.objects.all() if staff else list_catalog()
+    """Devuelve los equipos que cumplen los filtros (ENT-86), el más reciente primero; el cliente solo ve los «Disponibles»."""
+    equipment = newest_first(Equipment.objects.all()) if staff else list_catalog()
     if staff and filters.status:
         equipment = equipment.filter(status=filters.status)
     if filters.text:

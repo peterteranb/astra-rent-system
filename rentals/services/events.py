@@ -1,8 +1,7 @@
 """Log de negocio: una línea por operación, aceptada o rechazada, en la consola y en logs/negocio.log (RC-05).
 
-Cada línea se entiende sin buscar en la base (ENT-101), por ejemplo:
-«PAYMENT_APPROVED rental=60 equipment=SIL-00003 "Silla blanca plegable" client=cl01 "Carla Mendoza"
-period=30/10/2026 18:00-01/11/2026 09:00 amount=8.00 by=cl01». Nunca se escribe una contraseña.
+Cada línea se entiende sin buscar en la base (ENT-101) y nunca lleva una contraseña, por ejemplo:
+«PAYMENT_APPROVED rental=60 equipment=SIL-00003 "Silla plegable blanca" client=cl01 "Carla Mendoza" … by=cl01».
 """
 import logging
 from functools import wraps

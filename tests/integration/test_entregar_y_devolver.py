@@ -4,8 +4,8 @@ import pytest
 from rentals.errors import EquipmentNotAvailableError, IncompleteReturnError, PaymentRequiredError, RentalStateError
 from rentals.models import Rental, StatusChange
 from rentals.statuses import EquipmentStatus, PaymentMethod, RentalStatus
+from rentals.use_cases.equipment_status import change_status
 from rentals.use_cases.handover import register_pickup, register_return
-from rentals.use_cases.history import change_status
 from rentals.use_cases.payments import pay_with_qr
 from rentals.use_cases.renting import create_rental
 from tests.helpers import dentro_de, foto_de_la_base, mesa_nueva, renta_entregada

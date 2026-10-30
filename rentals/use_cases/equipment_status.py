@@ -1,11 +1,14 @@
-"""Caso de uso CU-13, y un paso de CU-09 y CU-10: cambia el estado de un equipo, guarda su historial (ENT-34) y, si sale de servicio, cancela sus reservas."""
+"""Cambia el estado de un equipo y guarda su historial (ENT-34): CU-13 y un paso de CU-09 y CU-10.
+
+Si el equipo sale de servicio, cancela sus reservas (ENT-88). Es el único lugar que cambia Equipment.status.
+"""
 from django.db import transaction
 
 from ..errors import InvalidStatusChangeError
 from ..models import Equipment, Rental, StatusChange
 from ..services.events import equipment_text, log_event, logs_rejection
 from ..statuses import EquipmentStatus
-from .renting import cancel_reservations
+from .reservation_changes import cancel_reservations
 
 # ENT-88: un equipo que pasa a reparación o baja cancela sus reservas todavía no recogidas.
 OUT_OF_SERVICE_REASONS = {
@@ -27,8 +30,7 @@ def change_status(equipment, new_status, user, comment="") -> StatusChange:
     Lanza InvalidStatusChangeError si el cambio no se permite; entonces nada cambia.
     """
     with transaction.atomic():
-        # Bloquea la fila y lee el estado actual: dos cambios a la vez
-        # no pueden partir del mismo estado anterior.
+        # Bloquea la fila: dos cambios a la vez no pueden partir del mismo estado anterior.
         locked_equipment = Equipment.objects.select_for_update().get(pk=equipment.pk)
         check_status_can_change(locked_equipment, new_status)
         change = StatusChange(

@@ -11,8 +11,7 @@ from django.utils import timezone
 
 from .statuses import DebtReason, EquipmentStatus, ReturnResult
 
-# ENT-19 y ENT-52: se recoge desde las 18:00 y se devuelve hasta las 09:00.
-# Son límites «desde» y «hasta»: el cliente elige cualquier hora dentro.
+# ENT-19 y ENT-52: se recoge desde las 18:00 y se devuelve hasta las 09:00; el cliente elige cualquier hora dentro.
 EARLIEST_PICKUP_TIME = time(18, 0)
 LATEST_RETURN_TIME = time(9, 0)
 
@@ -53,8 +52,13 @@ def ends_after_start(start, end) -> bool:
 
 
 def rental_days(start, end) -> int:
-    """Devuelve los días de renta: los que hay entre la fecha de recojo y la de devolución (ENT-72)."""
-    return (end.date() - start.date()).days
+    """Cuenta los días de renta: las fechas que hay entre el recojo y la devolución; la hora no cuenta (ENT-72).
+
+    Recoge el 09/10 a las 18:00 y devuelve el 11/10 a las 09:00 -> 2 días (del 09 al 10 y del 10 al 11).
+    """
+    pickup_date = start.date()
+    return_date = end.date()
+    return (return_date - pickup_date).days
 
 
 def is_within_max_duration(start, end) -> bool:
@@ -148,23 +152,27 @@ def cap_damage(amount, value, already_charged) -> Decimal:
 
 
 def classify_return(returned_at, due_date) -> ReturnResult:
-    """Dice si una devolución del día due_date llegó a tiempo, en tolerancia o con atraso (RF-09).
+    """Dice si una devolución llegó a tiempo, en tolerancia o con atraso (RF-09).
 
-    Compara con las 09:00 de due_date y no con la hora que eligió el cliente,
-    porque la regla es «hasta las 9 sin multas» (ENT-65, ENT-73).
+    Vence el 10/10: hasta las 09:00 -> a tiempo; de 09:01 a 12:00 -> en tolerancia; desde las 12:01 -> con atraso.
+    Compara con las 09:00 del vencimiento y no con la hora que eligió el cliente: «hasta las 9 sin multas» (ENT-65, ENT-73).
     """
-    if returned_at <= datetime.combine(due_date, LATEST_RETURN_TIME, tzinfo=returned_at.tzinfo):
+    zone = returned_at.tzinfo
+    return_limit = datetime.combine(due_date, LATEST_RETURN_TIME, tzinfo=zone)
+    noon_of_due_date = datetime.combine(due_date, RETURN_TOLERANCE_LIMIT, tzinfo=zone)
+    if returned_at <= return_limit:
         return ReturnResult.ON_TIME
-    if returned_at <= datetime.combine(due_date, RETURN_TOLERANCE_LIMIT, tzinfo=returned_at.tzinfo):
+    if returned_at <= noon_of_due_date:
         return ReturnResult.TOLERANCE
     return ReturnResult.LATE
 
 
 def late_days(returned_at, due_date) -> int:
-    """Cuenta los mediodías (12:00) vencidos entre el día de vencimiento y returned_at (ENT-73).
+    """Cuenta los mediodías (12:00) que pasaron desde el vencimiento hasta la devolución: cada uno es un día de atraso (ENT-73).
 
-    Vence el 10: vuelve el 10 a las 12:01 -> 1; el 11 a las 10:00 -> 1; el 11 a las 12:01 -> 2.
+    Vence el 10/10: vuelve el 10/10 a las 12:01 -> 1; el 11/10 a las 10:00 -> 1; el 11/10 a las 12:01 -> 2.
     """
-    days_after_due = (returned_at.date() - due_date).days
-    noon_passed = 1 if returned_at.time() > RETURN_TOLERANCE_LIMIT else 0
-    return max(days_after_due + noon_passed, 0)
+    days_after_due_date = (returned_at.date() - due_date).days
+    passed_noon_of_return_day = returned_at.time() > RETURN_TOLERANCE_LIMIT
+    noons_passed = days_after_due_date + (1 if passed_noon_of_return_day else 0)
+    return max(noons_passed, 0)

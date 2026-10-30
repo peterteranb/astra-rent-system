@@ -4,7 +4,7 @@ from django.contrib.auth.admin import UserAdmin as DjangoUserAdmin
 from django.db.models import Q, Sum
 
 from rentals.services.events import log_event
-from rentals.use_cases.renting import cancel_reservations_of_deactivated
+from rentals.use_cases.reservation_changes import cancel_reservations_of_deactivated
 
 from .forms import UserChangeAdminForm, UserCreationAdminForm
 from .models import Role, User
@@ -16,6 +16,8 @@ class RoleAdmin(admin.ModelAdmin):
 
     list_display = ["code", "name", "description"]
     search_fields = ["code", "name"]
+    # ENT-100: el rol creado más recientemente primero; Role no tiene fecha, su id crece con cada fila.
+    ordering = ["-id"]
 
     def has_delete_permission(self, request, obj=None):
         """No deja borrar roles: cada usuario tiene uno (ENT-97: nunca se borra nada)."""

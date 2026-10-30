@@ -1,10 +1,11 @@
-"""Prueba rentals/use_cases/renting.py con la base: cancel_rental(), cancelación de reservas y liberación de fechas."""
+"""Prueba rentals/use_cases/reservation_changes.py con la base: cancel_rental(), cancelación de reservas y liberación de fechas."""
 import pytest
 
 from rentals.errors import DeadlinePassedError
 from rentals.models import Rental
 from rentals.statuses import RentalStatus
-from rentals.use_cases.renting import cancel_rental, create_rental
+from rentals.use_cases.renting import create_rental
+from rentals.use_cases.reservation_changes import cancel_rental
 from tests.helpers import dentro_de, foto_de_la_base
 
 

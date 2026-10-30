@@ -93,8 +93,7 @@ def register_store_client(data, registered_by, site_url) -> StoreRegistration:
     user = new_client(data)
     user.set_unusable_password()
     save_client(user, registered_by)
-    # Se manda con la transacción ya cerrada y sin on_commit: el enlace apunta a una cuenta
-    # que ya existe y el operador sabe en el momento si el correo salió.
+    # En el momento y sin on_commit: la cuenta ya existe y el operador sabe al instante si el correo salió (D-37).
     return StoreRegistration(user, send_create_password(user, site_url))
 
 
@@ -112,8 +111,7 @@ def new_client(data) -> User:
 
 def save_client(user, registered_by):
     """Guarda la cuenta y escribe ACCOUNT_CREATED; lanza RegistrationRejectedError si la base la rechaza."""
-    # No hay fila que bloquear: si dos personas eligen el mismo usuario, correo o
-    # teléfono a la vez, los índices únicos de la base rechazan a la segunda.
+    # Sin fila que bloquear: si dos piden el mismo usuario, correo o teléfono, el índice único rechaza al segundo.
     try:
         with transaction.atomic():
             user.save()

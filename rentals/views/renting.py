@@ -1,6 +1,6 @@
 """Páginas de CU-03 a CU-07 y CU-16: catálogo, renta en línea con QR y en tienda, confirmación, modificar, cancelar y «Mis rentas».
 
-Leen la petición, llaman a use_cases/ (catalog, renting y payments) y eligen la plantilla; las reglas están ahí y en rules.py.
+Leen la petición, llaman a use_cases/ (catalog, renting, payments y reservation_changes) y eligen la plantilla; las reglas están ahí y en rules.py.
 """
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -17,14 +17,8 @@ from ..models import Equipment
 from ..services.formatting import cancelled_message, modified_message, payment_result_message
 from ..use_cases.catalog import browse_catalog
 from ..use_cases.payments import online_rentals_of, pay_with_qr
-from ..use_cases.renting import (
-    cancel_rental,
-    create_rental,
-    find_clients,
-    modify_rental,
-    my_rentals,
-    rentals_visible_to,
-)
+from ..use_cases.renting import create_rental, find_clients, my_rentals, rentals_visible_to
+from ..use_cases.reservation_changes import cancel_rental, modify_rental
 
 
 @login_required
@@ -174,8 +168,7 @@ def cancel_reservation(request, rental_id):
 @role_required(OPERATOR)
 def walk_in_rental(request):
     """Busca un cliente por GET y registra una renta en tienda para él por POST (CU-05)."""
-    # El formulario se envía a la misma dirección con ?q=, así los resultados
-    # de la búsqueda siguen en la página si la renta se rechaza.
+    # Se envía a la misma dirección con ?q=: si la renta se rechaza, los resultados de la búsqueda siguen ahí.
     query = request.GET.get("q", "")
     form = WalkInRentalForm(request.POST or None)
     if request.method == "POST" and form.is_valid():
