@@ -1,5 +1,6 @@
-"""Funciones de ayuda para las pruebas: fechas en hora de La Paz, una hora fija, una renta ya entregada y una foto de la base."""
+"""Funciones de ayuda para las pruebas: fechas en hora de La Paz, una hora fija, una mesa más, una renta ya entregada y una foto de la base."""
 from datetime import datetime, timedelta
+from decimal import Decimal
 from unittest import mock
 
 from django.contrib.auth import get_user_model
@@ -28,6 +29,14 @@ def dentro_de(dias, hora, minuto=0):
 def con_la_hora(momento):
     """Hace que timezone.now() devuelva momento dentro de un bloque with, para probar horas exactas."""
     return mock.patch("django.utils.timezone.now", return_value=momento)
+
+
+def mesa_nueva(numero):
+    """Crea otra mesa plegable de 400 Bs disponible, MES-000xx, para que cada paso de una prueba use un equipo sin historia."""
+    return Equipment.objects.create(
+        inventory_id=f"MES-{numero:05d}", serial_number=f"SN-MES-{numero:05d}", name="Mesa plegable 1,80 m",
+        value=Decimal("400.00"),
+    )
 
 
 def renta_entregada(cliente, equipo, inicio, fin, operador):

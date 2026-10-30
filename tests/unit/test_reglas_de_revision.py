@@ -1,6 +1,4 @@
-"""Prueba rentals/rules.py: next_statuses(), rentals/use_cases/review.py: check_review_result() y
-rentals/use_cases/history.py: check_status_can_change(), qué estados puede elegir mantenimiento y qué cambios se
-rechazan (RF-10, ENT-49, ENT-90)."""
+"""Prueba rentals/rules.py y use_cases/review.py: opciones de estados de mantenimiento y validaciones de transiciones."""
 import pytest
 
 from rentals import rules
@@ -11,43 +9,34 @@ from rentals.use_cases.history import check_status_can_change
 from rentals.use_cases.review import check_review_result
 
 
-def test_disponible_es_un_resultado_valido_de_la_revision():
-    # Mantenimiento deja MES-00001 «Disponible» -> se acepta, no lanza error
-    equipo = Equipment(inventory_id="MES-00001", status=EquipmentStatus.IN_REVIEW)
-    assert check_review_result(equipo, EquipmentStatus.AVAILABLE) is None
+def test_validaciones_y_opciones_permitidas_en_revision_de_equipos():
+    # Resultados válidos en revisión (ej. disponible) vs estados inexistentes; opciones desde disponible vs baja definitiva -> control de mantenimiento
+    # Comprueba que marcar un equipo en revisión como disponible es una opción válida
+    equipo_revision = Equipment(inventory_id="MES-00001", status=EquipmentStatus.IN_REVIEW)
+    assert check_review_result(equipo_revision, EquipmentStatus.AVAILABLE) is None
 
+    # Comprueba que un estado inexistente o inválido para revisión es rechazado con las opciones permitidas
+    with pytest.raises(InvalidStatusChangeError) as error_estado:
+        check_review_result(Equipment(inventory_id="MES-00001", status=EquipmentStatus.IN_REPAIR), "reserved")
+    assert str(error_estado.value) == "El equipo MES-00001 solo puede pasar a disponible, en revisión, en reparación o baja."
 
-def test_un_estado_que_no_existe_no_es_un_resultado_de_la_revision():
-    # Mantenimiento intenta dejar MES-00001 «reserved», que no es un estado del equipo -> rechazado con las opciones válidas
-    equipo = Equipment(inventory_id="MES-00001", status=EquipmentStatus.IN_REPAIR)
-    with pytest.raises(InvalidStatusChangeError) as error:
-        check_review_result(equipo, "reserved")
-    assert str(error.value) == "El equipo MES-00001 solo puede pasar a disponible, en revisión, en reparación o baja."
-
-
-def test_desde_disponible_se_elige_cualquier_otro_estado():
-    # MES-00001 está disponible -> mantenimiento puede elegir en revisión, en reparación o baja (ENT-90)
+    # Comprueba que desde el estado disponible se puede transicionar a revisión, reparación o baja
     assert rules.next_statuses(EquipmentStatus.AVAILABLE) == [
         EquipmentStatus.IN_REVIEW, EquipmentStatus.IN_REPAIR, EquipmentStatus.RETIRED
     ]
 
-
-def test_desde_la_baja_no_se_elige_ningun_estado():
-    # MES-00001 está de baja -> no hay opciones (ENT-49: la baja es definitiva)
+    # Comprueba que desde el estado de baja no existen opciones de cambio adicionales (baja definitiva)
     assert rules.next_statuses(EquipmentStatus.RETIRED) == []
 
+    # Transiciones prohibidas sobre equipos dados de baja o duplicidad de estados -> rechazos de cambio
+    # Comprueba que intentar cambiar de estado un equipo dado de baja lanza un error de restricción
+    equipo_baja = Equipment(inventory_id="MES-00001", status=EquipmentStatus.RETIRED)
+    with pytest.raises(InvalidStatusChangeError) as error_baja:
+        check_status_can_change(equipo_baja, EquipmentStatus.AVAILABLE)
+    assert str(error_baja.value) == "El equipo MES-00001 está dado de baja; su estado ya no puede cambiar."
 
-def test_un_equipo_de_baja_no_cambia_de_estado():
-    # MES-00001 está de baja y lo quieren dejar disponible -> rechazado (ENT-49: la baja es definitiva)
-    equipo = Equipment(inventory_id="MES-00001", status=EquipmentStatus.RETIRED)
-    with pytest.raises(InvalidStatusChangeError) as error:
-        check_status_can_change(equipo, EquipmentStatus.AVAILABLE)
-    assert str(error.value) == "El equipo MES-00001 está dado de baja; su estado ya no puede cambiar."
-
-
-def test_no_se_pasa_al_mismo_estado():
-    # MES-00001 ya está disponible y lo quieren marcar disponible -> rechazado, no deja una fila sin cambio
-    equipo = Equipment(inventory_id="MES-00001", status=EquipmentStatus.AVAILABLE)
-    with pytest.raises(InvalidStatusChangeError) as error:
-        check_status_can_change(equipo, EquipmentStatus.AVAILABLE)
-    assert str(error.value) == "El equipo MES-00001 ya está «Disponible»."
+    # Comprueba que no se permite transicionar un equipo hacia el mismo estado en el que ya se encuentra
+    equipo_disponible = Equipment(inventory_id="MES-00001", status=EquipmentStatus.AVAILABLE)
+    with pytest.raises(InvalidStatusChangeError) as error_mismo:
+        check_status_can_change(equipo_disponible, EquipmentStatus.AVAILABLE)
+    assert str(error_mismo.value) == "El equipo MES-00001 ya está «Disponible»."

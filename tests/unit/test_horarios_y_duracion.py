@@ -1,5 +1,4 @@
-"""Prueba rentals/rules.py: is_pickup_date_allowed(), is_pickup_time_allowed(), is_return_time_allowed(),
-rental_days(), is_within_max_duration() y ends_after_start() (ENT-18, ENT-19, ENT-72, ENT-94)."""
+"""Prueba rentals/rules.py: restricciones de fechas, horarios, duración máxima y solapamientos."""
 from datetime import timedelta
 
 from rentals.rules import (
@@ -15,61 +14,37 @@ from tests.helpers import local_datetime
 INICIO = local_datetime(2026, 10, 9, 18, 0)
 
 
-def test_recojo_de_hoy_a_las_18_00_vale_hasta_la_medianoche():
-    # Son las 23:59 del 09/10 y pide recoger el 09/10 a las 18:00 -> permitido (ENT-94: puede recogerlo hasta la medianoche)
+def test_reglas_de_fechas_y_horarios_de_recojo_y_devolucion():
+    # Pide recoger hoy a las 18:00 (permitido hasta medianoche), mañana permitido, y ayer rechazado -> validación correcta de fechas
+    # Comprueba que el recojo de hoy a las 18:00 es válido hasta medianoche
     assert is_pickup_date_allowed(INICIO, local_datetime(2026, 10, 9, 23, 59)) is True
-
-
-def test_recojo_de_manana_permitido():
-    # Es el 09/10 a las 10:00 y pide recoger el 10/10 -> permitido
+    # Comprueba que el recojo del día siguiente está permitido
     assert is_pickup_date_allowed(local_datetime(2026, 10, 10, 18, 0), local_datetime(2026, 10, 9, 10, 0)) is True
-
-
-def test_recojo_de_ayer_rechazado():
-    # Ya es la medianoche del 10/10 y pide recoger el 09/10 -> rechazado (ENT-94: no se elige una fecha pasada)
+    # Comprueba que elegir un recojo de fecha pasada se rechaza
     assert is_pickup_date_allowed(INICIO, local_datetime(2026, 10, 10, 0, 0)) is False
 
-
-def test_recojo_a_las_18_00_permitido():
-    # Recoge el 09/10 a las 18:00 -> permitido (ENT-19: se entrega desde las 18:00)
+    # Recoge a las 18:00 (permitido) vs 17:59 (rechazado); devuelve a las 09:00 (permitido) vs 09:01 (rechazado) -> límites horarios
+    # Comprueba la hora mínima de recojo permitida (18:00)
     assert is_pickup_time_allowed(local_datetime(2026, 10, 9, 18, 0)) is True
-
-
-def test_recojo_a_las_17_59_rechazado():
-    # Recoge el 09/10 a las 17:59 -> rechazado, falta un minuto
+    # Comprueba que un minuto antes de las 18:00 se rechaza
     assert is_pickup_time_allowed(local_datetime(2026, 10, 9, 17, 59)) is False
-
-
-def test_devolucion_a_las_09_00_permitida():
-    # Devuelve el 12/10 a las 09:00 -> permitido (ENT-19: se devuelve hasta las 09:00)
+    # Comprueba la hora máxima de devolución permitida (09:00)
     assert is_return_time_allowed(local_datetime(2026, 10, 12, 9, 0)) is True
-
-
-def test_devolucion_a_las_09_01_rechazada():
-    # Devuelve el 12/10 a las 09:01 -> rechazado, se pasa un minuto
+    # Comprueba que pasarse por un minuto en la devolución se rechaza
     assert is_return_time_allowed(local_datetime(2026, 10, 12, 9, 1)) is False
 
 
-def test_recojo_el_09_y_devolucion_el_11_son_dos_dias():
-    # Recoge el 09/10 a las 18:00 y devuelve el 11/10 a las 09:00 -> 2 días (ENT-72)
+def test_duracion_dias_y_consistencia_temporal_de_la_renta():
+    # Recoge el 09/10 a las 18:00 y devuelve el 11/10 a las 09:00 -> son 2 días exactos de cálculo
+    # Comprueba el cálculo correcto de días de renta
     assert rental_days(INICIO, local_datetime(2026, 10, 11, 9, 0)) == 2
 
-
-def test_renta_de_5_dias_permitida():
-    # Recoge el 09/10 y devuelve el 14/10 -> 5 días justos, permitido (ENT-18: máximo 5 días)
+    # Renta de 5 días (permitida) vs 6 días (rechazada), y fin igual o posterior al inicio -> validación de duración máxima
+    # Comprueba que una renta de 5 días justos está permitida
     assert is_within_max_duration(INICIO, local_datetime(2026, 10, 14, 9, 0)) is True
-
-
-def test_renta_de_6_dias_rechazada():
-    # Recoge el 09/10 y devuelve el 15/10 -> 6 días, rechazado
+    # Comprueba que una renta de 6 días excede el límite y se rechaza
     assert is_within_max_duration(INICIO, local_datetime(2026, 10, 15, 9, 0)) is False
-
-
-def test_fin_igual_al_inicio_rechazado():
-    # Devuelve en el mismo momento en que recoge -> rechazado
+    # Comprueba que devolver en el mismo instante de inicio se rechaza
     assert ends_after_start(INICIO, INICIO) is False
-
-
-def test_fin_despues_del_inicio_aceptado():
-    # Devuelve un minuto después de recoger -> aceptado
+    # Comprueba que devolver después del inicio es aceptado
     assert ends_after_start(INICIO, INICIO + timedelta(minutes=1)) is True

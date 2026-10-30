@@ -1,5 +1,4 @@
-"""Prueba rentals/use_cases/handover.py con la base: register_pickup() y register_return(),
-entregar el equipo, cobrando si el pago está pendiente, y recibirlo de vuelta (CU-08, CU-09)."""
+"""Prueba rentals/use_cases/handover.py con la base: register_pickup() y register_return(), entregas, cobros y recepciones."""
 import pytest
 
 from rentals.errors import EquipmentNotAvailableError, IncompleteReturnError, PaymentRequiredError, RentalStateError
@@ -9,100 +8,65 @@ from rentals.use_cases.handover import register_pickup, register_return
 from rentals.use_cases.history import change_status
 from rentals.use_cases.payments import pay_with_qr
 from rentals.use_cases.renting import create_rental
-from tests.helpers import dentro_de, foto_de_la_base, renta_entregada
+from tests.helpers import dentro_de, foto_de_la_base, mesa_nueva, renta_entregada
 
 
-def test_register_pickup_guarda_la_hora_y_el_operador(cl01, op01, mes01):
-    # op01 entrega la reserva pagada con QR de cl01 -> la renta queda «Rentada» con la hora y op01 (ENT-56)
-    renta = pay_with_qr(create_rental(cl01, mes01, dentro_de(1, 18), dentro_de(2, 9)), approved=True)
-    register_pickup(renta, op01)
-    guardada = Rental.objects.get(pk=renta.pk)
-    # Comprueba que se guardó la hora del recojo
-    assert guardada.picked_up_at is not None
-    # Comprueba que se guardó quién entregó
-    assert guardada.handed_over_by == op01
-    # Comprueba que ahora está rentada
-    assert guardada.status == RentalStatus.RENTED
+def test_operaciones_de_entrega_recepcion_y_validaciones_de_mostrador(cl01, op01, mt01, mes01):
+    # Entrega de reserva pagada con QR registra hora, operador y pasa a estado rentada; entregar sin pago pendiente se rechaza
+    # Comprueba que el operador entrega una reserva pagada por QR registrando la hora, el operador y el estado rentada
+    renta_qr = pay_with_qr(create_rental(cl01, mes01, dentro_de(1, 18), dentro_de(2, 9)), approved=True)
+    register_pickup(renta_qr, op01)
+    guardada_qr = Rental.objects.get(pk=renta_qr.pk)
+    assert guardada_qr.picked_up_at is not None
+    assert guardada_qr.handed_over_by == op01
+    assert guardada_qr.status == RentalStatus.RENTED
 
-
-def test_entregar_sin_cobrar_el_pago_pendiente_se_rechaza_y_la_base_no_cambia(cl01, op01, mes01):
-    # El QR de cl01 falló y op01 intenta entregar sin cobrar -> rechazado con el monto y no se guarda nada (ENT-68)
-    renta = create_rental(cl01, mes01, dentro_de(0, 18), dentro_de(2, 9))
+    # Comprueba que intentar entregar una reserva sin pago aprobado se rechaza con el monto y no altera la base
+    renta_impaga = create_rental(cl01, mesa_nueva(2), dentro_de(0, 18), dentro_de(2, 9))
     antes = foto_de_la_base()
-    with pytest.raises(PaymentRequiredError) as error:
-        register_pickup(renta, op01)
-    # Comprueba el mensaje con el monto y qué hacer
-    assert str(error.value) == (
-        "Falta el pago de 40,00 Bs de esta renta. Cóbralo en efectivo o cancela la reserva si el cliente no paga."
-    )
-    # Comprueba que la base quedó igual
+    with pytest.raises(PaymentRequiredError) as error_pago:
+        register_pickup(renta_impaga, op01)
+    assert str(error_pago.value) == "Falta el pago de 40,00 Bs de esta renta. Cóbralo en efectivo o cancela la reserva si el cliente no paga."
     assert foto_de_la_base() == antes
 
+    # Cobrar en efectivo al entregar registra el pago y la entrega simultáneamente; devoluciones registran notas e historial
+    # Comprueba que el operador puede cobrar en efectivo al momento de entregar, registrando el pago y la renta con éxito
+    renta_efectivo = create_rental(cl01, mesa_nueva(3), dentro_de(0, 18), dentro_de(2, 9))
+    register_pickup(renta_efectivo, op01, paid_now=True)
+    guardada_efect = Rental.objects.get(pk=renta_efectivo.pk)
+    assert (guardada_efect.payment_method, guardada_efect.paid_at) == (PaymentMethod.CASH, guardada_efect.picked_up_at)
+    assert guardada_efect.status == RentalStatus.RENTED
 
-def test_entregar_cobrando_en_efectivo_guarda_el_pago_y_el_recojo(cl01, op01, mes01):
-    # El QR de cl01 falló y op01 cobra en efectivo al entregar -> pagada en efectivo y rentada (ENT-68)
-    renta = create_rental(cl01, mes01, dentro_de(0, 18), dentro_de(2, 9))
-    register_pickup(renta, op01, paid_now=True)
-    guardada = Rental.objects.get(pk=renta.pk)
-    # Comprueba la forma de pago y que el pago y el recojo son del mismo momento
-    assert (guardada.payment_method, guardada.paid_at) == (PaymentMethod.CASH, guardada.picked_up_at)
-    # Comprueba que quedó rentada
-    assert guardada.status == RentalStatus.RENTED
+    # Comprueba que recibir un equipo de vuelta con una observación registra la devolución, el historial y pasa el equipo a revisión
+    devuelta = mesa_nueva(4)
+    renta_activa = renta_entregada(cl01, devuelta, dentro_de(0, 18), dentro_de(1, 9), op01)
+    register_return(renta_activa, op01, "  Pata floja  ")
+    devuelta_db = Rental.objects.get(pk=renta_activa.pk)
+    cambio_db = StatusChange.objects.get()
+    devuelta.refresh_from_db()
+    assert (devuelta_db.status, devuelta_db.received_by, devuelta_db.return_note) == (RentalStatus.RETURNED, op01, "Pata floja")
+    assert devuelta.status == EquipmentStatus.IN_REVIEW
+    assert (cambio_db.new_status, cambio_db.changed_by, cambio_db.comment) == (EquipmentStatus.IN_REVIEW, op01, "Pata floja")
 
+    # Devoluciones sin nota, de reservas no entregadas o de equipos en revisión se rechazan con sus respectivas causas
+    # Comprueba que registrar una devolución sin nota obligatoria es rechazada y preserva la base intacta
+    renta_activa_dos = renta_entregada(cl01, mesa_nueva(5), dentro_de(0, 18), dentro_de(1, 9), op01)
+    antes_nota = foto_de_la_base()
+    with pytest.raises(IncompleteReturnError) as error_nota:
+        register_return(renta_activa_dos, op01, "   ")
+    assert str(error_nota.value) == "Escribe cómo llegó el equipo."
+    assert foto_de_la_base() == antes_nota
 
-def test_register_return_deja_la_renta_devuelta_y_el_equipo_en_revision(cl01, op01, mes01):
-    # op01 recibe MES-00001 con la nota «Pata floja» -> renta devuelta, equipo en revisión y una fila de historial
-    renta = renta_entregada(cl01, mes01, dentro_de(0, 18), dentro_de(1, 9), op01)
-    register_return(renta, op01, "  Pata floja  ")
-    guardada = Rental.objects.get(pk=renta.pk)
-    cambio = StatusChange.objects.get()
-    mes01.refresh_from_db()
-    # Comprueba que la renta quedó devuelta con quién la recibió y la nota sin espacios
-    assert (guardada.status, guardada.received_by, guardada.return_note) == (
-        RentalStatus.RETURNED, op01, "Pata floja"
-    )
-    # Comprueba que el equipo pasó a revisión
-    assert mes01.status == EquipmentStatus.IN_REVIEW
-    # Comprueba la fila de historial con su autor y la misma nota
-    assert (cambio.new_status, cambio.changed_by, cambio.comment) == (
-        EquipmentStatus.IN_REVIEW, op01, "Pata floja"
-    )
+    # Comprueba que intentar devolver una reserva que nunca fue recogida por el cliente se rechaza con su causa
+    reserva_noreal = create_rental(cl01, mesa_nueva(6), dentro_de(1, 18), dentro_de(2, 9))
+    with pytest.raises(RentalStateError) as error_norecogida:
+        register_return(reserva_noreal, op01, "Nunca se recogió")
+    assert str(error_norecogida.value) == "La renta de MES-00006 nunca se entregó: solo se devuelve una renta «Rentada»."
 
-
-def test_una_devolucion_sin_nota_se_rechaza_y_la_base_no_cambia(cl01, op01, mes01):
-    # op01 deja la observación en blanco -> rechazado con la causa y no se guarda nada
-    renta = renta_entregada(cl01, mes01, dentro_de(0, 18), dentro_de(1, 9), op01)
-    antes = foto_de_la_base()
-    with pytest.raises(IncompleteReturnError) as error:
-        register_return(renta, op01, "   ")
-    # Comprueba el mensaje con la causa
-    assert str(error.value) == "Escribe cómo llegó el equipo."
-    # Comprueba que la base quedó igual
-    assert foto_de_la_base() == antes
-
-
-def test_devolver_una_reserva_nunca_recogida_se_rechaza_y_la_base_no_cambia(cl01, op01, mes01):
-    # op01 intenta devolver una reserva de cl01 que nunca se entregó -> rechazado y no se guarda nada (ENT-93)
-    renta = create_rental(cl01, mes01, dentro_de(1, 18), dentro_de(2, 9))
-    antes = foto_de_la_base()
-    with pytest.raises(RentalStateError) as error:
-        register_return(renta, op01, "Nunca se recogió")
-    # Comprueba el mensaje con la causa
-    assert str(error.value) == "La renta de MES-00001 nunca se entregó: solo se devuelve una renta «Rentada»."
-    # Comprueba que la base quedó igual
-    assert foto_de_la_base() == antes
-
-
-def test_entregar_un_equipo_en_revision_se_rechaza_y_la_base_no_cambia(cl01, op01, mt01, mes01):
-    # cl01 tiene MES-00001 pagado para hoy, pero el equipo pasó a revisión -> op01 no puede entregarlo y nada cambia
-    renta = create_rental(cl01, mes01, dentro_de(0, 18), dentro_de(1, 9), registered_by=op01)
-    change_status(mes01, EquipmentStatus.IN_REVIEW, mt01, "Revisión de rutina")
-    antes = foto_de_la_base()
-    with pytest.raises(EquipmentNotAvailableError) as error:
-        register_pickup(renta, op01)
-    # Comprueba el mensaje con la causa y qué hacer
-    assert str(error.value) == (
-        "El equipo MES-00001 está en revisión. Espera a que mantenimiento lo revise o cancela la reserva."
-    )
-    # Comprueba que la base quedó igual
-    assert foto_de_la_base() == antes
+    # Comprueba que entregar un equipo que pasó a revisión mientras estaba reservado se rechaza informando la causa
+    en_revision = mesa_nueva(7)
+    reserva_revision = create_rental(cl01, en_revision, dentro_de(0, 18), dentro_de(1, 9), registered_by=op01)
+    change_status(en_revision, EquipmentStatus.IN_REVIEW, mt01, "Revisión de rutina")
+    with pytest.raises(EquipmentNotAvailableError) as error_enrev:
+        register_pickup(reserva_revision, op01)
+    assert str(error_enrev.value) == "El equipo MES-00007 está en revisión. Espera a que mantenimiento lo revise o cancela la reserva."

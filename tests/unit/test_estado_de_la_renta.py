@@ -1,5 +1,4 @@
-"""Prueba rentals/models.py: Rental.status_at(), Rental.return_result y Rental.occupies_equipment_at()
-con rentas sin guardar del 09/10/2026 18:00 al 12/10/2026 09:00 (RF-08)."""
+"""Prueba rentals/models.py: Rental.status_at(), Rental.return_result y Rental.occupies_equipment_at() en diferentes momentos."""
 from rentals.models import Rental
 from rentals.statuses import RentalStatus, ReturnResult
 from tests.helpers import local_datetime
@@ -13,73 +12,28 @@ CANCELACION = local_datetime(2026, 10, 8, 10, 0)
 VENCIDA = local_datetime(2026, 10, 10, 0, 0)
 
 
-def test_sin_momentos_la_renta_esta_reservada():
-    # Nadie la recogió, devolvió ni canceló y todavía no empieza -> reservada
-    renta = Rental(start_datetime=INICIO, end_datetime=FIN)
-    assert renta.status_at(ANTES_DEL_INICIO) == RentalStatus.RESERVED
+def test_determinacion_de_estado_y_ocupacion_temporal_de_la_renta():
+    # Sin momentos registrados (reservada), con recojo (rentada), con devolución (devuelta) y cancelación prioritaria -> evolución de estados
+    # Comprueba que una renta sin eventos previos se encuentra en estado reservada antes de su inicio
+    assert Rental(start_datetime=INICIO, end_datetime=FIN).status_at(ANTES_DEL_INICIO) == RentalStatus.RESERVED
+    # Comprueba que al registrarse el recojo la renta pasa a estar rentada
+    assert Rental(start_datetime=INICIO, end_datetime=FIN, picked_up_at=RECOJO).status_at(DEVOLUCION) == RentalStatus.RENTED
+    # Comprueba que al registrar la devolución el estado pasa a devuelta
+    assert Rental(start_datetime=INICIO, end_datetime=FIN, picked_up_at=RECOJO, returned_at=DEVOLUCION).status_at(DEVOLUCION) == RentalStatus.RETURNED
+    # Comprueba que la cancelación se impone como estado definitivo aunque exista un recojo previo
+    assert Rental(start_datetime=INICIO, end_datetime=FIN, picked_up_at=RECOJO, cancelled_at=CANCELACION).status_at(DEVOLUCION) == RentalStatus.CANCELLED
+    # Comprueba que si llega la medianoche sin recojo la reserva pasa a no recogida
+    assert Rental(start_datetime=INICIO, end_datetime=FIN).status_at(VENCIDA) == RentalStatus.NOT_PICKED_UP
 
-
-def test_con_recojo_la_renta_esta_rentada():
-    # El cliente la recogió el 09/10 a las 18:30 -> rentada
-    renta = Rental(start_datetime=INICIO, end_datetime=FIN, picked_up_at=RECOJO)
-    assert renta.status_at(DEVOLUCION) == RentalStatus.RENTED
-
-
-def test_con_devolucion_la_renta_esta_devuelta():
-    # La recogió y la devolvió el 12/10 a las 08:30 -> devuelta
-    renta = Rental(start_datetime=INICIO, end_datetime=FIN, picked_up_at=RECOJO, returned_at=DEVOLUCION)
-    assert renta.status_at(DEVOLUCION) == RentalStatus.RETURNED
-
-
-def test_la_cancelacion_gana_aunque_tenga_recojo():
-    # Tiene recojo y también cancelación -> cancelada, la cancelación es definitiva
-    renta = Rental(start_datetime=INICIO, end_datetime=FIN, picked_up_at=RECOJO, cancelled_at=CANCELACION)
-    assert renta.status_at(DEVOLUCION) == RentalStatus.CANCELLED
-
-
-def test_vencida_sin_recojo_queda_no_recogida():
-    # Nadie la recogió y es la medianoche del 10/10 -> no recogida (ENT-69)
-    renta = Rental(start_datetime=INICIO, end_datetime=FIN)
-    assert renta.status_at(VENCIDA) == RentalStatus.NOT_PICKED_UP
-
-
-def test_return_result_vacio_si_el_equipo_no_volvio():
-    # Está rentada y el equipo no volvió -> no hay resultado de devolución
-    renta = Rental(start_datetime=INICIO, end_datetime=FIN, picked_up_at=RECOJO)
-    assert renta.return_result is None
-
-
-def test_return_result_a_tiempo_si_volvio_antes_de_las_09_00():
-    # Vence el 12/10 y volvió a las 08:30 -> a tiempo
-    renta = Rental(start_datetime=INICIO, end_datetime=FIN, picked_up_at=RECOJO, returned_at=DEVOLUCION)
-    assert renta.return_result == ReturnResult.ON_TIME
-
-
-def test_una_renta_reservada_ocupa_el_equipo():
-    # Está reservada -> ocupa sus fechas
-    renta = Rental(start_datetime=INICIO, end_datetime=FIN)
-    assert renta.occupies_equipment_at(ANTES_DEL_INICIO) is True
-
-
-def test_una_renta_rentada_ocupa_el_equipo():
-    # Está rentada -> ocupa sus fechas
-    renta = Rental(start_datetime=INICIO, end_datetime=FIN, picked_up_at=RECOJO)
-    assert renta.occupies_equipment_at(DEVOLUCION) is True
-
-
-def test_una_renta_cancelada_no_ocupa_el_equipo():
-    # Está cancelada -> sus fechas quedan libres (ENT-55)
-    renta = Rental(start_datetime=INICIO, end_datetime=FIN, cancelled_at=CANCELACION)
-    assert renta.occupies_equipment_at(ANTES_DEL_INICIO) is False
-
-
-def test_una_renta_devuelta_no_ocupa_el_equipo():
-    # Está devuelta -> sus fechas quedan libres
-    renta = Rental(start_datetime=INICIO, end_datetime=FIN, picked_up_at=RECOJO, returned_at=DEVOLUCION)
-    assert renta.occupies_equipment_at(DEVOLUCION) is False
-
-
-def test_una_renta_no_recogida_no_ocupa_el_equipo():
-    # Venció sin recojo a la medianoche del 10/10 -> sus fechas quedan libres (ENT-69)
-    renta = Rental(start_datetime=INICIO, end_datetime=FIN)
-    assert renta.occupies_equipment_at(VENCIDA) is False
+    # Vueltas a tiempo vs sin retorno, y verificación de si la renta continúa ocupando el equipo -> vigencia y resultados de devolución
+    # Comprueba que una renta activa sin devolución no arroja un resultado de retorno
+    assert Rental(start_datetime=INICIO, end_datetime=FIN, picked_up_at=RECOJO).return_result is None
+    # Comprueba que retornar antes del límite de las 09:00 califica como devolución a tiempo
+    assert Rental(start_datetime=INICIO, end_datetime=FIN, picked_up_at=RECOJO, returned_at=DEVOLUCION).return_result == ReturnResult.ON_TIME
+    # Comprueba que las rentas reservadas u ocupadas retienen el equipo
+    assert Rental(start_datetime=INICIO, end_datetime=FIN).occupies_equipment_at(ANTES_DEL_INICIO) is True
+    assert Rental(start_datetime=INICIO, end_datetime=FIN, picked_up_at=RECOJO).occupies_equipment_at(DEVOLUCION) is True
+    # Comprueba que las rentas canceladas, devueltas o no recogidas liberan el equipo
+    assert Rental(start_datetime=INICIO, end_datetime=FIN, cancelled_at=CANCELACION).occupies_equipment_at(ANTES_DEL_INICIO) is False
+    assert Rental(start_datetime=INICIO, end_datetime=FIN, picked_up_at=RECOJO, returned_at=DEVOLUCION).occupies_equipment_at(DEVOLUCION) is False
+    assert Rental(start_datetime=INICIO, end_datetime=FIN).occupies_equipment_at(VENCIDA) is False

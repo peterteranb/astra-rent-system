@@ -1,6 +1,4 @@
-"""Prueba la cuenta desactivada (ENT-79): accounts/forms.py LoginForm, los backends de config/settings.py,
-el log de accounts/admin.py al cambiar «Activo», sus reservas canceladas (D-27), que el admin no borra
-usuarios ni equipos (ENT-97) y la búsqueda de clientes de la tienda (rentals/use_cases/renting.py)."""
+"""Prueba la cuenta desactivada (ENT-79): formularios de login, backends, registro de log en admin y cancelación de reservas (D-27)."""
 from pytest_django.asserts import assertContains, assertRedirects
 
 from rentals.models import Rental
@@ -10,13 +8,13 @@ from tests.helpers import dentro_de, foto_de_la_base, renta_entregada
 
 
 def desactivar(usuario):
-    """Quita «Activo» al usuario, como lo hace el admin."""
+    """Desactiva lógicamente al usuario en la base de datos."""
     usuario.is_active = False
     usuario.save()
 
 
 def datos_del_admin(usuario, **cambios):
-    """Devuelve lo que envía el formulario del admin al guardar al usuario; sin is_active, «Activo» va desmarcado."""
+    """Genera el diccionario de datos enviado por el formulario de edición de usuario en el admin."""
     return {
         "username": usuario.username,
         "first_name": usuario.first_name,
@@ -30,79 +28,56 @@ def datos_del_admin(usuario, **cambios):
     }
 
 
-def test_una_cuenta_desactivada_con_su_clave_ve_que_esta_desactivada(client, cl01, caplog):
-    # cl01 está desactivada y escribe su contraseña correcta -> ve por qué no entra y el log lo registra
+def test_comportamiento_bloqueos_y_gestion_de_cuentas_desactivadas(client, cl01, cl02, op01, ad01, mes01, mes02, caplog):
+    # Cuenta desactivada con clave correcta avisa el motivo y registra el log; con clave errónea muestra el mensaje genérico
+    # Comprueba que intentar iniciar sesión con una cuenta desactivada y clave correcta informa el estado e inscribe el evento en el log
     desactivar(cl01)
     antes = foto_de_la_base()
-    respuesta = client.post("/login/", {"username": "cl01", "password": "Demo1234"})
-    assertContains(respuesta, "Tu cuenta está desactivada. Comunícate con la tienda.")
-    # Comprueba la línea del log
+    respuesta_activa = client.post("/login/", {"username": "cl01", "password": "Demo1234"})
+    assertContains(respuesta_activa, "Tu cuenta está desactivada. Comunícate con la tienda.")
     assert caplog.messages == ["LOGIN_REJECTED reason=inactive user=cl01"]
-    # Comprueba que no inició sesión y que no cambió nada en la base
     assert ("_auth_user_id" in client.session, foto_de_la_base()) == (False, antes)
 
-
-def test_una_cuenta_desactivada_con_otra_clave_ve_el_mensaje_general(client, cl01, caplog):
-    # cl01 está desactivada y escribe una contraseña equivocada -> ve el mensaje general, sin pistas
-    desactivar(cl01)
-    respuesta = client.post("/login/", {"username": "cl01", "password": "equivocada"})
-    assertContains(respuesta, "Usuario o contraseña incorrectos.")
+    # Comprueba que un intento con contraseña incorrecta en cuenta desactivada muestra el mensaje general por seguridad
+    caplog.clear()
+    respuesta_falsa = client.post("/login/", {"username": "cl01", "password": "equivocada"})
+    assertContains(respuesta_falsa, "Usuario o contraseña incorrectos.")
     assert caplog.messages == []
 
-
-def test_una_cuenta_que_se_desactiva_con_la_sesion_abierta_vuelve_al_login(client, cl01):
-    # cl01 tiene la sesión abierta y el admin la desactiva -> en su siguiente clic va al login
+    # Sesión activa interrumpida por desactivación redirige al login; admin activa/desactiva cuentas registrando logs y cancelando reservas
+    # Comprueba que un usuario con sesión abierta es redirigido al login en su siguiente clic si el admin lo desactiva
     client.force_login(cl01)
     desactivar(cl01)
-    respuesta = client.get("/my-rentals/")
-    assertRedirects(respuesta, "/login/?next=/my-rentals/")
+    assertRedirects(client.get("/my-rentals/"), "/login/?next=/my-rentals/")
 
-
-def test_desactivar_una_cuenta_en_el_admin_escribe_account_deactivated(client, ad01, cl01, caplog):
-    # ad01 desmarca «Activo» de cl01 en el admin -> cl01 queda desactivada y el log dice quién lo hizo
+    # Comprueba que reactivar la cuenta en el admin actualiza su estado y escribe el log de reactivación
     client.force_login(ad01)
-    respuesta = client.post(f"/admin/accounts/user/{cl01.pk}/change/", datos_del_admin(cl01))
-    assertRedirects(respuesta, "/admin/accounts/user/")
-    cl01.refresh_from_db()
-    assert (cl01.is_active, caplog.messages) == (False, ["ACCOUNT_DEACTIVATED user=cl01 by=ad01"])
-
-
-def test_reactivar_una_cuenta_en_el_admin_escribe_account_reactivated(client, ad01, cl01, caplog):
-    # cl01 está desactivada y ad01 vuelve a marcar «Activo» -> cl01 queda activa y el log lo registra
-    desactivar(cl01)
-    client.force_login(ad01)
-    respuesta = client.post(f"/admin/accounts/user/{cl01.pk}/change/", datos_del_admin(cl01, is_active="on"))
-    assertRedirects(respuesta, "/admin/accounts/user/")
+    caplog.clear()
+    respuesta_react = client.post(f"/admin/accounts/user/{cl01.pk}/change/", datos_del_admin(cl01, is_active="on"))
+    assertRedirects(respuesta_react, "/admin/accounts/user/")
     cl01.refresh_from_db()
     assert (cl01.is_active, caplog.messages) == (True, ["ACCOUNT_REACTIVATED user=cl01 by=ad01"])
 
-
-def test_la_tienda_no_encuentra_a_un_cliente_desactivado(cl02):
-    # cl02 está desactivada y op01 busca «rojas» -> no aparece, así no se le registra una renta
+    # Búsqueda en tienda omite cuentas inactivas; desactivar en admin cancela reservas futuras pero respeta equipos rentados en mano (D-27)
+    # Comprueba que el buscador de clientes de la tienda excluye a los usuarios desactivados
     desactivar(cl02)
     assert list(find_clients("rojas")) == []
 
-
-def test_desactivar_en_el_admin_cancela_las_reservas_y_deja_las_rentadas(client, ad01, cl01, op01, mes01, mes02):
-    # cl01 tiene MES-00001 en la mano y MES-00002 reservado; ad01 la desactiva -> la reserva se cancela y la rentada sigue (D-27)
+    # Comprueba que desactivar en el admin escribe el log, cancela sus reservas futuras y preserva las rentas en curso
     rentada = renta_entregada(cl01, mes01, dentro_de(0, 18), dentro_de(1, 9), op01)
     reserva = create_rental(cl01, mes02, dentro_de(7, 18), dentro_de(9, 9))
-    client.force_login(ad01)
-    client.post(f"/admin/accounts/user/{cl01.pk}/change/", datos_del_admin(cl01))
+    caplog.clear()
+    respuesta_desc = client.post(f"/admin/accounts/user/{cl01.pk}/change/", datos_del_admin(cl01))
+    assertRedirects(respuesta_desc, "/admin/accounts/user/")
+    cl01.refresh_from_db()
+    assert (cl01.is_active, "ACCOUNT_DEACTIVATED user=cl01 by=ad01" in caplog.messages) == (False, True)
     reserva.refresh_from_db()
-    # Comprueba que la reserva quedó cancelada por ad01
     assert (reserva.status, reserva.cancelled_by) == (RentalStatus.CANCELLED, ad01)
-    # Comprueba que la renta que tiene en la mano sigue rentada
     assert Rental.objects.get(pk=rentada.pk).status == RentalStatus.RENTED
 
-
-def test_el_admin_no_puede_borrar_usuarios_ni_equipos(client, ad01, cl01, mes01):
-    # ad01 abre la página de borrar de cl01 y de MES-00001 -> 403 y nada se borra (ENT-97: nunca se borra nada)
-    client.force_login(ad01)
-    antes = foto_de_la_base()
-    usuario = client.get(f"/admin/accounts/user/{cl01.pk}/delete/")
-    equipo = client.get(f"/admin/rentals/equipment/{mes01.pk}/delete/")
-    # Comprueba que las dos páginas se niegan
-    assert (usuario.status_code, equipo.status_code) == (403, 403)
-    # Comprueba que la base quedó igual
-    assert foto_de_la_base() == antes
+    # Comprueba que las páginas de eliminación del admin devuelven un código 403 y no borran registros (ENT-97)
+    antes_borrado = foto_de_la_base()
+    resp_del_user = client.get(f"/admin/accounts/user/{cl01.pk}/delete/")
+    resp_del_eq = client.get(f"/admin/rentals/equipment/{mes01.pk}/delete/")
+    assert (resp_del_user.status_code, resp_del_eq.status_code) == (403, 403)
+    assert foto_de_la_base() == antes_borrado

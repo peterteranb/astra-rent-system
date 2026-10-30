@@ -1,24 +1,15 @@
-"""Prueba rentals/rules.py: is_rentable_status(), que solo deja rentar un equipo «Disponible»
-(ENT-03: lo devuelto pasa por mantenimiento antes de volver a rentarse)."""
+"""Prueba rentals/rules.py: is_rentable_status(), validando qué estados permiten la renta de equipos."""
 from rentals.rules import is_rentable_status
 from rentals.statuses import EquipmentStatus
 
 
-def test_un_equipo_disponible_se_puede_rentar():
-    # MES-00001 está «Disponible» -> se puede rentar
+def test_validacion_de_disponibilidad_para_renta_segun_estado_del_equipo():
+    # Equipo disponible habilitado para renta; equipos en revisión, reparación o baja bloqueados -> filtros de disponibilidad
+    # Comprueba que un equipo con estado disponible permite iniciar una nueva renta
     assert is_rentable_status(EquipmentStatus.AVAILABLE) is True
-
-
-def test_un_equipo_en_revision_no_se_puede_rentar():
-    # MES-00001 está «En revisión» -> no se puede rentar
+    # Comprueba que un equipo en revisión bloquea la renta y requiere pasar por mantenimiento
     assert is_rentable_status(EquipmentStatus.IN_REVIEW) is False
-
-
-def test_un_equipo_en_reparacion_no_se_puede_rentar():
-    # MES-00001 está «En reparación» -> no se puede rentar
+    # Comprueba que un equipo en reparación no puede ser rentado
     assert is_rentable_status(EquipmentStatus.IN_REPAIR) is False
-
-
-def test_un_equipo_de_baja_no_se_puede_rentar():
-    # MES-00001 está de «Baja» -> no se puede rentar
+    # Comprueba que un equipo dado de baja rechaza permanentemente cualquier intento de renta
     assert is_rentable_status(EquipmentStatus.RETIRED) is False

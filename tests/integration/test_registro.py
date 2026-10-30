@@ -1,5 +1,5 @@
-"""Prueba accounts/registration.py con la base: register_client(), la misma función para el registro
-en la web (CU-01) y en la tienda (CU-02), con todas las causas juntas (ENT-84, RC-04)."""
+"""Prueba accounts/registration.py con la base: register_client(), el registro en la web (CU-01), con todas las
+causas juntas (ENT-84, RC-04). La tienda usa register_store_client (CU-02), probado en test_correo_crea_tu_contrasena.py."""
 import pytest
 from django.contrib.auth import get_user_model
 
@@ -19,23 +19,19 @@ DATOS = SignUpData(
 )
 
 
-def test_registrar_un_cliente_guarda_su_rol_su_telefono_y_la_contrasena_cifrada(db):
-    # Lucía llena bien el formulario -> se crea cl03 como cliente, teléfono con dígitos y contraseña cifrada
+def test_registro_de_nuevos_clientes_por_formulario_y_caso_de_uso(cl01):
+    # Lucía se registra bien, otro llena mal varios campos y otro repite los datos de cl01 -> se guarda solo cl03
+    # Comprueba que se crea cl03 como cliente, con el teléfono solo en dígitos y la contraseña cifrada
     register_client(DATOS)
     guardado = get_user_model().objects.get(username="cl03")
-    # Comprueba el rol y el teléfono normalizado
     assert (guardado.role.code, guardado.phone) == (Role.CLIENT, "71234567")
-    # Comprueba que la contraseña se guardó cifrada y sirve para entrar
     assert (guardado.password != "Montaña2026", guardado.check_password("Montaña2026")) == (True, True)
 
-
-def test_un_registro_con_varios_errores_muestra_todas_las_causas_y_no_guarda(db):
-    # Sin apellido, correo sin @, teléfono corto y contraseñas distintas sin número -> todas las causas, nada se guarda
-    datos = SignUpData("Lucía", "", "lucia.correo.com", "71234", "cl03", "Montañaaa", "Montañaab")
+    # Comprueba que un registro con varios errores muestra todas las causas en orden y no guarda nada
+    con_errores = SignUpData("Lucía", "", "lucia.correo.com", "71234", "cl04", "Montañaaa", "Montañaab")
     antes = foto_de_la_base()
     with pytest.raises(RegistrationRejectedError) as error:
-        register_client(datos)
-    # Comprueba las causas en el orden en que se revisan
+        register_client(con_errores)
     assert error.value.causes == [
         "Falta el campo Apellido.",
         "El correo no es válido.",
@@ -43,17 +39,15 @@ def test_un_registro_con_varios_errores_muestra_todas_las_causas_y_no_guarda(db)
         "Las contraseñas no coinciden.",
         "La contraseña necesita al menos un número.",
     ]
-    # Comprueba que la base quedó igual
     assert foto_de_la_base() == antes
 
-
-def test_usuario_correo_y_telefono_de_otra_cuenta_se_rechazan(cl01):
-    # cl01 ya usa ese usuario, su correo en mayúsculas y su teléfono -> las tres causas (ENT-84)
-    datos = SignUpData("Carla", "Mendoza", "CL01@Correo.com", "71000001", "cl01", "Montaña2026", "Montaña2026")
-    with pytest.raises(RegistrationRejectedError) as error:
-        register_client(datos)
-    assert error.value.causes == [
+    # Comprueba que el usuario, el correo en mayúsculas y el teléfono de cl01 se rechazan juntos (ENT-84)
+    repetido = SignUpData("Carla", "Mendoza", "CL01@Correo.com", "71000001", "cl01", "Montaña2026", "Montaña2026")
+    with pytest.raises(RegistrationRejectedError) as error_repetido:
+        register_client(repetido)
+    assert error_repetido.value.causes == [
         "El usuario cl01 ya existe.",
         "El correo ya está registrado.",
         "El teléfono ya está registrado.",
     ]
+    assert foto_de_la_base() == antes

@@ -1,5 +1,4 @@
-"""Prueba rentals/use_cases/renting.py: check_can_cancel() y check_can_modify(), quién cancela o modifica una reserva
-y hasta cuándo (ENT-80, ENT-95), con rentas sin guardar del 09/10/2026 18:00 al 12/10/2026 09:00."""
+"""Prueba rentals/use_cases/renting.py: check_can_cancel() y check_can_modify(), validando plazos y roles de cancelación."""
 import pytest
 
 from accounts.models import User
@@ -18,55 +17,43 @@ UNA_HORA_ANTES = local_datetime(2026, 10, 9, 17, 0)
 
 
 def reserva(**momentos):
-    """Reserva de cl01 para MES-00001, con los momentos que se pidan."""
+    """Crea una reserva de prueba con los momentos específicos solicitados."""
     return Rental(equipment=MES01, client=CL01, start_datetime=INICIO, end_datetime=FIN, **momentos)
 
 
-def test_el_cliente_cancela_su_reserva_con_dos_dias_de_anticipacion():
-    # cl01 cancela el 07/10, dos días antes del recojo -> se puede, no lanza error
+def test_validacion_de_plazos_y_permisos_para_cancelar_o_modificar():
+    # Cliente cancela con anticipación (permitido) vs una hora antes (rechazado); operador puede cancelar o modificar a una hora del inicio -> plazos y privilegios
+    # Comprueba que el cliente puede cancelar con dos días de anticipación sin restricciones
     assert check_can_cancel(reserva(), CL01, DOS_DIAS_ANTES) is None
 
-
-def test_el_cliente_no_cancela_una_hora_antes():
-    # cl01 cancela el 09/10 a las 17:00, a una hora del recojo -> rechazado con qué hacer (ENT-80)
-    with pytest.raises(DeadlinePassedError) as error:
+    # Comprueba que el cliente no puede cancelar en línea a una hora del recojo (plazo vencido)
+    with pytest.raises(DeadlinePassedError) as error_cancel_cliente:
         check_can_cancel(reserva(), CL01, UNA_HORA_ANTES)
-    assert str(error.value) == "Ya no puedes cancelar en línea; comunícate con la tienda."
+    assert str(error_cancel_cliente.value) == "Ya no puedes cancelar en línea; comunícate con la tienda."
 
-
-def test_el_operador_cancela_una_hora_antes():
-    # op01 cancela la reserva de cl01 a una hora del recojo -> se puede, el plazo es solo del cliente
+    # Comprueba que el operador sí puede cancelar la reserva a una hora del inicio (el plazo restrictivo aplica solo al cliente)
     assert check_can_cancel(reserva(), OP01, UNA_HORA_ANTES) is None
 
-
-def test_el_cliente_no_modifica_una_hora_antes():
-    # cl01 quiere cambiar las fechas a una hora del recojo -> rechazado con qué hacer (ENT-80)
-    with pytest.raises(DeadlinePassedError) as error:
+    # Comprueba que el cliente no puede modificar una reserva a una hora del recojo
+    with pytest.raises(DeadlinePassedError) as error_mod_cliente:
         check_can_modify(reserva(), CL01, UNA_HORA_ANTES)
-    assert str(error.value) == "Ya no puedes modificar en línea; comunícate con la tienda."
+    assert str(error_mod_cliente.value) == "Ya no puedes modificar en línea; comunícate con la tienda."
 
-
-def test_el_operador_modifica_una_hora_antes():
-    # op01 cambia las fechas de la reserva de cl01 a una hora del inicio -> se puede (ENT-95)
+    # Comprueba que el operador puede modificar los detalles a una hora del inicio
     assert check_can_modify(reserva(), OP01, UNA_HORA_ANTES) is None
 
-
-def test_el_operador_no_modifica_cuando_la_reserva_ya_empezo():
-    # Son las 18:00 del 09/10, la hora de inicio, y op01 quiere cambiar las fechas -> rechazado (ENT-95: solo antes de que empiece)
-    with pytest.raises(DeadlinePassedError) as error:
+    # Intentar modificar tras la hora de inicio o sobre rentas ya entregadas/canceladas se rechaza -> consistencia del ciclo de vida
+    # Comprueba que el operador no puede modificar una reserva una vez que la hora de inicio ya transcurrió
+    with pytest.raises(DeadlinePassedError) as error_inicio:
         check_can_modify(reserva(), OP01, INICIO)
-    assert str(error.value) == "La reserva de MES-00001 ya empezó el 09/10/2026 18:00; ya no se puede modificar."
+    assert str(error_inicio.value) == "La reserva de MES-00001 ya empezó el 09/10/2026 18:00; ya no se puede modificar."
 
-
-def test_una_renta_entregada_no_se_puede_cancelar():
-    # El cliente se la llevó el 09/10 a las 18:30 -> ni el operador la cancela, y el mensaje dice cuándo
-    with pytest.raises(RentalStateError) as error:
+    # Comprueba que una renta ya entregada no puede ser cancelada ni por el operador
+    with pytest.raises(RentalStateError) as error_entregada:
         check_can_cancel(reserva(picked_up_at=local_datetime(2026, 10, 9, 18, 30)), OP01, UNA_HORA_ANTES)
-    assert str(error.value) == "La renta de MES-00001 ya fue entregada el 09/10/2026 18:30."
+    assert str(error_entregada.value) == "La renta de MES-00001 ya fue entregada el 09/10/2026 18:30."
 
-
-def test_una_renta_ya_cancelada_no_se_puede_cancelar_otra_vez():
-    # Se canceló el 08/10 a las 10:00 -> no se cancela otra vez
-    with pytest.raises(RentalStateError) as error:
+    # Comprueba que una reserva previamente cancelada no permite una segunda cancelación redundante
+    with pytest.raises(RentalStateError) as error_cancelada:
         check_can_cancel(reserva(cancelled_at=local_datetime(2026, 10, 8, 10, 0)), OP01, UNA_HORA_ANTES)
-    assert str(error.value) == "La renta de MES-00001 ya fue cancelada el 08/10/2026 10:00."
+    assert str(error_cancelada.value) == "La renta de MES-00001 ya fue cancelada el 08/10/2026 10:00."
