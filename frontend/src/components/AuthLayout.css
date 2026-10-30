@@ -38,8 +38,8 @@
 .auth__switch p { margin: 0; }
 
 @media (min-width: 900px) {
-  .auth__header { padding: 0 48px; height: 104px; }
-  .auth__logo { height: 96px; }
+  .auth__header { padding: 0 32px; height: 72px; }
+  .auth__logo { height: 64px; }
 
   .auth__body { flex-direction: row; }
   .auth__main { align-items: center; padding: 52px 64px; }
