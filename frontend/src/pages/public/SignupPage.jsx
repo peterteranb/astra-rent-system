@@ -65,6 +65,7 @@ export default function SignupPage() {
       navigate("/login", { state: { message } });
     } catch (err) {
       setErrors(errorsFrom(err));
+      setErrors(errorsFrom(err, { usernameTaken: "Ya existe una cuenta con este correo." }));
       setSending(false);
     }
   };

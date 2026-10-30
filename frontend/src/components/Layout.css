@@ -9,6 +9,8 @@
 .layout__user { display: flex; align-items: center; gap: 10px; font-size: 13px; }
 .layout__logout { min-height: 36px; padding: 6px 12px; font-size: 13px; box-shadow: none; }
 
+.alert--warning { background: #fff4e0; color: #8a5300; }
+
 .layout__nav { display: flex; flex-wrap: wrap; gap: 4px 16px; }
 .layout__nav a {
   padding: 4px 0; font-size: 14px; font-weight: 600; text-decoration: none;

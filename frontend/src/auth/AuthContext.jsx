@@ -9,6 +9,7 @@ export function homePathFor(role) {
   if (role === "administrador") return "/manager";
   if (role === "operador") return "/staff/reservations";
   if (role === "mantenimiento") return "/maintenance";
+  if (role === "operador") return "/";
   return "/";
 }
 
