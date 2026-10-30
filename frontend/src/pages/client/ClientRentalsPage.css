@@ -40,7 +40,10 @@
   gap: 16px;
 }
 
-.rental-card {
+/* RentalFlow.css centra .rental-card a 640 px; aquí cada tarjeta ocupa todo el ancho de la lista. */
+.rentals-list .rental-card {
+  max-width: none;
+  margin: 0;
   display: grid;
   grid-template-columns: 120px 1fr auto;
   gap: 18px;
@@ -52,8 +55,9 @@
   box-shadow: var(--shadow-sm);
 }
 
-.rental-card__image {
-  height: 120px;
+.rentals-list .rental-card__image {
+  width: 100%;
+  height: auto;
   aspect-ratio: 4 / 3;
   overflow: hidden;
   background-color: var(--color-accent);
@@ -65,7 +69,7 @@
   border-radius: 8px;
 }
 
-.rental-card__image img {
+.rentals-list .rental-card__image img {
   width: 100%;
   height: 100%;
   object-fit: contain;
@@ -73,24 +77,24 @@
   box-sizing: border-box;
 }
 
-.rental-card__code {
+.rentals-list .rental-card__code {
   margin: 0;
   color: var(--color-muted);
   font-size: 12px;
 }
 
-.rental-card h3 {
+.rentals-list .rental-card h3 {
   margin: 4px 0;
   font-size: 20px;
 }
 
-.rental-card__dates {
+.rentals-list .rental-card__dates {
   margin: 0 0 10px;
   color: var(--color-muted);
   font-size: 13px;
 }
 
-.rental-card__badges {
+.rentals-list .rental-card__badges {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
@@ -125,27 +129,27 @@
   background: #fdecea;
 }
 
-.rental-card__side {
+.rentals-list .rental-card__side {
   display: grid;
   gap: 10px;
   justify-items: end;
   text-align: right;
 }
 
-.rental-card__side strong {
+.rentals-list .rental-card__side strong {
   font-size: 18px;
 }
-.rental-card__side small {
+.rentals-list .rental-card__side small {
   max-width: 180px;
   color: var(--color-muted);
 }
 
-.rental-card__actions {
+.rentals-list .rental-card__actions {
   display: flex;
   gap: 8px;
 }
 
-.rental-card__actions .btn {
+.rentals-list .rental-card__actions .btn {
   width: auto;
   padding: 8px 12px;
 }
@@ -157,10 +161,13 @@
 }
 
 @media (max-width: 640px) {
-  .rental-card {
+  .rentals-list .rental-card {
     grid-template-columns: 1fr;
   }
-  .rental-card__side {
+  .rentals-list .rental-card__image {
+    aspect-ratio: 16 / 9;
+  }
+  .rentals-list .rental-card__side {
     justify-items: start;
     text-align: left;
   }
