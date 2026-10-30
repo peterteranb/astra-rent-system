@@ -1,5 +1,7 @@
 """Prueba accounts/registration.py con la base: register_client(), el registro en la web (CU-01), con todas las
 causas juntas (ENT-84, RC-04). La tienda usa register_store_client (CU-02), probado en test_correo_crea_tu_contrasena.py."""
+from unittest import mock
+
 import pytest
 from django.contrib.auth import get_user_model
 from django.core import mail
@@ -55,3 +57,16 @@ def test_registro_de_nuevos_clientes_por_formulario_y_caso_de_uso(cl01, django_c
         "El teléfono ya está registrado.",
     ]
     assert foto_de_la_base() == antes
+
+
+def test_correo_de_bienvenida_sale_en_un_hilo_aparte(db, settings, django_capture_on_commit_callbacks):
+    # Lucía se registra en la web con EMAIL_IN_BACKGROUND -> la cuenta se guarda y la bienvenida sale en otro hilo (D-40)
+    settings.EMAIL_IN_BACKGROUND = True
+    with (
+        mock.patch("rentals.services.notifications.threading.Thread") as hilo,
+        django_capture_on_commit_callbacks(execute=True),
+    ):
+        register_client(DATOS)
+    assert hilo.call_args.kwargs["args"][1:2] == ("Bienvenido a SergioCorp",)
+    hilo.return_value.start.assert_called_once_with()
+    assert get_user_model().objects.filter(username="cl03").exists()
