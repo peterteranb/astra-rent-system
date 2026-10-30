@@ -53,8 +53,13 @@ export function AuthProvider({ children }) {
     await getCsrf();
   };
 
+  const refresh = async () => {
+    const { data } = await getCurrentUser();
+    setUser(data);
+  };
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, refresh }}>
       {children}
     </AuthContext.Provider>
   );

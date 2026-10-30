@@ -1,0 +1,25 @@
+.maint-filter { margin-bottom: 18px; }
+.maint-message { padding: 24px; text-align: center; color: var(--color-muted); }
+
+.maint-list { display: grid; gap: 14px; margin: 18px 0 0; padding: 0; list-style: none; }
+
+.maint-item {
+  padding: 16px; background: var(--color-surface);
+  border: var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm);
+}
+.maint-item__head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.maint-item__id { font-family: var(--font-title); font-size: 18px; }
+.maint-item__name { flex: 1 1 10rem; }
+
+.maint-form { display: flex; flex-direction: column; gap: 14px; margin-top: 14px; }
+.maint-form__row { display: flex; flex-direction: column; gap: 14px; }
+.maint-form .field__input { font-size: 16px; } /* evita el zoom del iPhone */
+.maint-form .btn { width: 100%; }
+
+.maint-check { display: flex; align-items: flex-start; gap: 10px; font-size: 13px; }
+.maint-check input { flex: none; width: 20px; height: 20px; margin: 0; accent-color: var(--color-primary); }
+
+@media (min-width: 760px) {
+  .maint-form__row { display: grid; grid-template-columns: 200px 1fr auto; align-items: end; }
+  .maint-form .btn { width: auto; }
+}

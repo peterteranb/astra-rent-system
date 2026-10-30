@@ -54,9 +54,12 @@ export default function LoginPage() {
           <Field id="password" label="Contraseña" type="password" autoComplete="current-password"
             value={form.password} onChange={update("password")} />
 
+          <Link className="auth__link" to="/forgot-password">¿Olvidaste tu contraseña?</Link>
+
           <button className="btn btn--primary" type="submit" disabled={sending}>
             {sending ? "Iniciando sesión…" : "Iniciar sesión"}
           </button>
+          <Link className="auth__forgot" to="/forgot-password">¿Olvidaste tu contraseña?</Link>
 
           <hr className="divider" />
           <div className="auth__switch">

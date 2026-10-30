@@ -30,6 +30,7 @@ function linksFor(role) {
       { to: "/equipment/new", label: "Registrar equipo" },
     );
   }
+  links.push({ to: "/account", label: "Mi cuenta" });
   return links;
 }
 

@@ -2,6 +2,7 @@ import { Routes, Route } from "react-router-dom";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 import LoginPage from "./pages/public/LoginPage";
+import ForgotPasswordPage from "./pages/public/ForgotPasswordPage";
 import SignupPage from "./pages/public/SignupPage";
 import ForbiddenPage from "./pages/public/ForbiddenPage";
 import NotFoundPage from "./pages/public/NotFoundPage";
@@ -11,6 +12,8 @@ import RentFormPage from "./pages/client/RentFormPage";
 import PayRentalPage from "./pages/client/PayRentalPage";
 import RentalConfirmationPage from "./pages/client/RentalConfirmationPage";
 import ClientRentalsPage from "./pages/client/ClientRentalsPage";
+import AccountPage from "./pages/account/AccountPage.jsx";
+import ChangePasswordPage from "./pages/account/ChangePasswordPage.jsx";
 import ModifyFormPage from "./pages/client/ModifyFormPage";
 
 import StaffReservationsPage from "./pages/staff/StaffReservationsPage";
@@ -33,6 +36,7 @@ export default function App() {
     <Routes>
       {/* Públicas */}
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       <Route path="/signup" element={<SignupPage />} />
       <Route path="/403" element={<ForbiddenPage />} />
 
@@ -43,6 +47,8 @@ export default function App() {
       <Route path="/rentals/:rentalId" element={guard(<RentalConfirmationPage />)} />
       <Route path="/rentals/:rentalId/modify" element={guard(<ModifyFormPage />)} />
       <Route path="/my-rentals" element={guard(<ClientRentalsPage />, ["cliente"])} />
+      <Route path="/account" element={guard(<AccountPage />)} />
+      <Route path="/account/password" element={guard(<ChangePasswordPage />)} />
 
       {/* Operador */}
       <Route path="/staff/reservations" element={guard(<StaffReservationsPage />, ["operador"])} />
