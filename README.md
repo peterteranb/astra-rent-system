@@ -299,4 +299,6 @@ Usan una base temporal que crea pytest-django; la base de la demo y `logs/negoci
 | Sistema (recorridos por la web) | `tests/system/` | 12 (12) |
 | **Total** | | **79 (85)** |
 
-Cobertura: 92 %. Cómo correr un archivo o una sola prueba, qué prueba cubre cada caso de uso y la revisión de seguridad: [docs/pruebas.md](docs/pruebas.md).
+Cobertura: 92 % de las líneas y ramas del código **se ejecutan** durante las pruebas (pytest-cov). Ese número no dice por sí solo que el comportamiento esté validado: eso lo hacen los `assert` de cada prueba y la tabla que une cada caso de uso y requisito con su prueba ([docs/pruebas.md](docs/pruebas.md#qué-prueba-cubre-cada-caso-de-uso)).
+
+Cómo correr un archivo o una sola prueba y la revisión de seguridad: [docs/pruebas.md](docs/pruebas.md).

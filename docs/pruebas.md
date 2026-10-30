@@ -97,7 +97,15 @@ La **cobertura** dice qué parte del código corrió durante las pruebas: línea
 python -m pytest --cov=rentals --cov=accounts --cov-branch -q
 ```
 
-**Total: 92 %** de líneas y ramas (2221 líneas, 292 ramas), medida sobre el código actual. Por módulo, sin los `__init__.py` vacíos ni las migraciones:
+**Total: 92 %** de líneas y ramas (2224 líneas, 292 ramas), medida sobre el código actual.
+
+Qué dice ese número y qué no:
+
+- **Dice** qué parte de las líneas y de las ramas **se ejecutó** mientras corrían las pruebas.
+- **No dice** por sí solo que el comportamiento esté validado: una línea cuenta como cubierta aunque ninguna prueba revise su resultado.
+- Lo que **valida el comportamiento** son los `assert` de cada prueba (la respuesta y lo guardado en la base) y la tabla que une cada caso de uso y requisito con su prueba: [Qué prueba cubre cada caso de uso](#qué-prueba-cubre-cada-caso-de-uso) y [Qué cubre cada archivo de pruebas](#qué-cubre-cada-archivo-de-pruebas).
+
+Por módulo, sin los `__init__.py` vacíos ni las migraciones:
 
 | Módulo | Cobertura | | Módulo | Cobertura |
 |---|---|---|---|---|
