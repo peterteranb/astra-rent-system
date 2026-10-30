@@ -2,8 +2,8 @@
 
 Sistema web de renta de mesas y sillas para eventos de SergioCorp (cliente simulado), hecho con Django 6.1 y PostgreSQL.
 
-- **Cliente:** crea su cuenta, busca equipos libres, renta y paga con un QR simulado, modifica o cancela sus reservas y ve su deuda.
-- **Operador:** crea cuentas y rentas en la tienda, entrega (cobrando si falta el pago), recibe devoluciones y cobra deudas.
+- **Cliente:** crea su cuenta, busca equipos libres, renta y paga con un QR simulado, modifica o cancela sus reservas, ve su deuda y gestiona su cuenta en «Mi cuenta».
+- **Operador:** crea cuentas (sin conocer la contraseña del cliente) y rentas en la tienda, entrega (cobrando si falta el pago), recibe devoluciones y cobra deudas.
 - **Mantenimiento:** revisa lo que vuelve: disponible, en reparación o de baja (con su deuda).
 - **Administrador:** registra equipos, ve el panel del responsable y gestiona todo desde `/admin`.
 
@@ -96,21 +96,31 @@ Todos usan la clave `Demo1234`.
 | `cl01` | Carla Mendoza, cliente | Catálogo, «Mis rentas» con sus reservas, pagos y botones para modificar o cancelar |
 | `cl02` | Diego Rojas, cliente con deuda | Lo mismo, con su deuda de 22,50 Bs: no puede rentar hasta pagarla |
 | `op01` | Olga Pérez, operadora | Reservas por entregar, renta en tienda, nuevo cliente, devoluciones y deudas |
-| `mt01` | Mario Torres, mantenimiento | Todos los equipos que no están de baja, primero los en revisión, con el filtro por estado y la casilla para cobrar el daño |
+| `mt01` | Mario Torres, mantenimiento | Todos los equipos que no están de baja, el último que cambió primero, con el filtro por estado y la casilla para cobrar el daño |
 | `ad01` | Ana Díaz, administradora | El panel del responsable, el registro de equipos y el admin de Django |
 
 `seed_demo` crea 8 mesas (`MES-00001` a `MES-00008`), 12 sillas (`SIL-00001` a `SIL-00012`) y el combo `CMB-00001` «Combo 6 sillas y 1 mesa» (3000 Bs, 150 Bs por día: un equipo más, que no descuenta las sillas y mesas sueltas) y deja listo un caso para cada demostración: una reserva pagada para hoy, una con el pago pendiente, una devolución atrasada, una renta vencida, un equipo en revisión, uno en reparación, uno de baja y la deuda de `cl02`. Al terminar imprime para qué sirve cada equipo.
 
 **Volver a cero:** `python manage.py seed_demo`. Es solo para la demo y el desarrollo: con `DEBUG=False` se niega a correr («seed_demo borra los datos de la demo; solo se usa con DEBUG=True»). Vacía `logs/negocio.log`, borra deudas, rentas, historial y equipos y crea el mismo escenario con fechas relativas a hoy. No manda correos.
 
+## Mi cuenta y la contraseña
+
+- **Mi cuenta** (`/account/`, en el menú de todos): cada usuario edita su nombre, apellido, correo y teléfono, con las mismas reglas del registro. El usuario y el rol no se cambian.
+- **Cambiar contraseña** (`/account/password/`): la vista de Django; pide la actual y usa los mismos validadores del registro. La sesión sigue abierta.
+- **Olvidé mi contraseña** (enlace en el login, `/password-reset/`): el flujo de Django por correo. El enlace abre una página para escribir la contraseña nueva.
+- **Cliente creado en la tienda:** el operador **no** escribe la contraseña. La cuenta nace sin contraseña y el cliente recibe «Crea tu contraseña de SergioCorp» con el enlace de Django. Si el correo falla, el operador ve «La cuenta se creó, pero no se pudo enviar el correo. Pide al cliente que use "Olvidé mi contraseña" con su correo.».
+- En la demo los correos salen en la consola: copia el enlace de la terminal al navegador.
+
 ## El log de negocio: `logs/negocio.log`
 
-Es el registro de cada acción del sistema, aceptada o rechazada: sirve para auditar quién hizo qué y cuándo, y para mostrar en la presentación lo que pasa detrás de cada botón. Cada operación escribe una línea:
+Es el registro de cada acción del sistema, aceptada o rechazada: sirve para auditar quién hizo qué y cuándo, y para mostrar en la presentación lo que pasa detrás de cada botón. Cada operación escribe una línea que se entiende sin buscar en la base; los rechazos llevan lo que se intentó:
 
 ```text
-2026-10-29 10:15:02 | INFO    | RENTAL_CREATED id=12 equipment=SIL-00001 client=cl01 paid=no registered_by=web
-2026-10-29 10:16:40 | WARNING | RENTAL_REJECTED reason="Tienes una deuda pendiente de 22,50 Bs. Págala en la tienda para volver a rentar."
+2026-10-29 19:02:11 | INFO    | PAYMENT_APPROVED rental=60 equipment=SIL-00003 "Silla blanca plegable" client=cl01 "Carla Mendoza" period=30/10/2026 18:00-01/11/2026 09:00 amount=8.00 by=cl01
+2026-10-29 19:03:40 | WARNING | ACCOUNT_REJECTED username=juan23 email=juan@correo.com reason="Esta contraseña es demasiado común." by=web
 ```
+
+Qué escribe cada evento: [docs/arquitectura.md](docs/arquitectura.md#eventos-del-log).
 
 - Las líneas salen en la terminal del servidor y en el archivo. Para seguir el archivo desde otra terminal: `Get-Content logs\negocio.log -Wait`.
 - El archivo crece con cada operación y se conserva entre arranques. `seed_demo` lo vacía al empezar y escribe `DEMO_RESET` como primera línea.
@@ -118,7 +128,7 @@ Es el registro de cada acción del sistema, aceptada o rechazada: sirve para aud
 
 ## Correo
 
-Por defecto los correos (bienvenida, renta confirmada, reserva modificada por la tienda, renta cancelada y deuda) se imprimen en la consola. Para mandarlos de verdad con Gmail:
+Por defecto los correos (bienvenida, «Crea tu contraseña», «Olvidé mi contraseña», renta confirmada, reserva modificada por la tienda, renta cancelada y deuda) se imprimen en la consola. Para mandarlos de verdad con Gmail:
 
 1. En la cuenta de Google, activa la verificación en dos pasos y crea una **contraseña de aplicación** para «SergioCorp» en https://myaccount.google.com/apppasswords.
 2. En `.env` pon `EMAIL_HOST_USER=tu.correo@gmail.com` y `EMAIL_HOST_PASSWORD=` con las 16 letras de esa contraseña.
@@ -134,10 +144,10 @@ Usan una base temporal que crea pytest-django; la base de la demo y `logs/negoci
 
 | Tipo | Carpeta | Pruebas | Tiempo |
 |---|---|---|---|
-| Unitarias (sin base de datos) | `tests/unit/` | 98 | 0,2 s |
-| Integración (casos de uso y API con la base, el log y el correo) | `tests/integration/` | 91 | 4,0 s |
-| Sistema (recorridos por la web) | `tests/system/` | 12 | 2,2 s |
-| **Total** | | **201** | **4,2 s** |
+| Unitarias (sin base de datos) | `tests/unit/` | 103 | 0,6 s |
+| Integración (casos de uso y API con la base, el log y el correo) | `tests/integration/` | 117 | 12,2 s |
+| Sistema (recorridos por la web) | `tests/system/` | 12 | 3,0 s |
+| **Total** | | **232** | **13,4 s** |
 
 Los tiempos de integración y sistema incluyen crear la base de pruebas.
 
@@ -146,7 +156,7 @@ Los tiempos de integración y sistema incluyen crear la base de pruebas.
 | Carpeta | Qué tiene |
 |---|---|
 | `config/` | Configuración de Django, URLs raíz y la configuración de las pruebas |
-| `accounts/` | Usuario con rol y teléfono, roles (`roles.py`), registro de clientes y login |
+| `accounts/` | Usuario con rol y teléfono, roles (`roles.py`), registro de clientes, login y «Mi cuenta» (`account.py`) |
 | `rentals/` | Modelos, reglas puras (`rules.py`), estados y errores, formularios y admin |
 | `rentals/use_cases/` | Un archivo por grupo de casos de uso: `catalog`, `renting`, `payments`, `handover`, `review`, `inventory`, `history` y `dashboard` |
 | `rentals/services/` | Log de negocio (`events.py`), correos (`notifications.py`) y textos para mostrar (`formatting.py`) |

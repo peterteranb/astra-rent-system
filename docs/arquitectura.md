@@ -36,7 +36,7 @@ Las dependencias van en un solo sentido: presentación → aplicación → domin
 
 ```text
 accounts/
-    models.py  registration.py  roles.py  forms.py  validators.py  views.py  admin.py  urls.py
+    models.py  registration.py  account.py  roles.py  forms.py  validators.py  views.py  admin.py  urls.py  api.py
 rentals/
     models.py  admin.py  forms.py  urls.py  apps.py  context_processors.py
     rules.py  statuses.py  errors.py          ← dominio: reglas puras, estados y errores
@@ -52,11 +52,12 @@ rentals/
 | Módulo | Responsabilidad | CU |
 |---|---|---|
 | `accounts/models.py` | `Role` y `User`: teléfono único, correo único sin distinguir mayúsculas y el rol, que pone `is_staff` e `is_superuser`. | CU-01, CU-02 |
-| `accounts/registration.py` | `register_client`: crea la cuenta de un cliente en la web o en la tienda y junta todas las causas de un rechazo. | CU-01, CU-02 |
+| `accounts/registration.py` | `register_client` (web, con contraseña) y `register_store_client` (tienda, sin contraseña y con el correo «Crea tu contraseña»); juntan todas las causas de un rechazo. | CU-01, CU-02 |
+| `accounts/account.py` | `update_profile`: «Mi cuenta» edita nombre, apellido, correo y teléfono con las reglas del registro. | CU-17 |
 | `accounts/roles.py` | Los roles, `has_role`, `is_store_staff` y el decorador `role_required`. Está en `accounts` porque los roles son de los usuarios. | Todos (RF-19) |
-| `accounts/forms.py` | Login con sus mensajes (también para la cuenta desactivada), formulario de registro y formularios del admin de usuarios. | CU-01, CU-02 |
+| `accounts/forms.py` | Login con sus mensajes (también para la cuenta desactivada), formularios de registro y de «Mi cuenta», los de contraseña de Django con su log y los del admin de usuarios. | CU-01, CU-02, CU-17 |
 | `accounts/validators.py` | La contraseña necesita una mayúscula y un número. | CU-01, CU-02 |
-| `accounts/views.py` | Páginas de registro en la web y en la tienda. | CU-01, CU-02 |
+| `accounts/views.py` | Páginas de registro en la web y en la tienda, «Mi cuenta» y cambiar la contraseña; las de recuperarla son las de Django, en `accounts/urls.py`. | CU-01, CU-02, CU-17 |
 | `accounts/admin.py` | Usuarios con su rol y su deuda; el log cuando se bloquea o desbloquea una cuenta. | — (ENT-79) |
 | `rentals/models.py` | `Equipment`, `Rental` (estado calculado y consultas por estado), `Debt` (con su suma) y `StatusChange`. | Todos |
 | `rentals/rules.py` | Reglas puras: horarios, días, precio por día, plazo de 24 h, medianoche, atraso, cargos por daño y su tope. | CU-04 a CU-10 |
@@ -69,12 +70,12 @@ rentals/
 | `rentals/use_cases/review.py` | Revisión de mantenimiento de cualquier equipo: estado nuevo, deuda por daño solo si se marca el cobro y, con reparación o baja, cancela las reservas no recogidas. | CU-10 |
 | `rentals/use_cases/inventory.py` | Registrar un equipo con las reglas del modelo. | CU-12 |
 | `rentals/use_cases/history.py` | `change_status`: el único lugar que cambia `Equipment.status`, siempre con su fila de historial; `correct_status` (admin) y `cancel_if_out_of_service` (cancela las reservas al pasar a reparación o baja). | CU-09, CU-10, CU-13 |
-| `rentals/use_cases/dashboard.py` | Las seis listas del panel del responsable. | CU-15 |
+| `rentals/use_cases/dashboard.py` | Las seis listas del panel del responsable, lo último primero. | CU-15 |
 | `rentals/services/events.py` | Log de negocio: el contexto de una renta (`rental_context`) y el decorador que escribe cada rechazo una sola vez, con lo que se intentó. | Todos (RC-05, ENT-101) |
-| `rentals/services/notifications.py` | Correos al cliente, enviados cuando la transacción se confirma. | CU-01, CU-02, CU-04 a CU-07, CU-09, CU-10 |
+| `rentals/services/notifications.py` | Correos al cliente, enviados cuando la transacción se confirma; «Crea tu contraseña» sale en el momento y dice si salió. | CU-01, CU-02, CU-04 a CU-07, CU-09, CU-10 |
 | `rentals/services/formatting.py` | Textos para mostrar: fechas, montos, días, el aviso de deuda y por qué una renta ya no está «Reservada». | Todos (RC-04) |
-| `rentals/forms.py` | Formularios de filtros, fechas, renta en tienda, devolución y registro de equipos. Solo revisan que los datos tengan forma. | CU-03 a CU-05, CU-09, CU-12 |
-| `rentals/admin.py` | Admin de equipos, rentas, deudas e historial; sus acciones llaman a los casos de uso. | CU-07, CU-11 a CU-15 |
+| `rentals/forms.py` | Formularios de filtros, fechas, renta en tienda, «Ordenar por», devolución y registro de equipos. Solo revisan que los datos tengan forma. | CU-03 a CU-05, CU-08, CU-09, CU-12 |
+| `rentals/admin.py` | Admin de equipos, rentas, deudas e historial, lo último primero; sus acciones llaman a los casos de uso. | CU-07, CU-11 a CU-15 |
 | `rentals/context_processors.py` | Le dice al menú qué enlaces mostrar según el rol. | Todos (RF-19) |
 | `rentals/views/renting.py` | Catálogo, rentar, pagar con QR, confirmación, modificar, cancelar, renta en tienda y «Mis rentas». | CU-03 a CU-07, CU-16 |
 | `rentals/views/handover.py` | Reservas por entregar y devoluciones. | CU-08, CU-09 |
@@ -84,7 +85,7 @@ rentals/
 | `rentals/views/dashboard.py` | Panel del responsable. | CU-15 |
 | `rentals/views/home.py` | Manda a cada usuario a la página de su rol. | — (RF-19) |
 | `rentals/api/` | API JSON: `responses.py` (formato, método, sesión, rol y errores), `serializers.py` (fechas ISO y montos) y un archivo por grupo de casos de uso. Contrato en [api.md](api.md). | CU-03 a CU-12, CU-15, CU-16 |
-| `accounts/api.py` | API de la sesión (CSRF, login, logout, «quién soy») y de las cuentas. | CU-01, CU-02 |
+| `accounts/api.py` | API de la sesión (CSRF, login, logout, «quién soy») y de las cuentas, también «Mi cuenta». | CU-01, CU-02, CU-17 |
 | `rentals/management/commands/seed_demo.py` | Deja la base con el escenario de la demo. | — |
 | `config/settings.py` | Configuración leída de `.env`, tasas y formatos del negocio, log y correo. | — |
 

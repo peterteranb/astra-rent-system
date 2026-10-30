@@ -1,6 +1,14 @@
 # API JSON para el frontend
 
-> Versión del 28/10/2026. La API vive bajo `/api/` y llama a las **mismas** funciones de `rentals/use_cases/` (y de `accounts/registration.py`) que las páginas HTML: no repite ninguna regla. Las páginas de Django siguen funcionando como respaldo. El código está en `rentals/api/` y `accounts/api.py`; las pruebas, en `tests/integration/test_api.py`.
+> Versión del 29/10/2026. La API vive bajo `/api/` y llama a las **mismas** funciones de `rentals/use_cases/` (y de `accounts/registration.py` y `accounts/account.py`) que las páginas HTML: no repite ninguna regla. Las páginas de Django siguen funcionando como respaldo. El código está en `rentals/api/` y `accounts/api.py`; las pruebas, en `tests/integration/test_api.py` y `tests/integration/test_api_mi_cuenta.py`.
+
+**Cambios del 29/10 para el frontend:**
+
+- `GET /api/catalog/`: los equipos ya no traen `busy_periods` (ENT-99).
+- `GET /api/staff/reservations/` y `GET /api/staff/returns/`: la más nueva primero; aceptan `?order=date` (ENT-100). Las demás listas también vienen con lo último primero.
+- Renta: `payment_label` es solo `"Pagado"` o `"Pago pendiente"`; nuevos `payment_method` y `payment_method_label` (ENT-104).
+- `POST /api/staff/clients/`: ya no lleva `password` ni `password_confirmation`; la respuesta trae `email_sent` y otro `message` (ENT-102).
+- Nuevos: `POST /api/auth/profile/`, `POST /api/auth/password/` y `POST /api/auth/password-reset/` (CU-17).
 
 ## 1. Reglas comunes
 
